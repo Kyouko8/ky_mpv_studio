@@ -105,8 +105,7 @@ class _EffectsPageState extends State<EffectsPage> {
     final ln = _fx.loudnorm;
 
     final bandsDb = <String, double>{
-      for (final b in kEqBands)
-        b.key: eqLinearToDb(eq.params[b.key] ?? 1.0),
+      for (final b in kEqBands) b.key: eqLinearToDb(eq.params[b.key] ?? 1.0),
     };
 
     return SectionBody(
@@ -159,19 +158,19 @@ class _EffectsPageState extends State<EffectsPage> {
           enabled: comp.enabled,
           onEnabled: (v) =>
               _commitNow(_fx.copyWith(acompressor: comp.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(acompressor: AcompressorSettings(enabled: comp.enabled))),
+          onReset: () => _commitNow(_fx.copyWith(
+              acompressor: AcompressorSettings(enabled: comp.enabled))),
           specs: [
-            _spec('Threshold', eqLinearToDb(comp.threshold), -60, 0,
+            _spec(
+                'Threshold',
+                eqLinearToDb(comp.threshold),
+                -60,
+                0,
                 (v) => _fx.copyWith(
                     acompressor: comp.copyWith(
                         threshold: eqDbToLinear(v).clamp(0.000977, 1.0))),
                 format: (v) => '${v.round()} dB'),
-            _spec(
-                'Ratio',
-                comp.ratio,
-                1,
-                20,
+            _spec('Ratio', comp.ratio, 1, 20,
                 (v) => _fx.copyWith(acompressor: comp.copyWith(ratio: v)),
                 format: (v) => '${v.toStringAsFixed(1)}:1'),
             _spec('Attack', comp.attack, 1, 200,
@@ -180,10 +179,14 @@ class _EffectsPageState extends State<EffectsPage> {
             _spec('Release', comp.release, 20, 2000,
                 (v) => _fx.copyWith(acompressor: comp.copyWith(release: v)),
                 format: (v) => '${v.round()} ms'),
-            _spec('Make-up gain', eqLinearToDb(comp.makeup), 0, 24,
+            _spec(
+                'Make-up gain',
+                eqLinearToDb(comp.makeup),
+                0,
+                24,
                 (v) => _fx.copyWith(
-                    acompressor:
-                        comp.copyWith(makeup: eqDbToLinear(v).clamp(1.0, 64.0))),
+                    acompressor: comp.copyWith(
+                        makeup: eqDbToLinear(v).clamp(1.0, 64.0))),
                 format: (v) => '+${v.round()} dB'),
           ],
         ),
@@ -196,8 +199,8 @@ class _EffectsPageState extends State<EffectsPage> {
           enabled: bass.enabled,
           onEnabled: (v) =>
               _commitNow(_fx.copyWith(bass: bass.copyWith(enabled: v))),
-          onReset: () =>
-              _commitNow(_fx.copyWith(bass: BassSettings(enabled: bass.enabled))),
+          onReset: () => _commitNow(
+              _fx.copyWith(bass: BassSettings(enabled: bass.enabled))),
           specs: [
             _spec('Gain', bass.gain, -24, 24,
                 (v) => _fx.copyWith(bass: bass.copyWith(gain: v)),
@@ -260,8 +263,8 @@ class _EffectsPageState extends State<EffectsPage> {
           enabled: st.enabled,
           onEnabled: (v) =>
               _commitNow(_fx.copyWith(extrastereo: st.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(extrastereo: ExtrastereoSettings(enabled: st.enabled))),
+          onReset: () => _commitNow(_fx.copyWith(
+              extrastereo: ExtrastereoSettings(enabled: st.enabled))),
           specs: [
             _spec('Amount', st.m, 0, 8,
                 (v) => _fx.copyWith(extrastereo: st.copyWith(m: v)),
@@ -297,8 +300,8 @@ class _EffectsPageState extends State<EffectsPage> {
           enabled: cr.enabled,
           onEnabled: (v) =>
               _commitNow(_fx.copyWith(crystalizer: cr.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(crystalizer: CrystalizerSettings(enabled: cr.enabled))),
+          onReset: () => _commitNow(_fx.copyWith(
+              crystalizer: CrystalizerSettings(enabled: cr.enabled))),
           specs: [
             _spec('Intensity', cr.i, -10, 10,
                 (v) => _fx.copyWith(crystalizer: cr.copyWith(i: v)),
@@ -413,15 +416,17 @@ class _CatalogTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.s8),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Tokens.surface,
-        borderRadius: BorderRadius.circular(Tokens.rMd),
-        border: Border.all(color: Tokens.line, width: 1),
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: const BorderSide(color: Tokens.line, width: 1),
+        ),
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          borderRadius: BorderRadius.circular(Tokens.rMd),
+          customBorder: Tokens.squircle(Tokens.rMd),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => _CatalogCategoryScreen(category: category),

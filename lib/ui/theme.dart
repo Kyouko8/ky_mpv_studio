@@ -58,8 +58,7 @@ class AppTheme {
               ? Tokens.accent
               : Tokens.surface3,
         ),
-        trackOutlineColor:
-            const WidgetStatePropertyAll(Colors.transparent),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
         overlayColor: const WidgetStatePropertyAll(Colors.transparent),
       ),
       tooltipTheme: const TooltipThemeData(

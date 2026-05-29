@@ -197,8 +197,7 @@ class _UvPainter extends CustomPainter {
       final a = x0.clamp(0.0, litW);
       final b = x1.clamp(0.0, litW);
       if (b > a) {
-        canvas.drawRect(
-            Rect.fromLTRB(r.left + a, r.top, r.left + b, r.bottom),
+        canvas.drawRect(Rect.fromLTRB(r.left + a, r.top, r.left + b, r.bottom),
             Paint()..color = c);
       }
     }
@@ -209,8 +208,12 @@ class _UvPainter extends CustomPainter {
     canvas.restore();
     if (hold > minDb) {
       final hx = r.left + _t(hold) * r.width;
-      canvas.drawLine(Offset(hx, r.top), Offset(hx, r.bottom),
-          Paint()..color = _holdColor(hold)..strokeWidth = 1.5);
+      canvas.drawLine(
+          Offset(hx, r.top),
+          Offset(hx, r.bottom),
+          Paint()
+            ..color = _holdColor(hold)
+            ..strokeWidth = 1.5);
     }
   }
 
@@ -237,8 +240,12 @@ class _UvPainter extends CustomPainter {
     canvas.restore();
     if (hold > minDb) {
       final hy = r.bottom - _t(hold) * r.height;
-      canvas.drawLine(Offset(r.left, hy), Offset(r.right, hy),
-          Paint()..color = _holdColor(hold)..strokeWidth = 1.5);
+      canvas.drawLine(
+          Offset(r.left, hy),
+          Offset(r.right, hy),
+          Paint()
+            ..color = _holdColor(hold)
+            ..strokeWidth = 1.5);
     }
   }
 

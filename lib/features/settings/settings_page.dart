@@ -7,8 +7,15 @@ import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/section_body.dart';
 import '../../util/reactive.dart';
+import 'groups/ab_loop_group.dart';
+import 'groups/audio_engine_group.dart';
+import 'groups/audio_track_group.dart';
+import 'groups/chapters_group.dart';
+import 'groups/demuxer_group.dart';
+import 'groups/hooks_group.dart';
+import 'groups/streaming_group.dart';
 
-/// One settings category — a sidebar entry whose detail is built lazily.
+/// One settings category — a squircle grid box whose detail is built lazily.
 class _Category {
   final String title;
   final IconData icon;
@@ -21,8 +28,8 @@ class _Category {
 /// snapshots each change to disk, so the configuration is restored on the
 /// next launch.
 ///
-/// On a wide stage it's a master-detail (category list + detail); on a
-/// narrow one the list pushes the selected category, with a back affordance.
+/// The landing view is a grid of squircle category boxes; tapping one pushes
+/// its detail with a back affordance.
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -31,182 +38,147 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  static const _splitWidth = 640.0;
-
-  int _selected = 0;
-  // On a narrow layout, null = showing the category list.
+  // Which category detail is open; null = showing the squircle grid.
   int? _pushed;
 
   List<_Category> get _categories => const [
         _Category('Playback', Icons.play_arrow_rounded, _playback),
         _Category('Audio output', Icons.speaker_rounded, _output),
+        _Category('Audio engine', Icons.tune_rounded, _engine),
+        _Category('Audio track', Icons.audiotrack_rounded, _track),
         _Category('Normalization', Icons.equalizer_rounded, _normalization),
         _Category('Cache & network', Icons.cloud_outlined, _cache),
+        _Category('Demuxer', Icons.dns_outlined, _demuxer),
+        _Category('Streaming', Icons.podcasts_rounded, _streaming),
+        _Category('Chapters', Icons.bookmark_outline_rounded, _chapters),
+        _Category('A-B loop', Icons.repeat_rounded, _abLoop),
         _Category('Visualizer', Icons.graphic_eq_rounded, _visualizer),
         _Category('Cover art', Icons.image_outlined, _coverArt),
+        _Category('Hooks Lab', Icons.cable_rounded, _hooks),
         _Category('About', Icons.info_outline_rounded, _about),
       ];
 
   static Widget _playback(BuildContext c) => _PlaybackGroup(PlayerScope.of(c));
   static Widget _output(BuildContext c) =>
       _OutputGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _engine(BuildContext c) => AudioEngineGroup(PlayerScope.of(c));
+  static Widget _track(BuildContext c) => AudioTrackGroup(PlayerScope.of(c));
   static Widget _normalization(BuildContext c) =>
       _NormalizationGroup(PlayerScope.of(c));
   static Widget _cache(BuildContext c) => _CacheGroup(PlayerScope.of(c));
+  static Widget _demuxer(BuildContext c) => DemuxerGroup(PlayerScope.of(c));
+  static Widget _streaming(BuildContext c) => StreamingGroup(PlayerScope.of(c));
+  static Widget _chapters(BuildContext c) => ChaptersGroup(PlayerScope.of(c));
+  static Widget _abLoop(BuildContext c) => AbLoopGroup(PlayerScope.of(c));
   static Widget _visualizer(BuildContext c) =>
       _VisualizerGroup(PlayerScope.of(c));
   static Widget _coverArt(BuildContext c) => _CoverArtGroup(PlayerScope.of(c));
+  static Widget _hooks(BuildContext c) => HooksGroup(PlayerScope.of(c));
   static Widget _about(BuildContext c) => _AboutGroup(PlayerScope.of(c));
 
-  Widget _detail(int index) => SectionBody(children: [_categories[index].build(context)]);
+  Widget _detail(int index) =>
+      SectionBody(children: [_categories[index].build(context)]);
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final wide = c.maxWidth >= _splitWidth;
-        if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+    // Grid of squircle boxes; tapping one pushes its detail with a back row.
+    if (_pushed == null) {
+      return _CategoryGrid(
+        categories: _categories,
+        onSelect: (i) => setState(() => _pushed = i),
+      );
+    }
+    final i = _pushed!;
+    return Column(
+      children: [
+        _BackRow(
+          title: _categories[i].title,
+          onBack: () => setState(() => _pushed = null),
+        ),
+        const Divider(height: 1, thickness: 1, color: Tokens.line),
+        Expanded(child: _detail(i)),
+      ],
+    );
+  }
+}
+
+class _CategoryGrid extends StatelessWidget {
+  final List<_Category> categories;
+  final ValueChanged<int> onSelect;
+
+  const _CategoryGrid({required this.categories, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+        Tokens.s20,
+        Tokens.s20,
+        Tokens.s20,
+        Tokens.s32,
+      ),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 168,
+          crossAxisSpacing: Tokens.s12,
+          mainAxisSpacing: Tokens.s12,
+          childAspectRatio: 1,
+        ),
+        itemCount: categories.length,
+        itemBuilder: (context, i) => _CategoryCard(
+          category: categories[i],
+          onTap: () => onSelect(i),
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  final _Category category;
+  final VoidCallback onTap;
+
+  const _CategoryCard({required this.category, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    // Squircle (superellipse) corners, the same flat surface as the rest.
+    final shape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(40),
+    );
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: shape,
+        child: Container(
+          decoration: ShapeDecoration(
+            color: Tokens.surface,
+            shape: ContinuousRectangleBorder(
+              borderRadius: BorderRadius.circular(40),
+              side: const BorderSide(color: Tokens.line, width: 1),
+            ),
+          ),
+          padding: const EdgeInsets.all(Tokens.s16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _CategoryList(
-                categories: _categories,
-                selected: _selected,
-                onSelect: (i) => setState(() => _selected = i),
-                width: 210,
-              ),
-              Expanded(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  transitionBuilder: (child, anim) =>
-                      FadeTransition(opacity: anim, child: child),
-                  child: KeyedSubtree(
-                    key: ValueKey(_selected),
-                    child: _detail(_selected),
-                  ),
+              Icon(category.icon, size: 26, color: Tokens.accent),
+              const SizedBox(height: Tokens.s12),
+              Text(
+                category.title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Tokens.fg,
                 ),
               ),
             ],
-          );
-        }
-        // Narrow: list, pushing the detail with a back row.
-        if (_pushed == null) {
-          return _CategoryList(
-            categories: _categories,
-            selected: -1,
-            onSelect: (i) => setState(() => _pushed = i),
-          );
-        }
-        final i = _pushed!;
-        return Column(
-          children: [
-            _BackRow(
-              title: _categories[i].title,
-              onBack: () => setState(() => _pushed = null),
-            ),
-            const Divider(height: 1, thickness: 1, color: Tokens.line),
-            Expanded(child: _detail(i)),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _CategoryList extends StatelessWidget {
-  final List<_Category> categories;
-  final int selected;
-  final ValueChanged<int> onSelect;
-  final double? width;
-
-  const _CategoryList({
-    required this.categories,
-    required this.selected,
-    required this.onSelect,
-    this.width,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final list = ListView(
-      padding: const EdgeInsets.all(Tokens.s12),
-      children: [
-        for (var i = 0; i < categories.length; i++)
-          _CategoryTile(
-            category: categories[i],
-            active: i == selected,
-            showChevron: width == null,
-            onTap: () => onSelect(i),
-          ),
-      ],
-    );
-    if (width == null) return list;
-    return Container(
-      width: width,
-      decoration: const BoxDecoration(
-        color: Tokens.surface,
-        border: Border(right: BorderSide(color: Tokens.line2, width: 1)),
-      ),
-      child: list,
-    );
-  }
-}
-
-class _CategoryTile extends StatelessWidget {
-  final _Category category;
-  final bool active;
-  final bool showChevron;
-  final VoidCallback onTap;
-
-  const _CategoryTile({
-    required this.category,
-    required this.active,
-    required this.showChevron,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(Tokens.rSm),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            decoration: BoxDecoration(
-              color: active ? Tokens.accentWash : Colors.transparent,
-              borderRadius: BorderRadius.circular(Tokens.rSm),
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: Tokens.s12,
-              vertical: 11,
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  category.icon,
-                  size: 18,
-                  color: active ? Tokens.accent : Tokens.fgDim,
-                ),
-                const SizedBox(width: Tokens.s12),
-                Expanded(
-                  child: Text(
-                    category.title,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      color: active ? Tokens.fg : Tokens.fgDim,
-                    ),
-                  ),
-                ),
-                if (showChevron)
-                  const Icon(Icons.chevron_right_rounded,
-                      size: 18, color: Tokens.fgFaint),
-              ],
-            ),
           ),
         ),
       ),
@@ -486,7 +458,9 @@ class _OutputGroup extends StatelessWidget {
                 for (final r in rates)
                   DropdownMenuItem(
                     value: r,
-                    child: Text(r == 0 ? 'Auto' : '${r ~/ 1000}.${(r % 1000) ~/ 100} kHz'),
+                    child: Text(r == 0
+                        ? 'Auto'
+                        : '${r ~/ 1000}.${(r % 1000) ~/ 100} kHz'),
                   ),
               ],
               onChanged: (r) {
@@ -507,6 +481,20 @@ class _OutputGroup extends StatelessWidget {
             format: (x) => '${x.round()} ms',
             onChanged: (x) =>
                 player.setAudioBuffer(Duration(milliseconds: x.round())),
+          ),
+        ),
+        Live<Duration>(
+          stream: player.stream.audioDelay,
+          initial: player.state.audioDelay,
+          builder: (context, v) => SliderRow(
+            label: 'A/V sync delay',
+            value: v.inMicroseconds / 1e6,
+            min: -5,
+            max: 5,
+            resetTo: 0,
+            format: (x) => '${x.toStringAsFixed(3)} s',
+            onChanged: (x) =>
+                player.setAudioDelay(Duration(microseconds: (x * 1e6).round())),
           ),
         ),
       ],
@@ -534,8 +522,7 @@ class _NormalizationGroup extends StatelessWidget {
               label: 'Mode',
               child: SegmentedControl<ReplayGain>(
                 selected: rg.mode,
-                onSelect: (m) =>
-                    player.setReplayGain(rg.copyWith(mode: m)),
+                onSelect: (m) => player.setReplayGain(rg.copyWith(mode: m)),
                 options: const [
                   SegmentOption(ReplayGain.no, 'Off'),
                   SegmentOption(ReplayGain.track, 'Track'),
@@ -561,8 +548,7 @@ class _NormalizationGroup extends StatelessWidget {
               resetTo: 0,
               format: (x) => '${x.toStringAsFixed(1)} dB',
               enabled: rg.mode != ReplayGain.no,
-              onChanged: (x) =>
-                  player.setReplayGain(rg.copyWith(fallback: x)),
+              onChanged: (x) => player.setReplayGain(rg.copyWith(fallback: x)),
             ),
             SwitchRow(
               label: 'Allow clipping',
@@ -621,6 +607,26 @@ class _CacheGroup extends StatelessWidget {
               value: cache.onDisk,
               onChanged: (v) => player.setCache(cache.copyWith(onDisk: v)),
             ),
+            SwitchRow(
+              label: 'Pause on buffer',
+              subtitle: 'Pause playback while the cache refills',
+              value: cache.pause,
+              onChanged: (v) => player.setCache(cache.copyWith(pause: v)),
+            ),
+            SliderRow(
+              label: 'Buffer wait',
+              value: cache.pauseWait.inMicroseconds / 1e6,
+              min: 0.1,
+              max: 60,
+              resetTo: 1,
+              enabled: cache.pause,
+              format: (x) => '${x.toStringAsFixed(1)} s',
+              onChanged: (x) => player.setCache(
+                cache.copyWith(
+                  pauseWait: Duration(microseconds: (x * 1e6).round()),
+                ),
+              ),
+            ),
             Live<Duration>(
               stream: player.stream.networkTimeout,
               initial: player.state.networkTimeout,
@@ -642,6 +648,28 @@ class _CacheGroup extends StatelessWidget {
                 label: 'Verify TLS certificates',
                 value: v,
                 onChanged: player.setTlsVerify,
+              ),
+            ),
+            Live<double>(
+              stream: player.stream.cacheSpeed,
+              initial: player.state.cacheSpeed,
+              builder: (context, v) => InfoRow(
+                label: 'Cache speed',
+                value: '${(v / 1024).toStringAsFixed(1)} KiB/s',
+              ),
+            ),
+            Live<int>(
+              stream: player.stream.cacheBufferingState,
+              initial: player.state.cacheBufferingState,
+              builder: (context, v) =>
+                  InfoRow(label: 'Cache buffering', value: '$v%'),
+            ),
+            StreamBuilder<double>(
+              stream: player.stream.bufferingPercentage,
+              initialData: player.state.bufferingPercentage,
+              builder: (context, snap) => InfoRow(
+                label: 'Buffer fill',
+                value: '${(snap.data ?? 0).toStringAsFixed(1)}%',
               ),
             ),
           ],
@@ -765,7 +793,8 @@ class _AboutGroup extends StatelessWidget {
 
 // ---- Shared ---------------------------------------------------------
 
-/// A caption label above a full-width control (segmented pickers).
+/// A settings tile whose interaction is a full-width control beneath the
+/// title (segmented pickers) — same rhythm as the slider/dropdown tiles.
 class _LabelledControl extends StatelessWidget {
   final String label;
   final Widget child;
@@ -773,18 +802,6 @@ class _LabelledControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: Tokens.s8),
-            child: Text(label, style: Tokens.body),
-          ),
-          child,
-        ],
-      ),
-    );
+    return SettingTile(title: label, below: child);
   }
 }

@@ -1,20 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../tokens.dart';
+import 'controls.dart';
 
-/// Standard scrollable body for a section. Centres content and caps its
-/// width so a wide desktop stage reads the same as a phone. The shell
-/// already renders the section title above this.
+/// Standard scrollable body for a section. Fills the full stage width —
+/// no lateral cap — so content runs edge to edge. The shell already
+/// renders the section title above this.
 class SectionBody extends StatelessWidget {
   final List<Widget> children;
-  final double maxWidth;
   final EdgeInsetsGeometry padding;
   final CrossAxisAlignment crossAxisAlignment;
 
   const SectionBody({
     super.key,
     required this.children,
-    this.maxWidth = 620,
     this.padding = const EdgeInsets.fromLTRB(
       Tokens.s20,
       Tokens.s8,
@@ -26,17 +25,11 @@ class SectionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topCenter,
-      child: SingleChildScrollView(
-        padding: padding,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
-          child: Column(
-            crossAxisAlignment: crossAxisAlignment,
-            children: children,
-          ),
-        ),
+    return SingleChildScrollView(
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: crossAxisAlignment,
+        children: children,
       ),
     );
   }
@@ -57,12 +50,19 @@ class SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Each row carries its own horizontal padding; the hairline dividers
+    // are added edge to edge so they run the full width of the card.
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       if (i > 0) {
         rows.add(const Divider(height: 1, thickness: 1, color: Tokens.line));
       }
-      rows.add(children[i]);
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+          child: children[i],
+        ),
+      );
     }
     return Padding(
       padding: const EdgeInsets.only(bottom: Tokens.s24),
@@ -79,14 +79,13 @@ class SettingsGroup extends StatelessWidget {
             child: Text(label.toUpperCase(), style: Tokens.caption),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Tokens.s16,
-              vertical: Tokens.s4,
-            ),
-            decoration: BoxDecoration(
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
               color: Tokens.surface,
-              borderRadius: BorderRadius.circular(Tokens.rMd),
-              border: Border.all(color: Tokens.line, width: 1),
+              shape: Tokens.squircle(
+                Tokens.rMd,
+                side: const BorderSide(color: Tokens.line, width: 1),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -99,7 +98,7 @@ class SettingsGroup extends StatelessWidget {
   }
 }
 
-/// A static label/value row for read-only info (About panel, stats).
+/// A static title/value row for read-only info (About panel, stats).
 class InfoRow extends StatelessWidget {
   final String label;
   final String value;
@@ -107,22 +106,6 @@ class InfoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: Text(label, style: Tokens.body)),
-          const SizedBox(width: Tokens.s12),
-          Flexible(
-            child: Text(
-              value,
-              style: Tokens.numeric,
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
+    return SettingTile(title: label, trailing: ValueBadge(value));
   }
 }

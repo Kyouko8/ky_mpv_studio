@@ -42,12 +42,14 @@ class _ModuleCardState extends State<ModuleCard> {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.s12),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Tokens.surface,
-        borderRadius: BorderRadius.circular(Tokens.rMd),
-        border: Border.all(
-          color: widget.enabled ? Tokens.accentDim : Tokens.line,
-          width: 1,
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: BorderSide(
+            color: widget.enabled ? Tokens.accentDim : Tokens.line,
+            width: 1,
+          ),
         ),
       ),
       child: Column(
@@ -57,7 +59,7 @@ class _ModuleCardState extends State<ModuleCard> {
             type: MaterialType.transparency,
             child: InkWell(
               onTap: () => setState(() => _expanded = !_expanded),
-              borderRadius: BorderRadius.circular(Tokens.rMd),
+              customBorder: Tokens.squircle(Tokens.rMd),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
                   Tokens.s16,

@@ -111,8 +111,7 @@ class StreamPage extends StatelessWidget {
             ),
             child: Text(cat.name.toUpperCase(), style: Tokens.caption),
           ),
-          for (final item in cat.items)
-            _StreamTile(player: player, item: item),
+          for (final item in cat.items) _StreamTile(player: player, item: item),
           const SizedBox(height: Tokens.s12),
         ],
       ],
@@ -142,16 +141,18 @@ class _StreamTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.s8),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Tokens.surface,
-        borderRadius: BorderRadius.circular(Tokens.rMd),
-        border: Border.all(color: Tokens.line, width: 1),
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: const BorderSide(color: Tokens.line, width: 1),
+        ),
       ),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
           onTap: _play,
-          borderRadius: BorderRadius.circular(Tokens.rMd),
+          customBorder: Tokens.squircle(Tokens.rMd),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(
               Tokens.s16,

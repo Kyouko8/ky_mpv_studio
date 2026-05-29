@@ -2,24 +2,107 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 
-/// Label + value readout above a full-width flat slider. The single
-/// numeric control used across Effects and Settings. Double-tap the row
-/// to reset to [resetTo] when provided.
+/// The uniform settings row: a title, an optional description, and then the
+/// interaction. Compact controls (switch, value readout) sit at the trailing
+/// edge of the header; wide controls (slider, selector, dropdown) sit on
+/// their own line beneath it. Every settings control is built on this so the
+/// whole panel reads with one rhythm.
+class SettingTile extends StatelessWidget {
+  final String title;
+  final String? description;
+
+  /// Compact control aligned to the trailing edge of the header row.
+  final Widget? trailing;
+
+  /// Wide control rendered full-width under the header.
+  final Widget? below;
+
+  final bool enabled;
+
+  /// Makes the whole row tappable (used by switch rows).
+  final VoidCallback? onTap;
+
+  const SettingTile({
+    super.key,
+    required this.title,
+    this.description,
+    this.trailing,
+    this.below,
+    this.enabled = true,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final header = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tokens.body.copyWith(
+                  color: enabled ? Tokens.fg : Tokens.fgFaint,
+                ),
+              ),
+              if (description != null) ...[
+                const SizedBox(height: 2),
+                Text(description!, style: Tokens.caption),
+              ],
+            ],
+          ),
+        ),
+        if (trailing != null) ...[
+          const SizedBox(width: Tokens.s12),
+          trailing!,
+        ],
+      ],
+    );
+
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        header,
+        if (below != null)
+          Padding(
+            padding: const EdgeInsets.only(top: Tokens.s12),
+            child: below,
+          ),
+      ],
+    );
+
+    final padded = Padding(
+      padding: const EdgeInsets.symmetric(vertical: Tokens.s12),
+      child: content,
+    );
+
+    if (onTap == null) return padded;
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      customBorder: Tokens.squircle(Tokens.rSm),
+      child: padded,
+    );
+  }
+}
+
+/// Title (+ description) with a full-width custom [AppSlider] beneath and a
+/// numeric readout in the header. Double-tap the slider to reset to
+/// [resetTo] when provided.
 class SliderRow extends StatelessWidget {
   final String label;
+  final String? description;
   final double value;
   final double min;
   final double max;
   final int? divisions;
   final ValueChanged<double> onChanged;
   final ValueChanged<double>? onChangeEnd;
-
-  /// Formats the trailing value readout. Defaults to one decimal place.
   final String Function(double value)? format;
-
-  /// When non-null, double-tapping the row snaps back to this value.
   final double? resetTo;
-
   final bool enabled;
 
   const SliderRow({
@@ -29,6 +112,7 @@ class SliderRow extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.description,
     this.onChangeEnd,
     this.divisions,
     this.format,
@@ -41,53 +125,64 @@ class SliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final clamped = value.clamp(min, max);
-    final body = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: Tokens.body.copyWith(
-                  color: enabled ? Tokens.fg : Tokens.fgFaint,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: Tokens.s12),
-            Text(
-              _fmt(clamped),
-              style: Tokens.numeric.copyWith(
-                color: enabled ? Tokens.accent : Tokens.fgFaint,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(
-          height: 28,
-          child: Slider(
-            value: clamped,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: enabled ? onChanged : null,
-            onChangeEnd: enabled ? onChangeEnd : null,
-          ),
-        ),
-      ],
+    Widget slider = AppSlider(
+      value: clamped,
+      min: min,
+      max: max,
+      divisions: divisions,
+      enabled: enabled,
+      onChanged: onChanged,
+      onChangeEnd: onChangeEnd,
     );
-    if (resetTo == null) return body;
-    return GestureDetector(
-      onDoubleTap: enabled ? () => onChanged(resetTo!) : null,
-      behavior: HitTestBehavior.opaque,
-      child: body,
+    if (resetTo != null) {
+      slider = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: enabled ? () => onChanged(resetTo!) : null,
+        child: slider,
+      );
+    }
+    return SettingTile(
+      title: label,
+      description: description,
+      enabled: enabled,
+      trailing: ValueBadge(
+        _fmt(clamped),
+        color: enabled ? Tokens.accent : Tokens.fgFaint,
+      ),
+      below: slider,
     );
   }
 }
 
-/// Label (+ optional subtitle) on the left, a flat [Switch] on the right.
+/// A read-only value, set in a small squircle chip and aligned flush to the
+/// trailing edge. The single way settings values are shown.
+class ValueBadge extends StatelessWidget {
+  final String text;
+  final Color? color;
+  const ValueBadge(this.text, {super.key, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 240),
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.s8, vertical: 4),
+      decoration: ShapeDecoration(
+        color: Tokens.surface2,
+        shape: Tokens.squircle(Tokens.rSm),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.end,
+        style: Tokens.numeric.copyWith(color: color ?? Tokens.fgDim),
+      ),
+    );
+  }
+}
+
+/// Title (+ description) on the left, a custom [AppSwitch] on the right.
+/// Tapping anywhere on the row toggles.
 class SwitchRow extends StatelessWidget {
   final String label;
   final String? subtitle;
@@ -106,38 +201,189 @@ class SwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled ? () => onChanged(!value) : null,
-      borderRadius: BorderRadius.circular(Tokens.rSm),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Tokens.s6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: Tokens.body.copyWith(
-                      color: enabled ? Tokens.fg : Tokens.fgFaint,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(subtitle!, style: Tokens.caption),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: Tokens.s12),
-            Switch(
-              value: value,
-              onChanged: enabled ? onChanged : null,
-            ),
-          ],
+    return SettingTile(
+      title: label,
+      description: subtitle,
+      enabled: enabled,
+      onTap: () => onChanged(!value),
+      trailing: AppSwitch(value: value, enabled: enabled),
+    );
+  }
+}
+
+/// Title (+ description) with a full-width [AppDropdown] beneath.
+class DropdownRow<T> extends StatelessWidget {
+  final String label;
+  final String? description;
+
+  /// Current selection. Pass `null` (with a [hint]) when the live value
+  /// isn't among [items], so the control shows the hint instead.
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+  final String? hint;
+
+  const DropdownRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+    this.description,
+    this.hint,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingTile(
+      title: label,
+      description: description,
+      below: AppDropdown<T>(
+        value: value,
+        items: items,
+        onChanged: onChanged,
+        hint: hint,
+      ),
+    );
+  }
+}
+
+// ---- Custom widgets -------------------------------------------------
+
+/// A flat, theme-coloured toggle with a squircle track and knob. Purely
+/// visual — the surrounding [SwitchRow] owns the tap.
+class AppSwitch extends StatelessWidget {
+  final bool value;
+  final bool enabled;
+  const AppSwitch({super.key, required this.value, this.enabled = true});
+
+  @override
+  Widget build(BuildContext context) {
+    final track =
+        enabled ? (value ? Tokens.accent : Tokens.surface3) : Tokens.surface2;
+    final knob =
+        enabled ? (value ? Tokens.onAccent : Tokens.fgDim) : Tokens.fgFaint;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 160),
+      curve: Curves.easeOut,
+      width: 42,
+      height: 24,
+      padding: const EdgeInsets.all(3),
+      decoration: ShapeDecoration(color: track, shape: Tokens.squircle(12)),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          width: 18,
+          height: 18,
+          decoration: ShapeDecoration(color: knob, shape: Tokens.squircle(9)),
         ),
       ),
+    );
+  }
+}
+
+/// A flat custom slider — squircle track, accent fill, squircle thumb.
+/// Tap or drag to set; reports continuously through [onChanged] and once
+/// through [onChangeEnd]. Snaps to [divisions] when given.
+class AppSlider extends StatelessWidget {
+  final double value;
+  final double min;
+  final double max;
+  final int? divisions;
+  final bool enabled;
+  final ValueChanged<double> onChanged;
+  final ValueChanged<double>? onChangeEnd;
+
+  const AppSlider({
+    super.key,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+    this.divisions,
+    this.enabled = true,
+    this.onChangeEnd,
+  });
+
+  static const double _thumb = 16;
+  static const double _track = 6;
+  static const double _height = 24;
+
+  double _snap(double v) {
+    final c = v.clamp(min, max);
+    if (divisions == null || max <= min) return c.toDouble();
+    final step = (max - min) / divisions!;
+    return (min + ((c - min) / step).round() * step).clamp(min, max).toDouble();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = c.maxWidth;
+        final span = (w - _thumb).clamp(1.0, double.infinity);
+        final frac =
+            max <= min ? 0.0 : ((value - min) / (max - min)).clamp(0.0, 1.0);
+
+        double valueAt(double dx) {
+          final t = ((dx - _thumb / 2) / span).clamp(0.0, 1.0);
+          return _snap(min + t * (max - min));
+        }
+
+        final fill = Tokens.accent;
+        final empty = Tokens.surface3;
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown:
+              enabled ? (d) => onChanged(valueAt(d.localPosition.dx)) : null,
+          onHorizontalDragUpdate:
+              enabled ? (d) => onChanged(valueAt(d.localPosition.dx)) : null,
+          onHorizontalDragEnd: enabled && onChangeEnd != null
+              ? (_) => onChangeEnd!(value)
+              : null,
+          child: SizedBox(
+            height: _height,
+            width: double.infinity,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                // Empty track.
+                Container(
+                  height: _track,
+                  decoration: ShapeDecoration(
+                    color: empty,
+                    shape: Tokens.squircle(Tokens.rPill),
+                  ),
+                ),
+                // Accent fill up to the thumb centre.
+                Container(
+                  height: _track,
+                  width: _thumb / 2 + frac * span,
+                  decoration: ShapeDecoration(
+                    color: enabled ? fill : Tokens.fgFaint,
+                    shape: Tokens.squircle(Tokens.rPill),
+                  ),
+                ),
+                // Thumb.
+                Positioned(
+                  left: frac * span,
+                  child: Container(
+                    width: _thumb,
+                    height: _thumb,
+                    decoration: ShapeDecoration(
+                      color: enabled ? Tokens.fg : Tokens.fgFaint,
+                      shape: Tokens.squircle(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -149,8 +395,8 @@ class SegmentOption<T> {
   const SegmentOption(this.value, this.label);
 }
 
-/// A flat pill of mutually-exclusive options. Used for short enum picks
-/// (loop, gapless, cache mode, normalization, FFT window).
+/// A flat squircle pill of mutually-exclusive options. Used for short enum
+/// picks (loop, gapless, cache mode, normalization, FFT window).
 class SegmentedControl<T> extends StatelessWidget {
   final List<SegmentOption<T>> options;
   final T selected;
@@ -166,9 +412,9 @@ class SegmentedControl<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Tokens.surface2,
-        borderRadius: BorderRadius.circular(Tokens.rSm),
+        shape: Tokens.squircle(Tokens.rSm),
       ),
       padding: const EdgeInsets.all(3),
       child: Row(
@@ -203,13 +449,13 @@ class _Segment extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Tokens.rSm - 2),
+        customBorder: Tokens.squircle(Tokens.rSm - 2),
         child: Container(
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: active ? Tokens.accent : Colors.transparent,
-            borderRadius: BorderRadius.circular(Tokens.rSm - 2),
+            shape: Tokens.squircle(Tokens.rSm - 2),
           ),
           child: Text(
             label,
@@ -227,22 +473,17 @@ class _Segment extends StatelessWidget {
   }
 }
 
-/// Label on the left, a flat dropdown on the right. Used when the option
-/// set is too long for a [SegmentedControl] (devices, channel layouts).
-class DropdownRow<T> extends StatelessWidget {
-  final String label;
-
-  /// Current selection. Pass `null` (with a [hint]) when the live value
-  /// isn't among [items], so the dropdown shows the hint rather than
-  /// asserting.
+/// A custom dropdown: a squircle trigger that opens a themed overlay list.
+/// Reuses [DropdownMenuItem] purely as a (value, child) pair so existing
+/// call sites are unchanged — none of Material's dropdown chrome is used.
+class AppDropdown<T> extends StatefulWidget {
   final T? value;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?> onChanged;
   final String? hint;
 
-  const DropdownRow({
+  const AppDropdown({
     super.key,
-    required this.label,
     required this.value,
     required this.items,
     required this.onChanged,
@@ -250,50 +491,199 @@ class DropdownRow<T> extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Tokens.s4),
-      child: Row(
+  State<AppDropdown<T>> createState() => _AppDropdownState<T>();
+}
+
+class _AppDropdownState<T> extends State<AppDropdown<T>> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+
+  bool get _open => _entry != null;
+
+  @override
+  void dispose() {
+    _remove();
+    super.dispose();
+  }
+
+  void _remove() {
+    _entry?.remove();
+    _entry = null;
+  }
+
+  void _close() {
+    if (!_open) return;
+    _remove();
+    if (mounted) setState(() {});
+  }
+
+  void _toggle() {
+    if (_open) {
+      _close();
+      return;
+    }
+    final box = context.findRenderObject() as RenderBox;
+    final width = box.size.width;
+    final height = box.size.height;
+    _entry = OverlayEntry(
+      builder: (context) => Stack(
         children: [
-          Flexible(child: Text(label, style: Tokens.body)),
-          const SizedBox(width: Tokens.s12),
-          SizedBox(
-            width: 200,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
-              decoration: BoxDecoration(
-                color: Tokens.surface2,
-                borderRadius: BorderRadius.circular(Tokens.rSm),
+          // Tap-away barrier.
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _close,
+            ),
+          ),
+          CompositedTransformFollower(
+            link: _link,
+            showWhenUnlinked: false,
+            targetAnchor: Alignment.bottomLeft,
+            followerAnchor: Alignment.topLeft,
+            offset: const Offset(0, Tokens.s4),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: width, child: _menu(height)),
+            ),
+          ),
+        ],
+      ),
+    );
+    Overlay.of(context).insert(_entry!);
+    setState(() {});
+  }
+
+  Widget _menu(double anchorHeight) {
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        constraints: const BoxConstraints(maxHeight: 280),
+        decoration: ShapeDecoration(
+          color: Tokens.surface3,
+          shape: Tokens.squircle(
+            Tokens.rSm,
+            side: const BorderSide(color: Tokens.line2, width: 1),
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(Tokens.s4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final item in widget.items)
+                _MenuItem(
+                  active: item.value == widget.value,
+                  onTap: () {
+                    widget.onChanged(item.value);
+                    _close();
+                  },
+                  child: item.child,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget? _selectedChild() {
+    for (final item in widget.items) {
+      if (item.value == widget.value) return item.child;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _selectedChild();
+    return CompositedTransformTarget(
+      link: _link,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: _toggle,
+          customBorder: Tokens.squircle(Tokens.rSm),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Tokens.s12,
+              vertical: 10,
+            ),
+            decoration: ShapeDecoration(
+              color: Tokens.surface2,
+              shape: Tokens.squircle(
+                Tokens.rSm,
+                side: BorderSide(
+                  color: _open ? Tokens.accentDim : Tokens.line2,
+                  width: 1,
+                ),
               ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<T>(
-                  value: value,
-                  items: items,
-                  onChanged: onChanged,
-                  isDense: true,
-                  // Fill the fixed width and ellipsize the selected
-                  // label rather than overflow on long device names.
-                  isExpanded: true,
-                  hint: hint == null
-                      ? null
-                      : Text(
-                          hint!,
-                          style: Tokens.caption,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                  borderRadius: BorderRadius.circular(Tokens.rSm),
-                  dropdownColor: Tokens.surface3,
-                  style: Tokens.body,
-                  icon: const Icon(
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: DefaultTextStyle(
+                    style: selected == null ? Tokens.caption : Tokens.body,
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    child: selected ?? Text(widget.hint ?? 'Select'),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _open ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 150),
+                  child: const Icon(
                     Icons.expand_more_rounded,
                     size: 18,
                     color: Tokens.fgDim,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final bool active;
+  final VoidCallback onTap;
+  final Widget child;
+  const _MenuItem({
+    required this.active,
+    required this.onTap,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: Tokens.squircle(Tokens.rSm - 2),
+        child: Container(
+          decoration: ShapeDecoration(
+            color: active ? Tokens.accentWash : Colors.transparent,
+            shape: Tokens.squircle(Tokens.rSm - 2),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.s12,
+            vertical: 10,
+          ),
+          child: DefaultTextStyle(
+            style: Tokens.body.copyWith(
+              color: active ? Tokens.accent : Tokens.fg,
+              fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            child: child,
+          ),
+        ),
       ),
     );
   }

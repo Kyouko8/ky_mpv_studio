@@ -65,7 +65,8 @@ class _Tab extends StatelessWidget {
   final Section section;
   final bool active;
   final VoidCallback onTap;
-  const _Tab({required this.section, required this.active, required this.onTap});
+  const _Tab(
+      {required this.section, required this.active, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

@@ -5,9 +5,27 @@ import 'package:file_picker/file_picker.dart';
 /// Audio container/extension whitelist used for both the file picker
 /// filter and folder scanning. Lower-case, no leading dot.
 const Set<String> kAudioExtensions = {
-  'mp3', 'flac', 'm4a', 'aac', 'wav', 'ogg', 'oga', 'opus', 'wma',
-  'aiff', 'aif', 'alac', 'ape', 'mka', 'wv', 'tta', 'dsf', 'dff',
-  'mp4', 'webm', 'mpc',
+  'mp3',
+  'flac',
+  'm4a',
+  'aac',
+  'wav',
+  'ogg',
+  'oga',
+  'opus',
+  'wma',
+  'aiff',
+  'aif',
+  'alac',
+  'ape',
+  'mka',
+  'wv',
+  'tta',
+  'dsf',
+  'dff',
+  'mp4',
+  'webm',
+  'mpc',
 };
 
 /// Whether [path] looks like a playable audio file by extension.

@@ -4,6 +4,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/reactive.dart';
+import 'info_dialog.dart';
 
 /// Full DAW-style transport. A primary row (previous · skip-back ·
 /// play/pause · skip-forward · next) over a secondary row of mode toggles
@@ -22,87 +23,110 @@ class TransportControls extends StatelessWidget {
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
-          child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _Glyph(
-              icon: Icons.skip_previous_rounded,
-              size: 28,
-              onTap: player.previous,
-              tooltip: 'Previous',
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Tokens.s12,
+              vertical: Tokens.s4,
             ),
-            const SizedBox(width: Tokens.s16),
-            _Glyph(
-              icon: Icons.replay_10_rounded,
-              size: 26,
-              onTap: () => player.seek(-_skip, relative: true),
-              tooltip: 'Back 10s',
-            ),
-            const SizedBox(width: Tokens.s16),
-            Live<bool>(
-              stream: player.stream.playWhenReady,
-              initial: player.state.playWhenReady,
-              builder: (context, playing) => _PlayButton(
-                playing: playing,
-                onTap: () => playing ? player.pause() : player.play(),
+            decoration: ShapeDecoration(
+              // A slightly raised squircle container that lifts the
+              // transport off the near-black backdrop.
+              color: Tokens.surface2,
+              shape: Tokens.squircle(
+                Tokens.rLg,
+                side: const BorderSide(color: Tokens.line2, width: 1),
               ),
             ),
-            const SizedBox(width: Tokens.s16),
-            _Glyph(
-              icon: Icons.forward_10_rounded,
-              size: 26,
-              onTap: () => player.seek(_skip, relative: true),
-              tooltip: 'Forward 10s',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _Glyph(
+                  icon: Icons.skip_previous_rounded,
+                  size: 28,
+                  onTap: player.previous,
+                  tooltip: 'Previous',
+                ),
+                const SizedBox(width: Tokens.s16),
+                _Glyph(
+                  icon: Icons.replay_10_rounded,
+                  size: 26,
+                  onTap: () => player.seek(-_skip, relative: true),
+                  tooltip: 'Back 10s',
+                ),
+                const SizedBox(width: Tokens.s16),
+                Live<bool>(
+                  stream: player.stream.playWhenReady,
+                  initial: player.state.playWhenReady,
+                  builder: (context, playing) => _PlayButton(
+                    playing: playing,
+                    onTap: () => playing ? player.pause() : player.play(),
+                  ),
+                ),
+                const SizedBox(width: Tokens.s16),
+                _Glyph(
+                  icon: Icons.forward_10_rounded,
+                  size: 26,
+                  onTap: () => player.seek(_skip, relative: true),
+                  tooltip: 'Forward 10s',
+                ),
+                const SizedBox(width: Tokens.s16),
+                _Glyph(
+                  icon: Icons.skip_next_rounded,
+                  size: 28,
+                  onTap: player.next,
+                  tooltip: 'Next',
+                ),
+              ],
             ),
-            const SizedBox(width: Tokens.s16),
-            _Glyph(
-              icon: Icons.skip_next_rounded,
-              size: 28,
-              onTap: player.next,
-              tooltip: 'Next',
-            ),
-          ],
           ),
         ),
         const SizedBox(height: Tokens.s12),
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Live<bool>(
-              stream: player.stream.shuffle,
-              initial: player.state.shuffle,
-              builder: (context, on) => _Glyph(
-                icon: Icons.shuffle_rounded,
-                size: 19,
-                active: on,
-                onTap: () => player.setShuffle(!on),
-                tooltip: 'Shuffle',
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Live<bool>(
+                stream: player.stream.shuffle,
+                initial: player.state.shuffle,
+                builder: (context, on) => _Glyph(
+                  icon: Icons.shuffle_rounded,
+                  size: 19,
+                  active: on,
+                  onTap: () => player.setShuffle(!on),
+                  tooltip: 'Shuffle',
+                ),
               ),
-            ),
-            const SizedBox(width: Tokens.s24),
-            _Glyph(
-              icon: Icons.stop_rounded,
-              size: 20,
-              onTap: player.stop,
-              tooltip: 'Stop',
-            ),
-            const SizedBox(width: Tokens.s24),
-            Live<Loop>(
-              stream: player.stream.loop,
-              initial: player.state.loop,
-              builder: (context, loop) => _Glyph(
-                icon: loop == Loop.file
-                    ? Icons.repeat_one_rounded
-                    : Icons.repeat_rounded,
-                size: 19,
-                active: loop != Loop.off,
-                onTap: () => player.setLoop(_nextLoop(loop)),
-                tooltip: 'Repeat',
+              const SizedBox(width: Tokens.s24),
+              _Glyph(
+                icon: Icons.stop_rounded,
+                size: 20,
+                onTap: player.stop,
+                tooltip: 'Stop',
               ),
-            ),
-          ],
+              const SizedBox(width: Tokens.s24),
+              Live<Loop>(
+                stream: player.stream.loop,
+                initial: player.state.loop,
+                builder: (context, loop) => _Glyph(
+                  icon: loop == Loop.file
+                      ? Icons.repeat_one_rounded
+                      : Icons.repeat_rounded,
+                  size: 19,
+                  active: loop != Loop.off,
+                  onTap: () => player.setLoop(_nextLoop(loop)),
+                  tooltip: 'Repeat',
+                ),
+              ),
+              const SizedBox(width: Tokens.s24),
+              _Glyph(
+                icon: Icons.info_outline_rounded,
+                size: 19,
+                onTap: () => showInfoDialog(context),
+                tooltip: 'Track & playback info',
+              ),
+            ],
           ),
         ),
       ],
@@ -127,13 +151,13 @@ class _PlayButton extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
-        customBorder: const CircleBorder(),
+        customBorder: Tokens.squircle(Tokens.rLg),
         child: Container(
           width: 58,
           height: 58,
-          decoration: const BoxDecoration(
+          decoration: ShapeDecoration(
             color: Tokens.accent,
-            shape: BoxShape.circle,
+            shape: Tokens.squircle(Tokens.rLg),
           ),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 180),
@@ -186,8 +210,6 @@ class _Glyph extends StatelessWidget {
         ),
       ),
     );
-    return tooltip == null
-        ? button
-        : Tooltip(message: tooltip!, child: button);
+    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
   }
 }

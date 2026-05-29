@@ -32,7 +32,8 @@ class _Line {
   final LogLevel level;
   final String prefix;
   final String text;
-  const _Line(this.kind, this.text, {this.level = LogLevel.info, this.prefix = ''});
+  const _Line(this.kind, this.text,
+      {this.level = LogLevel.info, this.prefix = ''});
 }
 
 class _ConsolePageState extends State<ConsolePage> {
@@ -341,8 +342,8 @@ class _ConsolePageState extends State<ConsolePage> {
               : ListView.separated(
                   padding: const EdgeInsets.symmetric(vertical: Tokens.s4),
                   itemCount: _watches.length,
-                  separatorBuilder: (_, __) =>
-                      const Divider(height: 1, thickness: 1, color: Tokens.line),
+                  separatorBuilder: (_, __) => const Divider(
+                      height: 1, thickness: 1, color: Tokens.line),
                   itemBuilder: (context, i) {
                     final name = _watches[i];
                     return Padding(
@@ -416,9 +417,15 @@ class _Toolbar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _Pill(label: 'Console', active: tab == _Tab.console, onTap: () => onTab(_Tab.console)),
+          _Pill(
+              label: 'Console',
+              active: tab == _Tab.console,
+              onTap: () => onTab(_Tab.console)),
           const SizedBox(width: Tokens.s4),
-          _Pill(label: 'Inspector', active: tab == _Tab.inspector, onTap: () => onTab(_Tab.inspector)),
+          _Pill(
+              label: 'Inspector',
+              active: tab == _Tab.inspector,
+              onTap: () => onTab(_Tab.inspector)),
           const Spacer(),
           if (tab == _Tab.console) ...[
             _LevelFilter(threshold: levelThreshold, onSelect: onLevel),
@@ -468,16 +475,16 @@ class _Pill extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Tokens.rSm),
+        customBorder: Tokens.squircle(Tokens.rSm),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(
             horizontal: Tokens.s12,
             vertical: Tokens.s6,
           ),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: active ? Tokens.accent : Tokens.surface2,
-            borderRadius: BorderRadius.circular(Tokens.rSm),
+            shape: Tokens.squircle(Tokens.rSm),
           ),
           child: Text(
             label,
@@ -508,9 +515,9 @@ class _LevelFilter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Tokens.surface2,
-        borderRadius: BorderRadius.circular(Tokens.rSm),
+        shape: Tokens.squircle(Tokens.rSm),
       ),
       padding: const EdgeInsets.all(2),
       child: Row(
@@ -521,17 +528,17 @@ class _LevelFilter extends StatelessWidget {
               type: MaterialType.transparency,
               child: InkWell(
                 onTap: () => onSelect(o.$2),
-                borderRadius: BorderRadius.circular(Tokens.rSm - 2),
+                customBorder: Tokens.squircle(Tokens.rSm - 2),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: Tokens.s4,
                   ),
-                  decoration: BoxDecoration(
+                  decoration: ShapeDecoration(
                     color: threshold == o.$2
                         ? Tokens.accentWash
                         : Colors.transparent,
-                    borderRadius: BorderRadius.circular(Tokens.rSm - 2),
+                    shape: Tokens.squircle(Tokens.rSm - 2),
                   ),
                   child: Text(
                     o.$1,
@@ -564,36 +571,36 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
+      padding: const EdgeInsets.fromLTRB(
+          Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
       child: Row(
         children: [
           const Text('›', style: TextStyle(color: Tokens.accent, fontSize: 16)),
           const SizedBox(width: Tokens.s8),
           Expanded(
-            child: TextField(
-              controller: controller,
-              focusNode: focusNode,
-              style: const TextStyle(
-                fontFamily: Tokens.mono,
-                fontSize: 12.5,
-                color: Tokens.fg,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+              decoration: ShapeDecoration(
+                color: Tokens.surface2,
+                shape: Tokens.squircle(Tokens.rSm),
               ),
-              cursorColor: Tokens.accent,
-              textInputAction: TextInputAction.send,
-              onSubmitted: onSubmit,
-              decoration: InputDecoration(
-                isDense: true,
-                hintText: 'command  ·  get <prop>  ·  set <prop> <value>',
-                hintStyle: Tokens.caption,
-                filled: true,
-                fillColor: Tokens.surface2,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: Tokens.s12,
-                  vertical: Tokens.s8,
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                style: const TextStyle(
+                  fontFamily: Tokens.mono,
+                  fontSize: 12.5,
+                  color: Tokens.fg,
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(Tokens.rSm),
-                  borderSide: BorderSide.none,
+                cursorColor: Tokens.accent,
+                textInputAction: TextInputAction.send,
+                onSubmitted: onSubmit,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: 'command  ·  get <prop>  ·  set <prop> <value>',
+                  hintStyle: Tokens.caption,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: Tokens.s8),
                 ),
               ),
             ),
@@ -614,32 +621,33 @@ class _WatchInput extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: TextField(
-            controller: controller,
-            style: const TextStyle(
-              fontFamily: Tokens.mono,
-              fontSize: 12.5,
-              color: Tokens.fg,
+          child: Container(
+            decoration: ShapeDecoration(
+              color: Tokens.surface2,
+              shape: Tokens.squircle(Tokens.rSm),
             ),
-            cursorColor: Tokens.accent,
-            textInputAction: TextInputAction.done,
-            onSubmitted: onAdd,
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: 'mpv property to watch',
-              hintStyle: Tokens.caption,
-              prefixIcon:
-                  const Icon(Icons.visibility_rounded, size: 16, color: Tokens.fgDim),
-              prefixIconConstraints: const BoxConstraints(minWidth: 36),
-              filled: true,
-              fillColor: Tokens.surface2,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: Tokens.s12,
-                vertical: Tokens.s8,
+            child: TextField(
+              controller: controller,
+              style: const TextStyle(
+                fontFamily: Tokens.mono,
+                fontSize: 12.5,
+                color: Tokens.fg,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(Tokens.rSm),
-                borderSide: BorderSide.none,
+              cursorColor: Tokens.accent,
+              textInputAction: TextInputAction.done,
+              onSubmitted: onAdd,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'mpv property to watch',
+                hintStyle: Tokens.caption,
+                prefixIcon: Icon(Icons.visibility_rounded,
+                    size: 16, color: Tokens.fgDim),
+                prefixIconConstraints: BoxConstraints(minWidth: 36),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: Tokens.s12,
+                  vertical: Tokens.s8,
+                ),
               ),
             ),
           ),

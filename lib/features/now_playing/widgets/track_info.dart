@@ -36,9 +36,8 @@ class TrackInfo extends StatelessWidget {
           final sub = [artist, album].whereType<String>().join(' · ');
           final align = centered ? TextAlign.center : TextAlign.start;
           return Column(
-            crossAxisAlignment: centered
-                ? CrossAxisAlignment.center
-                : CrossAxisAlignment.start,
+            crossAxisAlignment:
+                centered ? CrossAxisAlignment.center : CrossAxisAlignment.start,
             children: [
               Text(
                 title,

@@ -37,9 +37,16 @@ class _DesktopShellState extends State<DesktopShell> {
       children: [
         Row(
           children: [
-            _Sidebar(section: section, onSelect: onSelect, width: _sidebarWidth),
+            _Sidebar(
+                section: section, onSelect: onSelect, width: _sidebarWidth),
             Expanded(
-              child: Material(type: MaterialType.transparency, child: body),
+              // Clip the stage to its own bounds: a full-bleed meter's
+              // CustomPaint paints unclipped by default, so without this a
+              // painter drawing past its left edge (e.g. during a resize
+              // frame) would bleed over the sidebar.
+              child: ClipRect(
+                child: Material(type: MaterialType.transparency, child: body),
+              ),
             ),
           ],
         ),
@@ -148,13 +155,13 @@ class _NavItem extends StatelessWidget {
         type: MaterialType.transparency,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(Tokens.rSm),
+          customBorder: Tokens.squircle(Tokens.rSm),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: active ? Tokens.accentWash : Colors.transparent,
-              borderRadius: BorderRadius.circular(Tokens.rSm),
+              shape: Tokens.squircle(Tokens.rSm),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(

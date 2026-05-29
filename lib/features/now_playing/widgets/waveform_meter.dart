@@ -41,6 +41,13 @@ class _WaveformMeterState extends State<WaveformMeter>
   Duration _anchor = Duration.zero;
   Duration _dur = Duration.zero;
   double _rate = 1;
+
+  /// Seconds visible across the full width — the horizontal zoom level.
+  /// Seeded from the widget, then driven by the zoom controls.
+  late double _windowSeconds = widget.windowSeconds;
+
+  /// Bounds for the zoom range.
+  static const double _minWindow = 5;
   bool _playWhenReady = false;
   bool _seekable = false;
   WaveformData? _wave;
@@ -141,9 +148,20 @@ class _WaveformMeterState extends State<WaveformMeter>
   static const double _placeholderSecs = 300;
   double get _timelineSecs => _durSecs > 0 ? _durSecs : _placeholderSecs;
   double get _maxStart =>
-      (_timelineSecs - widget.windowSeconds).clamp(0, _timelineSecs);
+      (_timelineSecs - _windowSeconds).clamp(0, _timelineSecs);
   bool get _hasScroll => _maxStart > 0;
-  double get _visibleSecs => _hasScroll ? widget.windowSeconds : _timelineSecs;
+  double get _visibleSecs => _hasScroll ? _windowSeconds : _timelineSecs;
+
+  /// Multiplies the zoom level (factor < 1 zooms in), keeping the current
+  /// view centre fixed and the view start within range.
+  void _zoomBy(double factor) {
+    final center = _viewStart + _visibleSecs / 2;
+    setState(() {
+      _windowSeconds =
+          (_windowSeconds * factor).clamp(_minWindow, _timelineSecs);
+      _viewStart = (center - _visibleSecs / 2).clamp(0, _maxStart);
+    });
+  }
 
   void _seekToX(double localX, double width) {
     final pxPerSec = width / _visibleSecs;
@@ -168,61 +186,164 @@ class _WaveformMeterState extends State<WaveformMeter>
     return Column(
       children: [
         Expanded(
-          child: LayoutBuilder(
-            builder: (context, c) {
-              final w = c.maxWidth;
-              return MouseRegion(
-                cursor: canSeek
-                    ? SystemMouseCursors.precise
-                    : MouseCursor.defer,
-                onHover: (e) {
-                  if (mounted) setState(() => _hoverX = e.localPosition.dx);
-                },
-                onExit: (_) {
-                  if (mounted) setState(() => _hoverX = null);
-                },
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapDown:
-                      canSeek ? (d) => _seekToX(d.localPosition.dx, w) : null,
-                  onHorizontalDragStart: canSeek
-                      ? (d) {
-                          setState(() => _dragging = true);
-                          _seekToX(d.localPosition.dx, w);
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, c) {
+                    final w = c.maxWidth;
+                    return MouseRegion(
+                      cursor: canSeek
+                          ? SystemMouseCursors.precise
+                          : MouseCursor.defer,
+                      onHover: (e) {
+                        if (mounted) {
+                          setState(() => _hoverX = e.localPosition.dx);
                         }
-                      : null,
-                  onHorizontalDragUpdate:
-                      canSeek ? (d) => _seekToX(d.localPosition.dx, w) : null,
-                  onHorizontalDragEnd: canSeek
-                      ? (_) => setState(() => _dragging = false)
-                      : null,
-                  child: CustomPaint(
-                    size: Size.infinite,
-                    painter: _MeterPainter(
-                      wave: _wave,
-                      pos: pos,
-                      dur: _dur,
-                      timelineSecs: _timelineSecs,
-                      viewStart: _viewStart,
-                      visibleSecs: _visibleSecs,
-                      rulerHeight: WaveformMeter.rulerHeight,
-                      hoverX: (canSeek && !_dragging) ? _hoverX : null,
-                    ),
-                  ),
+                      },
+                      onExit: (_) {
+                        if (mounted) setState(() => _hoverX = null);
+                      },
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTapDown: canSeek
+                            ? (d) => _seekToX(d.localPosition.dx, w)
+                            : null,
+                        onHorizontalDragStart: canSeek
+                            ? (d) {
+                                setState(() => _dragging = true);
+                                _seekToX(d.localPosition.dx, w);
+                              }
+                            : null,
+                        onHorizontalDragUpdate: canSeek
+                            ? (d) => _seekToX(d.localPosition.dx, w)
+                            : null,
+                        onHorizontalDragEnd: canSeek
+                            ? (_) => setState(() => _dragging = false)
+                            : null,
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: _MeterPainter(
+                            wave: _wave,
+                            pos: pos,
+                            dur: _dur,
+                            timelineSecs: _timelineSecs,
+                            viewStart: _viewStart,
+                            visibleSecs: _visibleSecs,
+                            rulerHeight: WaveformMeter.rulerHeight,
+                            hoverX: (canSeek && !_dragging) ? _hoverX : null,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+              ),
+              // Horizontal zoom for the waveform / playhead timeline.
+              Positioned(
+                top: WaveformMeter.rulerHeight + 4,
+                right: 6,
+                child: _ZoomControls(
+                  canZoomIn: _windowSeconds > _minWindow,
+                  canZoomOut: _windowSeconds < _timelineSecs,
+                  onZoomIn: () => _zoomBy(0.6),
+                  onZoomOut: () => _zoomBy(1 / 0.6),
+                ),
+              ),
+            ],
           ),
         ),
         _HScrollBar(
           enabled: _hasScroll,
           viewStart: _viewStart,
-          windowSeconds: widget.windowSeconds,
+          windowSeconds: _windowSeconds,
           maxStart: _maxStart,
           durSecs: _timelineSecs,
           onChanged: _setViewStart,
         ),
       ],
+    );
+  }
+}
+
+/// A compact zoom pill (out · in) overlaid on the waveform meter.
+class _ZoomControls extends StatelessWidget {
+  final bool canZoomIn;
+  final bool canZoomOut;
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+
+  const _ZoomControls({
+    required this.canZoomIn,
+    required this.canZoomOut,
+    required this.onZoomIn,
+    required this.onZoomOut,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: ShapeDecoration(
+        color: Tokens.surface2,
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: const BorderSide(color: Tokens.line2, width: 1),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ZoomBtn(
+            icon: Icons.remove_rounded,
+            tooltip: 'Zoom out',
+            enabled: canZoomOut,
+            onTap: onZoomOut,
+          ),
+          _ZoomBtn(
+            icon: Icons.add_rounded,
+            tooltip: 'Zoom in',
+            enabled: canZoomIn,
+            onTap: onZoomIn,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ZoomBtn extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _ZoomBtn({
+    required this.icon,
+    required this.tooltip,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: const CircleBorder(),
+          child: Padding(
+            padding: const EdgeInsets.all(5),
+            child: Icon(
+              icon,
+              size: 16,
+              color: enabled ? Tokens.fgDim : Tokens.fgFaint,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -267,18 +388,17 @@ class _HScrollBar extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTapDown: (d) => setFromX(d.localPosition.dx),
             onHorizontalDragUpdate: (d) => setFromX(d.localPosition.dx),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+            // Flush, square strip — a hairline divides it from the waveform.
+            // A recessed track colour so it reads as a control, not blank
+            // space below the waveform.
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Tokens.surface2,
+                border: Border(top: BorderSide(color: Tokens.line, width: 1)),
+              ),
               child: Stack(
                 children: [
-                  // Track.
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Tokens.surface,
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  // Thumb.
+                  // Thumb — a square pane spanning the full strip height.
                   Positioned(
                     left: thumbX,
                     top: 0,
@@ -287,8 +407,7 @@ class _HScrollBar extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color: enabled ? Tokens.surface3 : Tokens.surface2,
-                        borderRadius: BorderRadius.circular(3),
-                        border: Border.all(color: Tokens.line, width: 1),
+                        border: Border.all(color: Tokens.line2, width: 1),
                       ),
                     ),
                   ),
@@ -448,8 +567,8 @@ class _MeterPainter extends CustomPainter {
       )..layout();
       var bx = hx + 4;
       if (bx + tp.width + 6 > w) bx = hx - 4 - tp.width - 6;
-      final bubble = Rect.fromLTWH(
-        bx, rulerHeight + 3, tp.width + 6, tp.height + 3);
+      final bubble =
+          Rect.fromLTWH(bx, rulerHeight + 3, tp.width + 6, tp.height + 3);
       canvas.drawRRect(
         RRect.fromRectAndRadius(bubble, const Radius.circular(3)),
         Paint()..color = Tokens.surface3,

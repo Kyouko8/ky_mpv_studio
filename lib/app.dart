@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import 'shell/app_shell.dart';
+import 'shell/router.dart';
 import 'state/app_settings.dart';
 import 'state/player_scope.dart';
 import 'ui/theme.dart';
@@ -23,6 +23,8 @@ class MpvStudioApp extends StatefulWidget {
 }
 
 class _MpvStudioAppState extends State<MpvStudioApp> {
+  late final _router = createAppRouter();
+
   @override
   void dispose() {
     unawaited(widget.settings.dispose());
@@ -32,16 +34,16 @@ class _MpvStudioAppState extends State<MpvStudioApp> {
 
   @override
   Widget build(BuildContext context) {
-    // PlayerScope sits ABOVE MaterialApp so pushed routes (which live
+    // PlayerScope sits ABOVE MaterialApp so the routed pages (which live
     // under MaterialApp's Navigator) can still read the player/services.
     return PlayerScope(
       player: widget.player,
       settings: widget.settings,
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: 'MPV Studio',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
-        home: const AppShell(),
+        routerConfig: _router,
       ),
     );
   }

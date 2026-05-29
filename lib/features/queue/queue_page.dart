@@ -29,8 +29,7 @@ class _QueuePageState extends State<QueuePage> {
 
   Future<void> _enqueue(List<String> paths) async {
     final medias = [
-      for (final p in paths)
-        Media(p, extras: {'title': baseNameNoExt(p)}),
+      for (final p in paths) Media(p, extras: {'title': baseNameNoExt(p)}),
     ];
     if (medias.isEmpty) return;
     if (_player.state.playlist.items.isEmpty) {
@@ -81,7 +80,15 @@ class _QueuePageState extends State<QueuePage> {
                     );
                   }
                   return ReorderableListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
+                    padding: const EdgeInsets.fromLTRB(
+                      Tokens.s16,
+                      Tokens.s12,
+                      Tokens.s16,
+                      Tokens.s12,
+                    ),
+                    // We supply our own drag handle, so the default trailing
+                    // one (which crowded the remove button) is turned off.
+                    buildDefaultDragHandles: false,
                     itemCount: playlist.items.length,
                     // onReorderItem already adjusts newIndex for the
                     // item removed at oldIndex.
@@ -96,6 +103,7 @@ class _QueuePageState extends State<QueuePage> {
                         key: ValueKey('${item.uri}#$i'),
                         index: i,
                         title: _titleOf(item),
+                        source: _sourceOf(item),
                         current: i == playlist.index,
                         onTap: () => _player.jump(i),
                         onRemove: () => _player.remove(i),
@@ -115,6 +123,20 @@ class _QueuePageState extends State<QueuePage> {
     final t = item.extras?['title'];
     if (t is String && t.isNotEmpty) return t;
     return baseNameNoExt(item.uri);
+  }
+
+  /// Where the track comes from — the containing folder for local files,
+  /// or the bare host/URL for network sources.
+  static String _sourceOf(Media item) {
+    final uri = item.uri;
+    final isUrl = uri.contains('://') && !uri.startsWith('file://');
+    if (isUrl) return Uri.tryParse(uri)?.host ?? uri;
+    final path = uri.startsWith('file://')
+        ? (Uri.tryParse(uri)?.toFilePath() ?? uri)
+        : uri;
+    final sep = path.contains('\\') ? '\\' : '/';
+    final cut = path.lastIndexOf(sep);
+    return cut <= 0 ? path : path.substring(0, cut);
   }
 }
 
@@ -166,6 +188,7 @@ class _Toolbar extends StatelessWidget {
 class _QueueTile extends StatelessWidget {
   final int index;
   final String title;
+  final String source;
   final bool current;
   final VoidCallback onTap;
   final VoidCallback onRemove;
@@ -174,6 +197,7 @@ class _QueueTile extends StatelessWidget {
     super.key,
     required this.index,
     required this.title,
+    required this.source,
     required this.current,
     required this.onTap,
     required this.onRemove,
@@ -181,46 +205,119 @@ class _QueueTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Tokens.s16,
-            vertical: Tokens.s12,
-          ),
-          color: current ? Tokens.accentWash : Colors.transparent,
-          child: Row(
-            children: [
-              SizedBox(
-                width: 26,
-                child: current
-                    ? const Icon(Icons.volume_up_rounded,
-                        size: 16, color: Tokens.accent)
-                    : Text('${index + 1}',
-                        style: Tokens.numeric, textAlign: TextAlign.center),
-              ),
-              const SizedBox(width: Tokens.s12),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Tokens.body.copyWith(
-                    color: current ? Tokens.accent : Tokens.fg,
-                    fontWeight: current ? FontWeight.w600 : FontWeight.w400,
-                  ),
+    // A squircle card per item — same surface language as the settings and
+    // catalog lists. The current track gets the accent wash and border.
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Tokens.s6),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: Tokens.squircle(Tokens.rSm),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(
+              Tokens.s12,
+              Tokens.s8,
+              Tokens.s6,
+              Tokens.s8,
+            ),
+            decoration: ShapeDecoration(
+              color: current ? Tokens.accentWash : Tokens.surface,
+              shape: Tokens.squircle(
+                Tokens.rSm,
+                side: BorderSide(
+                  color: current ? Tokens.accentDim : Tokens.line,
+                  width: 1,
                 ),
               ),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close_rounded, size: 16),
-                color: Tokens.fgFaint,
-                splashRadius: 16,
-                tooltip: 'Remove',
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 24,
+                  child: current
+                      ? const Icon(Icons.volume_up_rounded,
+                          size: 16, color: Tokens.accent)
+                      : Text('${index + 1}',
+                          style: Tokens.numeric, textAlign: TextAlign.center),
+                ),
+                const SizedBox(width: Tokens.s12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Tokens.body.copyWith(
+                          color: current ? Tokens.accent : Tokens.fg,
+                          fontWeight:
+                              current ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                      if (source.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          source,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Tokens.caption,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Tokens.s8),
+                // Drag-to-reorder handle (we disabled the default one).
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: Padding(
+                      padding: EdgeInsets.all(Tokens.s6),
+                      child: Icon(Icons.drag_indicator_rounded,
+                          size: 18, color: Tokens.fgFaint),
+                    ),
+                  ),
+                ),
+                _IconTap(
+                  icon: Icons.close_rounded,
+                  tooltip: 'Remove',
+                  onTap: onRemove,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact, non-cramped icon tap target (avoids [IconButton]'s 48px box).
+class _IconTap extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  const _IconTap({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: Tokens.squircle(Tokens.rSm),
+          child: Padding(
+            padding: const EdgeInsets.all(Tokens.s6),
+            child: Icon(icon, size: 16, color: Tokens.fgFaint),
           ),
         ),
       ),
@@ -239,7 +336,8 @@ class _EmptyQueue extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.queue_music_rounded, size: 40, color: Tokens.fgFaint),
+          const Icon(Icons.queue_music_rounded,
+              size: 40, color: Tokens.fgFaint),
           const SizedBox(height: Tokens.s12),
           const Text('Queue is empty', style: Tokens.label),
           const SizedBox(height: Tokens.s4),
@@ -293,15 +391,15 @@ class ToolButton extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Tokens.rSm),
+        customBorder: Tokens.squircle(Tokens.rSm),
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: Tokens.s12,
             vertical: Tokens.s8,
           ),
-          decoration: BoxDecoration(
+          decoration: ShapeDecoration(
             color: primary ? Tokens.accent : Tokens.surface2,
-            borderRadius: BorderRadius.circular(Tokens.rSm),
+            shape: Tokens.squircle(Tokens.rSm),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

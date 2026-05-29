@@ -22,8 +22,8 @@ class CoverArtView extends StatelessWidget {
         initialData: player.state.coverArt,
         builder: (context, snap) {
           final art = snap.data;
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(Tokens.rLg),
+          return ClipPath(
+            clipper: ShapeBorderClipper(shape: Tokens.squircle(Tokens.rLg)),
             child: art != null
                 ? Image.memory(
                     art.bytes,

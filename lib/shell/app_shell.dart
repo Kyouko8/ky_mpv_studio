@@ -1,34 +1,30 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../features/console/console_page.dart';
-import '../features/effects/effects_page.dart';
-import '../features/now_playing/now_playing_page.dart';
-import '../features/queue/queue_page.dart';
-import '../features/settings/settings_page.dart';
-import '../features/stream/stream_page.dart';
 import '../state/player_scope.dart';
 import '../ui/tokens.dart';
-import '../ui/widgets/fade_indexed_stack.dart';
 import 'desktop_shell.dart';
 import 'mobile_shell.dart';
 import 'sections.dart';
 
-/// Root chrome. Owns the current [Section] and console visibility, then
-/// hands off to the desktop or mobile shell depending on width. Section
-/// bodies live in a single [IndexedStack] so player subscriptions (and
-/// the Now Playing visualizers) survive section switches.
+/// Root chrome. Wraps the routed section bodies (carried by
+/// [navigationShell]) in the desktop or mobile shell depending on width, and
+/// surfaces engine errors as SnackBars. The bodies themselves live in a
+/// single keep-alive IndexedStack built by the router, so player
+/// subscriptions (and the Now Playing visualizers) survive section switches.
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final StatefulNavigationShell navigationShell;
+
+  const AppShell({super.key, required this.navigationShell});
 
   @override
   State<AppShell> createState() => _AppShellState();
 }
 
 class _AppShellState extends State<AppShell> {
-  Section _section = Section.nowPlaying;
   StreamSubscription<MpvPlayerError>? _errorSub;
 
   @override
@@ -58,32 +54,21 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  Widget _bodyFor(Section s) {
-    switch (s) {
-      case Section.nowPlaying:
-        return const NowPlayingPage();
-      case Section.queue:
-        return const QueuePage();
-      case Section.effects:
-        return const EffectsPage();
-      case Section.stream:
-        return const StreamPage();
-      case Section.settings:
-        return const SettingsPage();
-      case Section.console:
-        return const ConsolePage();
-    }
+  void _select(Section section) {
+    widget.navigationShell.goBranch(
+      section.index,
+      // Re-tapping the active section pops it back to its initial route.
+      initialLocation: section.index == widget.navigationShell.currentIndex,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final body = FadeIndexedStack(
-      index: _section.index,
-      children: [for (final s in Section.values) _bodyFor(s)],
-    );
+    final navigationShell = widget.navigationShell;
+    final section = Section.values[navigationShell.currentIndex];
 
-    // A root Scaffold gives ScaffoldMessenger a surface to host
-    // SnackBars on (the shells themselves are custom, not Scaffolds).
+    // A root Scaffold gives ScaffoldMessenger a surface to host SnackBars on
+    // (the shells themselves are custom, not Scaffolds).
     return Scaffold(
       backgroundColor: Tokens.bg,
       body: LayoutBuilder(
@@ -91,15 +76,15 @@ class _AppShellState extends State<AppShell> {
           final desktop = constraints.maxWidth >= Tokens.desktopBreakpoint;
           if (desktop) {
             return DesktopShell(
-              section: _section,
-              onSelect: (s) => setState(() => _section = s),
-              body: body,
+              section: section,
+              onSelect: _select,
+              body: navigationShell,
             );
           }
           return MobileShell(
-            section: _section,
-            onSelect: (s) => setState(() => _section = s),
-            body: body,
+            section: section,
+            onSelect: _select,
+            body: navigationShell,
           );
         },
       ),

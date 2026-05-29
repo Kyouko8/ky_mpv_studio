@@ -73,7 +73,7 @@ class _BottomArea extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Control block (padded, width-capped, centred).
+        // Control block — full width, no lateral cap.
         Padding(
           padding: const EdgeInsets.fromLTRB(
             Tokens.s20,
@@ -81,53 +81,48 @@ class _BottomArea extends StatelessWidget {
             Tokens.s20,
             Tokens.s12,
           ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 820),
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  final coverSize =
-                      (c.maxWidth * 0.18).clamp(120.0, 168.0).toDouble();
-                  return Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final coverSize =
+                  (c.maxWidth * 0.14).clamp(120.0, 168.0).toDouble();
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Artwork with the track info beneath it.
-                          SizedBox(
-                            width: coverSize + 48,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CoverArtView(size: coverSize),
-                                const SizedBox(height: Tokens.s12),
-                                const TrackInfo(),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: Tokens.s32),
-                          const Expanded(child: TransportControls()),
-                          const SizedBox(width: Tokens.s32),
-                          SizedBox(
-                            width: 40,
-                            height: coverSize,
-                            child: const VolumeControl(axis: Axis.vertical),
-                          ),
-                          const SizedBox(width: Tokens.s16),
-                          SizedBox(
-                            width: 44,
-                            height: coverSize,
-                            child: const UvMeter(axis: Axis.vertical),
-                          ),
-                        ],
+                      // Artwork with the track info beneath it.
+                      SizedBox(
+                        width: coverSize + 48,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CoverArtView(size: coverSize),
+                            const SizedBox(height: Tokens.s12),
+                            const TrackInfo(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: Tokens.s32),
+                      const Expanded(child: TransportControls()),
+                      const SizedBox(width: Tokens.s32),
+                      SizedBox(
+                        width: 40,
+                        height: coverSize,
+                        child: const VolumeControl(axis: Axis.vertical),
+                      ),
+                      const SizedBox(width: Tokens.s16),
+                      SizedBox(
+                        width: 44,
+                        height: coverSize,
+                        child: const UvMeter(axis: Axis.vertical),
                       ),
                     ],
-                  );
-                },
-              ),
-            ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
         // Visualizer fills the rest, full-bleed, anchored to the bottom.

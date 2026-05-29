@@ -4,12 +4,12 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
+  mpv_audio_kit
   screen_retriever_windows
   window_manager
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
-  mpv_audio_kit
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

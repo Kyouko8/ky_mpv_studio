@@ -80,5 +80,7 @@ class _CurvePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CurvePainter old) => true;
+  // The stream hands us a fresh Float32List per frame, so identity tracks
+  // "new data". Repaint only then — not on unrelated parent rebuilds.
+  bool shouldRepaint(_CurvePainter old) => !identical(old.bands, bands);
 }
