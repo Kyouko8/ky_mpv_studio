@@ -1,0 +1,30 @@
+name: mpv_studio
+description: "MPV Studio — a music player and audio workbench built on mpv_audio_kit."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.6.0
+  flutter: '>=3.27.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Local path dependency so MPV Studio always tracks the working copy
+  # of the engine package sitting next to it, not a pub.dev release.
+  mpv_audio_kit:
+    path: ../mpv_audio_kit
+
+  file_picker: ^10.3.10
+  desktop_drop: ^0.5.0
+  window_manager: ^0.5.1
+  shared_preferences: ^2.5.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
