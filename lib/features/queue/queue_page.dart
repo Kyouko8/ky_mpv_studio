@@ -18,7 +18,9 @@ class QueuePage extends StatefulWidget {
 }
 
 class _QueuePageState extends State<QueuePage> {
-  late final Player _player;
+  // Not `final`: didChangeDependencies can fire more than once (inherited
+  // deps changing, hot reload), and re-assigning a `late final` throws.
+  late Player _player;
   bool _dragging = false;
 
   @override

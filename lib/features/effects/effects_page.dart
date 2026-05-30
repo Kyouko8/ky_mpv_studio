@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -6,18 +7,27 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
-import '../../ui/widgets/module_card.dart';
 import '../../ui/widgets/section_body.dart';
 import '../../generated/catalog.dart';
 import 'widgets/equalizer.dart';
+import 'widgets/compressor_curve.dart';
+import 'widgets/response_curve.dart';
+import 'widgets/stereo_scope.dart';
+import 'widgets/crossfeed_diagram.dart';
+import 'widgets/crystalizer_viz.dart';
+import 'widgets/loudness_gauge.dart';
 
-/// The DSP rack. A curated set of typed `AudioEffects` stages, each in a
-/// [ModuleCard] with an enable switch and sliders. The whole bundle is
-/// the single writer of mpv's `af` chain — changes are pushed atomically
-/// via `setAudioEffects` and mirrored into [AppSettings] for persistence.
+/// The DSP rack. The curated effects that earn a bespoke visualiser are
+/// surfaced as a **grid** of squircle tiles (mirroring the Settings
+/// landing); tapping one opens its dedicated editor — the hero graphic
+/// over its controls, with a back affordance. The remaining ffmpeg
+/// catalog stays a plain **list** below, so the two tiers read as clearly
+/// different things.
 ///
-/// Slider drags mutate a local draft for smooth motion and commit to the
-/// engine on release; toggles and resets commit immediately.
+/// The bundle is the single writer of mpv's `af` chain — changes push
+/// atomically via `setAudioEffects` and mirror into [AppSettings].
+/// Slider drags mutate a local draft for smooth motion and commit on
+/// release; toggles and resets commit immediately.
 class EffectsPage extends StatefulWidget {
   const EffectsPage({super.key});
 
@@ -30,6 +40,9 @@ class _EffectsPageState extends State<EffectsPage> {
   late AudioEffects _fx;
   bool _editing = false;
   StreamSubscription<AudioEffects>? _sub;
+
+  /// Index of the open featured editor; null = the grid landing.
+  int? _pushed;
 
   @override
   void didChangeDependencies() {
@@ -92,8 +105,14 @@ class _EffectsPageState extends State<EffectsPage> {
         onChangeEnd: _commit,
       );
 
-  @override
-  Widget build(BuildContext context) {
+  static String _pct(double v) => '${(v * 100).round()}%';
+
+  // ── Featured effect descriptors ───────────────────────────────────
+  //
+  // Each carries everything both the grid tile (icon, title, on-state)
+  // and the detail editor (graphic, controls, toggle, reset) need.
+
+  List<_Featured> _featured() {
     final eq = _fx.superequalizer;
     final comp = _fx.acompressor;
     final bass = _fx.bass;
@@ -104,277 +123,343 @@ class _EffectsPageState extends State<EffectsPage> {
     final sb = _fx.asubboost;
     final ln = _fx.loudnorm;
 
-    final bandsDb = <String, double>{
-      for (final b in kEqBands) b.key: eqLinearToDb(eq.params[b.key] ?? 1.0),
-    };
-
-    return SectionBody(
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
-          child: Text('FEATURED', style: Tokens.caption),
-        ),
-        // ---- 18-band graphic EQ -------------------------------------
-        ModuleCard(
-          title: 'Equalizer',
-          subtitle: '18-band graphic',
-          icon: Icons.equalizer_rounded,
+    return [
+      // ---- 18-band graphic EQ -----------------------------------------
+      _Featured(
+        title: 'Equalizer',
+        subtitle: '18-band graphic',
+        icon: Icons.equalizer_rounded,
+        enabled: eq.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(superequalizer: eq.copyWith(enabled: v))),
+        onReset: () => _commitNow(_fx.copyWith(
+          superequalizer:
+              SuperequalizerSettings(enabled: eq.enabled, params: const {}),
+        )),
+        graphic: Equalizer(
+          bandsDb: {
+            for (final b in kEqBands)
+              b.key: eqLinearToDb(eq.params[b.key] ?? 1.0),
+          },
           enabled: eq.enabled,
-          initiallyExpanded: true,
-          onEnabledChanged: (v) =>
-              _commitNow(_fx.copyWith(superequalizer: eq.copyWith(enabled: v))),
-          onReset: () => _commitNow(_fx.copyWith(
-            superequalizer: SuperequalizerSettings(
-              enabled: eq.enabled,
-              params: const {},
-            ),
-          )),
-          child: Padding(
-            padding: const EdgeInsets.only(top: Tokens.s4),
-            child: Equalizer(
-              bandsDb: bandsDb,
-              enabled: eq.enabled,
-              onChanged: (key, db) {
-                final params = Map<String, double>.from(eq.params);
-                if (db.abs() < 0.05) {
-                  params.remove(key);
-                } else {
-                  params[key] = eqDbToLinear(db);
-                }
-                _setLocal(_fx.copyWith(
-                  superequalizer: eq.copyWith(params: params),
-                ));
-              },
-              onChangeEnd: _commit,
-            ),
-          ),
+          onChanged: (key, db) {
+            final params = Map<String, double>.from(eq.params);
+            if (db.abs() < 0.05) {
+              params.remove(key);
+            } else {
+              params[key] = eqDbToLinear(db);
+            }
+            _setLocal(_fx.copyWith(superequalizer: eq.copyWith(params: params)));
+          },
+          onChangeEnd: _commit,
         ),
+        controls: const [],
+      ),
 
-        // ---- Compressor ---------------------------------------------
-        _module(
-          title: 'Compressor',
-          subtitle: 'Dynamic range control',
-          icon: Icons.compress_rounded,
+      // ---- Compressor -------------------------------------------------
+      _Featured(
+        title: 'Compressor',
+        subtitle: 'Dynamic range control',
+        icon: Icons.compress_rounded,
+        enabled: comp.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(acompressor: comp.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(acompressor: AcompressorSettings(enabled: comp.enabled))),
+        graphic: CompressorCurve(
+          threshold: comp.threshold,
+          ratio: comp.ratio,
+          knee: comp.knee,
+          makeup: comp.makeup,
           enabled: comp.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(acompressor: comp.copyWith(enabled: v))),
-          onReset: () => _commitNow(_fx.copyWith(
-              acompressor: AcompressorSettings(enabled: comp.enabled))),
-          specs: [
-            _spec(
-                'Threshold',
-                eqLinearToDb(comp.threshold),
-                -60,
-                0,
-                (v) => _fx.copyWith(
-                    acompressor: comp.copyWith(
-                        threshold: eqDbToLinear(v).clamp(0.000977, 1.0))),
-                format: (v) => '${v.round()} dB'),
-            _spec('Ratio', comp.ratio, 1, 20,
-                (v) => _fx.copyWith(acompressor: comp.copyWith(ratio: v)),
-                format: (v) => '${v.toStringAsFixed(1)}:1'),
-            _spec('Attack', comp.attack, 1, 200,
-                (v) => _fx.copyWith(acompressor: comp.copyWith(attack: v)),
-                format: (v) => '${v.round()} ms'),
-            _spec('Release', comp.release, 20, 2000,
-                (v) => _fx.copyWith(acompressor: comp.copyWith(release: v)),
-                format: (v) => '${v.round()} ms'),
-            _spec(
-                'Make-up gain',
-                eqLinearToDb(comp.makeup),
-                0,
-                24,
-                (v) => _fx.copyWith(
-                    acompressor: comp.copyWith(
-                        makeup: eqDbToLinear(v).clamp(1.0, 64.0))),
-                format: (v) => '+${v.round()} dB'),
-          ],
         ),
+        controls: [
+          _spec(
+              'Threshold',
+              eqLinearToDb(comp.threshold),
+              -60,
+              0,
+              (v) => _fx.copyWith(
+                  acompressor: comp.copyWith(
+                      threshold: eqDbToLinear(v).clamp(0.000977, 1.0))),
+              format: (v) => '${v.round()} dB'),
+          _spec('Ratio', comp.ratio, 1, 20,
+              (v) => _fx.copyWith(acompressor: comp.copyWith(ratio: v)),
+              format: (v) => '${v.toStringAsFixed(1)}:1'),
+          _spec('Attack', comp.attack, 1, 200,
+              (v) => _fx.copyWith(acompressor: comp.copyWith(attack: v)),
+              format: (v) => '${v.round()} ms'),
+          _spec('Release', comp.release, 20, 2000,
+              (v) => _fx.copyWith(acompressor: comp.copyWith(release: v)),
+              format: (v) => '${v.round()} ms'),
+          _spec(
+              'Make-up gain',
+              eqLinearToDb(comp.makeup),
+              0,
+              24,
+              (v) => _fx.copyWith(
+                  acompressor:
+                      comp.copyWith(makeup: eqDbToLinear(v).clamp(1.0, 64.0))),
+              format: (v) => '+${v.round()} dB'),
+        ],
+      ),
 
-        // ---- Bass / Treble shelves ----------------------------------
-        _module(
-          title: 'Bass',
-          subtitle: 'Low shelf',
-          icon: Icons.graphic_eq_rounded,
+      // ---- Bass -------------------------------------------------------
+      _Featured(
+        title: 'Bass',
+        subtitle: 'Low shelf',
+        icon: Icons.graphic_eq_rounded,
+        enabled: bass.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(bass: bass.copyWith(enabled: v))),
+        onReset: () =>
+            _commitNow(_fx.copyWith(bass: BassSettings(enabled: bass.enabled))),
+        graphic: ResponseCurve(
+          response: BiquadResponse.lowShelf(bass.frequency, bass.gain),
+          markerHz: bass.frequency,
           enabled: bass.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(bass: bass.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(bass: BassSettings(enabled: bass.enabled))),
-          specs: [
-            _spec('Gain', bass.gain, -24, 24,
-                (v) => _fx.copyWith(bass: bass.copyWith(gain: v)),
-                format: (v) => '${v.toStringAsFixed(1)} dB'),
-            _spec('Frequency', bass.frequency, 20, 500,
-                (v) => _fx.copyWith(bass: bass.copyWith(frequency: v)),
-                format: (v) => '${v.round()} Hz'),
-          ],
         ),
-        _module(
-          title: 'Treble',
-          subtitle: 'High shelf',
-          icon: Icons.graphic_eq_rounded,
+        controls: [
+          _spec('Gain', bass.gain, -24, 24,
+              (v) => _fx.copyWith(bass: bass.copyWith(gain: v)),
+              format: (v) => '${v.toStringAsFixed(1)} dB'),
+          _spec('Frequency', bass.frequency, 20, 500,
+              (v) => _fx.copyWith(bass: bass.copyWith(frequency: v)),
+              format: (v) => '${v.round()} Hz'),
+        ],
+      ),
+
+      // ---- Treble -----------------------------------------------------
+      _Featured(
+        title: 'Treble',
+        subtitle: 'High shelf',
+        icon: Icons.graphic_eq_rounded,
+        enabled: treble.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(treble: treble.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(treble: TrebleSettings(enabled: treble.enabled))),
+        graphic: ResponseCurve(
+          response: BiquadResponse.highShelf(treble.frequency, treble.gain),
+          markerHz: treble.frequency,
           enabled: treble.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(treble: treble.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(treble: TrebleSettings(enabled: treble.enabled))),
-          specs: [
-            _spec('Gain', treble.gain, -24, 24,
-                (v) => _fx.copyWith(treble: treble.copyWith(gain: v)),
-                format: (v) => '${v.toStringAsFixed(1)} dB'),
-            _spec('Frequency', treble.frequency, 1000, 16000,
-                (v) => _fx.copyWith(treble: treble.copyWith(frequency: v)),
-                format: (v) => '${(v / 1000).toStringAsFixed(1)}k Hz'),
-          ],
         ),
+        controls: [
+          _spec('Gain', treble.gain, -24, 24,
+              (v) => _fx.copyWith(treble: treble.copyWith(gain: v)),
+              format: (v) => '${v.toStringAsFixed(1)} dB'),
+          _spec('Frequency', treble.frequency, 1000, 16000,
+              (v) => _fx.copyWith(treble: treble.copyWith(frequency: v)),
+              format: (v) => '${(v / 1000).toStringAsFixed(1)}k Hz'),
+        ],
+      ),
 
-        // ---- Sub boost ----------------------------------------------
-        _module(
-          title: 'Sub boost',
-          subtitle: 'Synthesised low end',
-          icon: Icons.surround_sound_rounded,
+      // ---- Sub boost --------------------------------------------------
+      _Featured(
+        title: 'Sub boost',
+        subtitle: 'Synthesised low end',
+        icon: Icons.surround_sound_rounded,
+        enabled: sb.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(asubboost: sb.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(asubboost: AsubboostSettings(enabled: sb.enabled))),
+        graphic: ResponseCurve(
+          response: BiquadResponse.lowShelf(
+              sb.cutoff, 20 * math.log(sb.boost) / math.ln10),
+          markerHz: sb.cutoff,
           enabled: sb.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(asubboost: sb.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(asubboost: AsubboostSettings(enabled: sb.enabled))),
-          specs: [
-            _spec('Boost', sb.boost, 1, 12,
-                (v) => _fx.copyWith(asubboost: sb.copyWith(boost: v)),
-                format: (v) => v.toStringAsFixed(1)),
-            _spec('Cutoff', sb.cutoff, 50, 900,
-                (v) => _fx.copyWith(asubboost: sb.copyWith(cutoff: v)),
-                format: (v) => '${v.round()} Hz'),
-            _spec('Wet', sb.wet, 0, 1,
-                (v) => _fx.copyWith(asubboost: sb.copyWith(wet: v)),
-                format: _pct),
-            _spec('Dry', sb.dry, 0, 1,
-                (v) => _fx.copyWith(asubboost: sb.copyWith(dry: v)),
-                format: _pct),
-          ],
         ),
+        controls: [
+          _spec('Boost', sb.boost, 1, 12,
+              (v) => _fx.copyWith(asubboost: sb.copyWith(boost: v)),
+              format: (v) => v.toStringAsFixed(1)),
+          _spec('Cutoff', sb.cutoff, 50, 900,
+              (v) => _fx.copyWith(asubboost: sb.copyWith(cutoff: v)),
+              format: (v) => '${v.round()} Hz'),
+          _spec('Wet', sb.wet, 0, 1,
+              (v) => _fx.copyWith(asubboost: sb.copyWith(wet: v)),
+              format: _pct),
+          _spec('Dry', sb.dry, 0, 1,
+              (v) => _fx.copyWith(asubboost: sb.copyWith(dry: v)),
+              format: _pct),
+        ],
+      ),
 
-        // ---- Stereo width -------------------------------------------
-        _module(
-          title: 'Stereo width',
-          subtitle: 'Widen the stereo image',
-          icon: Icons.panorama_horizontal_rounded,
-          enabled: st.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(extrastereo: st.copyWith(enabled: v))),
-          onReset: () => _commitNow(_fx.copyWith(
-              extrastereo: ExtrastereoSettings(enabled: st.enabled))),
-          specs: [
-            _spec('Amount', st.m, 0, 8,
-                (v) => _fx.copyWith(extrastereo: st.copyWith(m: v)),
-                format: (v) => v.toStringAsFixed(1)),
-          ],
-        ),
+      // ---- Stereo width -----------------------------------------------
+      _Featured(
+        title: 'Stereo width',
+        subtitle: 'Widen the stereo image',
+        icon: Icons.panorama_horizontal_rounded,
+        enabled: st.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(extrastereo: st.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(extrastereo: ExtrastereoSettings(enabled: st.enabled))),
+        graphic: StereoScope(enabled: st.enabled),
+        controls: [
+          _spec('Amount', st.m, 0, 8,
+              (v) => _fx.copyWith(extrastereo: st.copyWith(m: v)),
+              format: (v) => v.toStringAsFixed(1)),
+        ],
+      ),
 
-        // ---- Crossfeed ----------------------------------------------
-        _module(
-          title: 'Crossfeed',
-          subtitle: 'Headphone channel blend',
-          icon: Icons.headphones_rounded,
+      // ---- Crossfeed --------------------------------------------------
+      _Featured(
+        title: 'Crossfeed',
+        subtitle: 'Headphone channel blend',
+        icon: Icons.headphones_rounded,
+        enabled: cf.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(crossfeed: cf.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(crossfeed: CrossfeedSettings(enabled: cf.enabled))),
+        graphic: CrossfeedDiagram(
+          strength: cf.strength,
+          range: cf.range,
           enabled: cf.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(crossfeed: cf.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(crossfeed: CrossfeedSettings(enabled: cf.enabled))),
-          specs: [
-            _spec('Strength', cf.strength, 0, 1,
-                (v) => _fx.copyWith(crossfeed: cf.copyWith(strength: v)),
-                format: _pct),
-            _spec('Range', cf.range, 0, 1,
-                (v) => _fx.copyWith(crossfeed: cf.copyWith(range: v)),
-                format: _pct),
-          ],
         ),
+        controls: [
+          _spec('Strength', cf.strength, 0, 1,
+              (v) => _fx.copyWith(crossfeed: cf.copyWith(strength: v)),
+              format: _pct),
+          _spec('Range', cf.range, 0, 1,
+              (v) => _fx.copyWith(crossfeed: cf.copyWith(range: v)),
+              format: _pct),
+        ],
+      ),
 
-        // ---- Crystalizer --------------------------------------------
-        _module(
-          title: 'Clarity',
-          subtitle: 'Crystalizer expander',
-          icon: Icons.auto_awesome_rounded,
-          enabled: cr.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(crystalizer: cr.copyWith(enabled: v))),
-          onReset: () => _commitNow(_fx.copyWith(
-              crystalizer: CrystalizerSettings(enabled: cr.enabled))),
-          specs: [
-            _spec('Intensity', cr.i, -10, 10,
-                (v) => _fx.copyWith(crystalizer: cr.copyWith(i: v)),
-                format: (v) => v.toStringAsFixed(1)),
-          ],
-        ),
+      // ---- Clarity (crystalizer) --------------------------------------
+      _Featured(
+        title: 'Clarity',
+        subtitle: 'Crystalizer expander',
+        icon: Icons.auto_awesome_rounded,
+        enabled: cr.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(crystalizer: cr.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(crystalizer: CrystalizerSettings(enabled: cr.enabled))),
+        graphic: CrystalizerViz(intensity: cr.i, enabled: cr.enabled),
+        controls: [
+          _spec('Intensity', cr.i, -10, 10,
+              (v) => _fx.copyWith(crystalizer: cr.copyWith(i: v)),
+              format: (v) => v.toStringAsFixed(1)),
+        ],
+      ),
 
-        // ---- Loudness normalization ---------------------------------
-        _module(
-          title: 'Loudness',
-          subtitle: 'EBU R128 normalization',
-          icon: Icons.volume_up_rounded,
+      // ---- Loudness ---------------------------------------------------
+      _Featured(
+        title: 'Loudness',
+        subtitle: 'EBU R128 normalization',
+        icon: Icons.volume_up_rounded,
+        enabled: ln.enabled,
+        onEnabled: (v) =>
+            _commitNow(_fx.copyWith(loudnorm: ln.copyWith(enabled: v))),
+        onReset: () => _commitNow(
+            _fx.copyWith(loudnorm: LoudnormSettings(enabled: ln.enabled))),
+        graphic: LoudnessGauge(
+          target: ln.i,
+          range: ln.lra,
+          truePeak: ln.tp,
           enabled: ln.enabled,
-          onEnabled: (v) =>
-              _commitNow(_fx.copyWith(loudnorm: ln.copyWith(enabled: v))),
-          onReset: () => _commitNow(
-              _fx.copyWith(loudnorm: LoudnormSettings(enabled: ln.enabled))),
-          specs: [
-            _spec('Target', ln.i, -70, -5,
-                (v) => _fx.copyWith(loudnorm: ln.copyWith(i: v)),
-                format: (v) => '${v.round()} LUFS'),
-            _spec('Range', ln.lra, 1, 50,
-                (v) => _fx.copyWith(loudnorm: ln.copyWith(lra: v)),
-                format: (v) => '${v.round()} LU'),
-            _spec('True peak', ln.tp, -9, 0,
-                (v) => _fx.copyWith(loudnorm: ln.copyWith(tp: v)),
-                format: (v) => '${v.toStringAsFixed(1)} dB'),
-          ],
         ),
-
-        // ---- Full catalog (generated) -------------------------------
-        const SizedBox(height: Tokens.s8),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
-          child: Text('ALL EFFECTS', style: Tokens.caption),
-        ),
-        for (final cat in kCatalogCategories) _CatalogTile(category: cat),
-      ],
-    );
+        controls: [
+          _spec('Target', ln.i, -70, -5,
+              (v) => _fx.copyWith(loudnorm: ln.copyWith(i: v)),
+              format: (v) => '${v.round()} LUFS'),
+          _spec('Range', ln.lra, 1, 50,
+              (v) => _fx.copyWith(loudnorm: ln.copyWith(lra: v)),
+              format: (v) => '${v.round()} LU'),
+          _spec('True peak', ln.tp, -9, 0,
+              (v) => _fx.copyWith(loudnorm: ln.copyWith(tp: v)),
+              format: (v) => '${v.toStringAsFixed(1)} dB'),
+        ],
+      ),
+    ];
   }
 
-  static String _pct(double v) => '${(v * 100).round()}%';
-
-  Widget _module({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool enabled,
-    required ValueChanged<bool> onEnabled,
-    required VoidCallback onReset,
-    required List<SliderRowSpec> specs,
-  }) {
-    return ModuleCard(
-      title: title,
-      subtitle: subtitle,
-      icon: icon,
-      enabled: enabled,
-      onEnabledChanged: onEnabled,
-      onReset: onReset,
-      child: Column(
+  @override
+  Widget build(BuildContext context) {
+    final featured = _featured();
+    if (_pushed != null && _pushed! < featured.length) {
+      final f = featured[_pushed!];
+      return Column(
         children: [
-          for (var i = 0; i < specs.length; i++) ...[
-            if (i > 0) const SizedBox(height: Tokens.s4),
-            specs[i].build(enabled),
-          ],
+          _BackRow(title: f.title, onBack: () => setState(() => _pushed = null)),
+          const Divider(height: 1, thickness: 1, color: Tokens.line),
+          Expanded(child: _FeaturedDetail(spec: f)),
+        ],
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(
+          Tokens.s20, Tokens.s8, Tokens.s20, Tokens.s32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
+            child: Text('FEATURED', style: Tokens.caption),
+          ),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 168,
+              crossAxisSpacing: Tokens.s12,
+              mainAxisSpacing: Tokens.s12,
+              childAspectRatio: 1,
+            ),
+            itemCount: featured.length,
+            itemBuilder: (context, i) => _FxTile(
+              spec: featured[i],
+              onTap: () => setState(() => _pushed = i),
+            ),
+          ),
+          const SizedBox(height: Tokens.s24),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
+            child: Text('ALL EFFECTS', style: Tokens.caption),
+          ),
+          for (final cat in kCatalogCategories) _CatalogTile(category: cat),
         ],
       ),
     );
   }
 }
 
-/// Bundles a [SliderRow]'s parameters so the page can declare a module's
-/// controls as a flat list and let [ModuleCard] render them.
+/// Bundles everything a featured effect needs for both its grid tile and
+/// its detail editor.
+class _Featured {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool enabled;
+  final ValueChanged<bool> onEnabled;
+  final VoidCallback onReset;
+
+  /// Hero visualiser shown above the controls in the detail editor.
+  final Widget graphic;
+
+  /// Slider controls; empty for effects whose graphic *is* the control
+  /// (the equalizer).
+  final List<SliderRowSpec> controls;
+
+  const _Featured({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.enabled,
+    required this.onEnabled,
+    required this.onReset,
+    required this.graphic,
+    required this.controls,
+  });
+}
+
+/// Bundles a [SliderRow]'s parameters so a module can declare its controls
+/// as a flat list and let the editor render them.
 class SliderRowSpec {
   final String label;
   final double value;
@@ -404,6 +489,188 @@ class SliderRowSpec {
         onChanged: onChanged,
         onChangeEnd: (_) => onChangeEnd(),
       );
+}
+
+/// A squircle tile in the featured grid — icon, title, and an accent
+/// "on" pip + border when the effect is engaged. Tapping opens its editor.
+class _FxTile extends StatelessWidget {
+  final _Featured spec;
+  final VoidCallback onTap;
+
+  const _FxTile({required this.spec, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final on = spec.enabled;
+    final shape = ContinuousRectangleBorder(
+      borderRadius: BorderRadius.circular(40),
+      side: BorderSide(color: on ? Tokens.accentDim : Tokens.line, width: 1),
+    );
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        customBorder:
+            ContinuousRectangleBorder(borderRadius: BorderRadius.circular(40)),
+        child: Container(
+          decoration: ShapeDecoration(color: Tokens.surface, shape: shape),
+          padding: const EdgeInsets.all(Tokens.s16),
+          child: Stack(
+            children: [
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(spec.icon,
+                        size: 26, color: on ? Tokens.accent : Tokens.fgDim),
+                    const SizedBox(height: Tokens.s12),
+                    Text(
+                      spec.title,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Tokens.fg,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // "On" pip, top-right.
+              Positioned(
+                top: 0,
+                right: 0,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 160),
+                  opacity: on ? 1 : 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const ShapeDecoration(
+                      color: Tokens.accent,
+                      shape: CircleBorder(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The dedicated editor for one featured effect: a bypass toggle, the hero
+/// graphic, the controls, and a reset — all in the flat card language.
+class _FeaturedDetail extends StatelessWidget {
+  final _Featured spec;
+  const _FeaturedDetail({required this.spec});
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionBody(
+      children: [
+        // Bypass toggle.
+        _DetailCard(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+          child: SwitchRow(
+            label: 'Effect',
+            subtitle: spec.subtitle,
+            value: spec.enabled,
+            onChanged: spec.onEnabled,
+          ),
+        ),
+        // Hero graphic.
+        _DetailCard(child: spec.graphic),
+        // Controls.
+        if (spec.controls.isNotEmpty)
+          _DetailCard(
+            child: Column(
+              children: [
+                for (var i = 0; i < spec.controls.length; i++) ...[
+                  if (i > 0) const SizedBox(height: Tokens.s4),
+                  spec.controls[i].build(spec.enabled),
+                ],
+              ],
+            ),
+          ),
+        // Reset.
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: spec.onReset,
+            icon: const Icon(Icons.restart_alt_rounded, size: 16),
+            label: const Text('Reset'),
+            style: TextButton.styleFrom(
+              foregroundColor: Tokens.fgDim,
+              textStyle: Tokens.label,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A flat bordered surface card used to frame the detail editor's blocks.
+class _DetailCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  const _DetailCard({
+    required this.child,
+    this.padding = const EdgeInsets.all(Tokens.s16),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: Tokens.s12),
+      padding: padding,
+      decoration: ShapeDecoration(
+        color: Tokens.surface,
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: const BorderSide(color: Tokens.line, width: 1),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Back affordance shown atop a pushed editor — mirrors the Settings
+/// detail header.
+class _BackRow extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+  const _BackRow({required this.title, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 44,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onBack,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+            child: Row(
+              children: [
+                const Icon(Icons.chevron_left_rounded,
+                    size: 22, color: Tokens.fgDim),
+                const SizedBox(width: Tokens.s4),
+                Text(title, style: Tokens.heading),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// A tile in the "All effects" index. Opens a full page listing every

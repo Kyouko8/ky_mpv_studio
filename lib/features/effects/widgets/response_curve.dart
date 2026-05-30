@@ -1,0 +1,235 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../../ui/tokens.dart';
+
+/// A magnitude-vs-frequency plot — the response any tone control draws on
+/// the signal, sketched in the flat house style over a log-frequency
+/// lattice (the same 20 Hz … 20 kHz decades a spectrum analyzer uses).
+///
+/// The shape is supplied analytically by [response] (dB at a given Hz),
+/// so a shelf, a resonant boost, or a combination all share one widget
+/// and one look. A faint marker line pins the control's corner frequency
+/// and the curve fills a bipolar wash from the 0 dB centre.
+class ResponseCurve extends StatelessWidget {
+  /// Magnitude in dB at frequency [hz].
+  final double Function(double hz) response;
+  final bool enabled;
+
+  /// Symmetric dB extent of the vertical axis.
+  final double maxDb;
+
+  /// Optional corner/centre frequency to mark with a vertical hairline.
+  final double? markerHz;
+
+  final double height;
+
+  const ResponseCurve({
+    super.key,
+    required this.response,
+    required this.enabled,
+    this.maxDb = 24,
+    this.markerHz,
+    this.height = 132,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: CustomPaint(
+        size: Size.infinite,
+        painter: _ResponsePainter(
+          response: response,
+          enabled: enabled,
+          maxDb: maxDb,
+          markerHz: markerHz,
+        ),
+      ),
+    );
+  }
+}
+
+const double _fMin = 20;
+const double _fMax = 20000;
+const _decades = [
+  (20.0, '20'),
+  (100.0, '100'),
+  (1000.0, '1k'),
+  (10000.0, '10k'),
+];
+
+class _ResponsePainter extends CustomPainter {
+  final double Function(double hz) response;
+  final bool enabled;
+  final double maxDb;
+  final double? markerHz;
+
+  _ResponsePainter({
+    required this.response,
+    required this.enabled,
+    required this.maxDb,
+    required this.markerHz,
+  });
+
+  static const double _rightGutter = 22;
+  static const double _bottomGutter = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final plot = Rect.fromLTRB(
+        2, 6, size.width - _rightGutter, size.height - _bottomGutter);
+    if (plot.width <= 0 || plot.height <= 0) return;
+
+    final accent = enabled ? Tokens.accent : Tokens.fgFaint;
+    final logMin = math.log(_fMin);
+    final logMax = math.log(_fMax);
+
+    double xOf(double hz) =>
+        plot.left +
+        ((math.log(hz) - logMin) / (logMax - logMin)) * plot.width;
+    double yOf(double db) =>
+        plot.top + (1 - (db + maxDb) / (2 * maxDb)) * plot.height;
+
+    // dB gridlines: 0 centre brighter, ±half-scale faint.
+    final grid = Paint()..strokeWidth = 1;
+    for (final db in [maxDb, maxDb / 2, 0.0, -maxDb / 2, -maxDb]) {
+      final yy = yOf(db);
+      grid.color = db == 0 ? Tokens.line2 : Tokens.line;
+      canvas.drawLine(Offset(plot.left, yy), Offset(plot.right, yy), grid);
+    }
+    _label(canvas, '+${maxDb.toInt()}', Offset(plot.right + 3, yOf(maxDb) - 5),
+        Tokens.fgFaint);
+    _label(canvas, '${(-maxDb).toInt()}',
+        Offset(plot.right + 3, yOf(-maxDb) - 5), Tokens.fgFaint);
+
+    // Frequency decade lines + labels.
+    for (final d in _decades) {
+      final xx = xOf(d.$1);
+      canvas.drawLine(Offset(xx, plot.top), Offset(xx, plot.bottom),
+          Paint()..color = Tokens.line);
+      _label(canvas, d.$2, Offset(xx, plot.bottom + 2), Tokens.fgFaint,
+          center: true);
+    }
+
+    // Corner-frequency marker.
+    if (markerHz != null && markerHz! >= _fMin && markerHz! <= _fMax) {
+      final mx = xOf(markerHz!);
+      canvas.drawLine(Offset(mx, plot.top), Offset(mx, plot.bottom),
+          Paint()..color = Tokens.accentDim);
+    }
+
+    // Sample the analytic response across the plotted decades.
+    final curve = Path();
+    const steps = 200;
+    for (var i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final hz = math.exp(logMin + t * (logMax - logMin));
+      final px = plot.left + t * plot.width;
+      final py = yOf(response(hz).clamp(-maxDb, maxDb));
+      if (i == 0) {
+        curve.moveTo(px, py);
+      } else {
+        curve.lineTo(px, py);
+      }
+    }
+
+    final zeroY = yOf(0);
+    final fill = Path.from(curve)
+      ..lineTo(plot.right, zeroY)
+      ..lineTo(plot.left, zeroY)
+      ..close();
+    canvas.save();
+    canvas.clipRect(plot.inflate(1));
+    canvas.drawPath(fill, Paint()..color = accent.withValues(alpha: 0.12));
+    canvas.restore();
+
+    canvas.drawPath(
+      curve,
+      Paint()
+        ..color = accent
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true,
+    );
+  }
+
+  void _label(Canvas canvas, String text, Offset at, Color color,
+      {bool center = false}) {
+    final tp = TextPainter(
+      textDirection: TextDirection.ltr,
+      text: TextSpan(
+        text: text,
+        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
+      ),
+    )..layout();
+    tp.paint(canvas, Offset(center ? at.dx - tp.width / 2 : at.dx, at.dy));
+  }
+
+  @override
+  bool shouldRepaint(_ResponsePainter old) =>
+      old.enabled != enabled ||
+      old.maxDb != maxDb ||
+      old.markerHz != markerHz ||
+      old.response != response;
+}
+
+/// RBJ-cookbook biquad magnitude helpers, returned as `dB at Hz` closures
+/// for [ResponseCurve]. [fs] defaults to 48 kHz — the curve shape is
+/// essentially sample-rate independent over the audible band.
+class BiquadResponse {
+  BiquadResponse._();
+
+  static double Function(double) lowShelf(double f0, double gainDb,
+          {double fs = 48000, double slope = 0.7}) =>
+      _shelf(f0, gainDb, fs, slope, low: true);
+
+  static double Function(double) highShelf(double f0, double gainDb,
+          {double fs = 48000, double slope = 0.7}) =>
+      _shelf(f0, gainDb, fs, slope, low: false);
+
+  static double Function(double) _shelf(
+      double f0, double gainDb, double fs, double slope,
+      {required bool low}) {
+    final a = math.pow(10, gainDb / 40).toDouble();
+    final w0 = 2 * math.pi * f0 / fs;
+    final cw = math.cos(w0);
+    final sw = math.sin(w0);
+    final alpha =
+        sw / 2 * math.sqrt((a + 1 / a) * (1 / slope - 1) + 2);
+    final twoSqrtAAlpha = 2 * math.sqrt(a) * alpha;
+    final double b0, b1, b2, a0, a1, a2;
+    if (low) {
+      b0 = a * ((a + 1) - (a - 1) * cw + twoSqrtAAlpha);
+      b1 = 2 * a * ((a - 1) - (a + 1) * cw);
+      b2 = a * ((a + 1) - (a - 1) * cw - twoSqrtAAlpha);
+      a0 = (a + 1) + (a - 1) * cw + twoSqrtAAlpha;
+      a1 = -2 * ((a - 1) + (a + 1) * cw);
+      a2 = (a + 1) + (a - 1) * cw - twoSqrtAAlpha;
+    } else {
+      b0 = a * ((a + 1) + (a - 1) * cw + twoSqrtAAlpha);
+      b1 = -2 * a * ((a - 1) + (a + 1) * cw);
+      b2 = a * ((a + 1) + (a - 1) * cw - twoSqrtAAlpha);
+      a0 = (a + 1) - (a - 1) * cw + twoSqrtAAlpha;
+      a1 = 2 * ((a - 1) - (a + 1) * cw);
+      a2 = (a + 1) - (a - 1) * cw - twoSqrtAAlpha;
+    }
+    return (hz) {
+      final w = 2 * math.pi * hz / fs;
+      // |H(e^jw)| of a biquad, evaluated directly.
+      final cosw = math.cos(w), cos2w = math.cos(2 * w);
+      final sinw = math.sin(w), sin2w = math.sin(2 * w);
+      final numRe = b0 + b1 * cosw + b2 * cos2w;
+      final numIm = -(b1 * sinw + b2 * sin2w);
+      final denRe = a0 + a1 * cosw + a2 * cos2w;
+      final denIm = -(a1 * sinw + a2 * sin2w);
+      final num = math.sqrt(numRe * numRe + numIm * numIm);
+      final den = math.sqrt(denRe * denRe + denIm * denIm);
+      if (den == 0 || num == 0) return 0;
+      return 20 * math.log(num / den) / math.ln10;
+    };
+  }
+}

@@ -11,9 +11,12 @@ Future<void> main() async {
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
-    const options = WindowOptions(
-      size: Size(1100, 760),
-      minimumSize: Size(380, 600),
+    // `--dart-define=mobilePreview=true` shrinks the window to a phone
+    // viewport so the mobile shell + layouts can be exercised on desktop.
+    const mobilePreview = bool.fromEnvironment('mobilePreview');
+    final options = WindowOptions(
+      size: mobilePreview ? const Size(393, 852) : const Size(1100, 760),
+      minimumSize: const Size(380, 600),
       center: true,
       backgroundColor: Colors.transparent,
       titleBarStyle: TitleBarStyle.normal,

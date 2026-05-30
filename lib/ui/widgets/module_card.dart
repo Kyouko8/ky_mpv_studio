@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../tokens.dart';
+import 'controls.dart';
 
 /// A flat rack module: a header with an enable switch and an expand
 /// chevron, over a collapsible body of controls. The accent hairline
@@ -87,11 +88,13 @@ class _ModuleCardState extends State<ModuleCard> {
                         ],
                       ),
                     ),
-                    Switch(
-                      value: widget.enabled,
-                      onChanged: widget.onEnabledChanged,
+                    GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () =>
+                          widget.onEnabledChanged(!widget.enabled),
+                      child: AppSwitch(value: widget.enabled),
                     ),
-                    const SizedBox(width: Tokens.s4),
+                    const SizedBox(width: Tokens.s8),
                     AnimatedRotation(
                       turns: _expanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 150),
@@ -106,43 +109,49 @@ class _ModuleCardState extends State<ModuleCard> {
               ),
             ),
           ),
-          AnimatedCrossFade(
-            firstChild: const SizedBox(width: double.infinity),
-            secondChild: Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Tokens.s16,
-                0,
-                Tokens.s16,
-                Tokens.s16,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Divider(height: 1, thickness: 1, color: Tokens.line),
-                  const SizedBox(height: Tokens.s12),
-                  widget.child,
-                  if (widget.onReset != null) ...[
-                    const SizedBox(height: Tokens.s8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: widget.onReset,
-                        icon: const Icon(Icons.restart_alt_rounded, size: 16),
-                        label: const Text('Reset'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Tokens.fgDim,
-                          textStyle: Tokens.label,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+          // The body is built only while expanded, so a module's live
+          // visualizers (knee plot, goniometer) tear down their PCM taps
+          // when collapsed instead of running unseen behind a crossfade.
+          // AnimatedSize carries the open/close as a height transition.
+          AnimatedSize(
             duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            alignment: Alignment.topCenter,
+            child: _expanded
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Tokens.s16,
+                      0,
+                      Tokens.s16,
+                      Tokens.s16,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Divider(
+                            height: 1, thickness: 1, color: Tokens.line),
+                        const SizedBox(height: Tokens.s12),
+                        widget.child,
+                        if (widget.onReset != null) ...[
+                          const SizedBox(height: Tokens.s8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: widget.onReset,
+                              icon: const Icon(Icons.restart_alt_rounded,
+                                  size: 16),
+                              label: const Text('Reset'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Tokens.fgDim,
+                                textStyle: Tokens.label,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
         ],
       ),
