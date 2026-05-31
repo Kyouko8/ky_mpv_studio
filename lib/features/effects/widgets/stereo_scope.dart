@@ -1,12 +1,13 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../../audio/pcm_analysis.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
+import '../../../util/reactive.dart';
 
 /// A stereo vectorscope (goniometer) — the live picture of the stereo
 /// image. Each L/R sample pair is rotated into mid/side and scattered in
@@ -25,7 +26,8 @@ class StereoScope extends StatefulWidget {
   State<StereoScope> createState() => _StereoScopeState();
 }
 
-class _StereoScopeState extends State<StereoScope> {
+class _StereoScopeState extends State<StereoScope>
+    with StreamListenerState<StereoScope> {
   static const int _capacity = 900;
   final Float32List _xs = Float32List(_capacity);
   final Float32List _ys = Float32List(_capacity);
@@ -33,13 +35,10 @@ class _StereoScopeState extends State<StereoScope> {
   int _head = 0;
   final _corr = ValueNotifier<double>(0);
   final _tick = ValueNotifier<int>(0);
-  StreamSubscription<PcmFrame>? _sub;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_sub != null) return;
-    _sub = PlayerScope.of(context).stream.pcm.listen(_onFrame);
+  void onSubscribe() {
+    listen(PlayerScope.of(context).stream.pcm, _onFrame);
   }
 
   void _onFrame(PcmFrame f) {
@@ -51,37 +50,23 @@ class _StereoScopeState extends State<StereoScope> {
       _corr.value = 1;
       return;
     }
-    // Decimate to a bounded number of points per frame so dense frames
-    // don't blow the ring or the paint cost.
+    // Decimate to a bounded number of scatter points per frame so dense
+    // frames don't blow the ring or the paint cost.
     final pairs = s.length ~/ ch;
     final step = math.max(1, pairs ~/ 220);
-    var sumLR = 0.0, sumL2 = 0.0, sumR2 = 0.0;
-    const invSqrt2 = 0.70710678;
     for (var p = 0; p < pairs; p += step) {
-      final l = s[p * ch];
-      final r = s[p * ch + 1];
-      // Rotate 45°: x = side (width), y = mid (centre), y up.
-      _xs[_head] = (l - r) * invSqrt2;
-      _ys[_head] = (l + r) * invSqrt2;
+      final point = midSide(s[p * ch], s[p * ch + 1]);
+      _xs[_head] = point.x;
+      _ys[_head] = point.y;
       _head = (_head + 1) % _capacity;
       if (_count < _capacity) _count++;
     }
-    for (var p = 0; p < pairs; p++) {
-      final l = s[p * ch];
-      final r = s[p * ch + 1];
-      sumLR += l * r;
-      sumL2 += l * l;
-      sumR2 += r * r;
-    }
-    final denom = math.sqrt(sumL2 * sumR2);
-    final c = denom > 1e-9 ? (sumLR / denom).clamp(-1.0, 1.0) : 1.0;
-    _corr.value = _corr.value + 0.25 * (c - _corr.value);
+    _corr.value = emaTowards(_corr.value, stereoCorrelation(f), 0.25);
     _tick.value++;
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
     _corr.dispose();
     _tick.dispose();
     super.dispose();

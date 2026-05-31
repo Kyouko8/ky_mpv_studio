@@ -4,7 +4,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/reactive.dart';
-import 'info_dialog.dart';
+import 'info_sheet.dart';
 
 /// Full DAW-style transport. A primary row (previous · skip-back ·
 /// play/pause · skip-forward · next) over a secondary row of mode toggles
@@ -123,7 +123,7 @@ class TransportControls extends StatelessWidget {
               _Glyph(
                 icon: Icons.info_outline_rounded,
                 size: 19,
-                onTap: () => showInfoDialog(context),
+                onTap: () => showInfoSheet(context),
                 tooltip: 'Track & playback info',
               ),
             ],

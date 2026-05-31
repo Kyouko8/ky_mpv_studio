@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
@@ -7,23 +6,24 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
+import '../../util/reactive.dart';
+import 'completion_engine.dart';
+import 'suggestion_popup.dart';
 
-/// The engine console — a power tool, not just a log. Two tabs:
+/// The engine console — a power tool, not just a log. The live mpv +
+/// library log interleaved with a REPL: type a raw command (`seek 30`), or
+/// `get <property>` / `set <property> <value>`; results land inline.
 ///
-/// * **Console**: the live mpv + library log interleaved with a REPL.
-///   Type a raw command (`seek 30`), or `get <property>` /
-///   `set <property> <value>`; results land inline in the scrollback.
-///   Filter by level, clear, toggle autoscroll, copy.
-/// * **Inspector**: watch arbitrary mpv properties live — each is polled
-///   and shown with its current value.
+/// The input autocompletes Minecraft-style from mpv's own model
+/// ([CompletionEngine]): commands, then properties/options, then enum
+/// values. A verbosity selector raises mpv's runtime log level so the
+/// console can surface everything from errors down to trace on demand.
 class ConsolePage extends StatefulWidget {
   const ConsolePage({super.key});
 
   @override
   State<ConsolePage> createState() => _ConsolePageState();
 }
-
-enum _Tab { console, inspector }
 
 enum _Kind { log, input, output, error }
 
@@ -36,8 +36,9 @@ class _Line {
       {this.level = LogLevel.info, this.prefix = ''});
 }
 
-class _ConsolePageState extends State<ConsolePage> {
-  static const _max = 1000;
+class _ConsolePageState extends State<ConsolePage>
+    with StreamListenerState<ConsolePage> {
+  static const _max = 2000;
   static const _mono = TextStyle(
     fontFamily: Tokens.mono,
     fontSize: 12,
@@ -46,49 +47,49 @@ class _ConsolePageState extends State<ConsolePage> {
   );
 
   late final Player _player;
+  late final CompletionEngine _completion;
+
   final _lines = Queue<_Line>();
-  final _subs = <StreamSubscription<MpvLogEntry>>[];
   final _scroll = ScrollController();
   final _input = TextEditingController();
-  final _inputFocus = FocusNode();
-  final _watchInput = TextEditingController();
+  final _search = TextEditingController();
+  late final FocusNode _inputFocus = FocusNode(onKeyEvent: _onKey);
 
-  _Tab _tab = _Tab.console;
-  int _levelThreshold = 4; // see _severity; default shows down to info
+  /// Selected log verbosity — both the level requested from mpv and the
+  /// display floor. Starts at info (the engine's configured level).
+  LogLevel _level = LogLevel.info;
   bool _autoscroll = true;
+  String _query = '';
 
-  final _watches = <String>[];
-  final _watchValues = <String, String>{};
-  Timer? _poll;
+  // Autocomplete state.
+  CompletionResult _result = CompletionResult.empty;
+  int _selected = 0;
+  int _computeSeq = 0;
+
+  // Command history (recalled with Up/Down when the popup is closed).
+  final _history = <String>[];
+  int _historyIndex = 0; // == _history.length means "current draft"
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_subs.isNotEmpty) return;
+  void onSubscribe() {
     _player = PlayerScope.of(context);
+    _completion = CompletionEngine(_player)..warmUp();
     for (final s in [_player.stream.log, _player.stream.internalLog]) {
-      _subs.add(s.listen((e) => _add(_Line(
+      listen(s, (e) => _add(_Line(
             _Kind.log,
             e.text,
             level: e.level,
             prefix: e.prefix,
-          ))));
+          )));
     }
-    _poll = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (_tab == _Tab.inspector && _watches.isNotEmpty) _pollWatches();
-    });
   }
 
   @override
   void dispose() {
-    for (final s in _subs) {
-      s.cancel();
-    }
-    _poll?.cancel();
     _scroll.dispose();
     _input.dispose();
+    _search.dispose();
     _inputFocus.dispose();
-    _watchInput.dispose();
     super.dispose();
   }
 
@@ -111,30 +112,36 @@ class _ConsolePageState extends State<ConsolePage> {
     }
   }
 
-  // Severity rank: lower = more severe. Used by the level filter.
-  static int _severity(LogLevel l) {
-    switch (l) {
-      case LogLevel.fatal:
-        return 0;
-      case LogLevel.error:
-        return 1;
-      case LogLevel.warn:
-        return 2;
-      case LogLevel.info:
-        return 4;
-      case LogLevel.v:
-        return 5;
-      case LogLevel.debug:
-        return 6;
-      case LogLevel.trace:
-        return 7;
-      case LogLevel.off:
-        return 8;
+  // Severity rank: lower = more severe.
+  static int _severity(LogLevel l) => switch (l) {
+        LogLevel.fatal => 0,
+        LogLevel.error => 1,
+        LogLevel.warn => 2,
+        LogLevel.info => 4,
+        LogLevel.v => 5,
+        LogLevel.debug => 6,
+        LogLevel.trace => 7,
+        LogLevel.off => 8,
+      };
+
+  bool _visible(_Line l) {
+    if (l.kind == _Kind.log && _severity(l.level) > _severity(_level)) {
+      return false;
     }
+    if (_query.isNotEmpty &&
+        !l.text.toLowerCase().contains(_query.toLowerCase()) &&
+        !l.prefix.toLowerCase().contains(_query.toLowerCase())) {
+      return false;
+    }
+    return true;
   }
 
-  bool _visible(_Line l) =>
-      l.kind != _Kind.log || _severity(l.level) <= _levelThreshold;
+  void _setLevel(LogLevel level) {
+    setState(() => _level = level);
+    // Ask mpv to actually emit down to this level (the display filter
+    // alone can't reveal messages the engine never sent).
+    _player.setLogLevel(level);
+  }
 
   Color _color(_Line l) {
     switch (l.kind) {
@@ -165,7 +172,12 @@ class _ConsolePageState extends State<ConsolePage> {
     final text = raw.trim();
     if (text.isEmpty) return;
     _add(_Line(_Kind.input, '› $text'));
+    _history
+      ..remove(text)
+      ..add(text);
+    _historyIndex = _history.length;
     _input.clear();
+    _closePopup();
     _inputFocus.requestFocus();
 
     final tokens = text.split(RegExp(r'\s+'));
@@ -198,37 +210,112 @@ class _ConsolePageState extends State<ConsolePage> {
     Clipboard.setData(ClipboardData(text: text));
   }
 
-  // ---- inspector ---------------------------------------------------
+  // ---- autocomplete ------------------------------------------------
 
-  Future<void> _pollWatches() async {
-    final updates = <String, String>{};
-    for (final name in _watches) {
-      try {
-        updates[name] = (await _player.getRawProperty(name)) ?? '<null>';
-      } catch (e) {
-        updates[name] = '<error>';
-      }
+  Future<void> _recompute() async {
+    final text = _input.text;
+    final cursor = _input.selection.baseOffset < 0
+        ? text.length
+        : _input.selection.baseOffset;
+    final seq = ++_computeSeq;
+    // Empty input is valid: it yields the whole command catalog.
+    final result = await _completion.compute(text, cursor);
+    if (!mounted || seq != _computeSeq) return; // a newer keystroke won
+    setState(() {
+      _result = result;
+      if (_selected >= result.suggestions.length) _selected = 0;
+      if (_selected < 0) _selected = 0;
+    });
+  }
+
+  void _closePopup() {
+    if (_result.isEmpty) return;
+    setState(() {
+      _result = CompletionResult.empty;
+      _selected = 0;
+    });
+  }
+
+  void _moveSelection(int delta) {
+    final n = _result.suggestions.length;
+    if (n == 0) return;
+    setState(() => _selected = (_selected + delta) % n < 0
+        ? (_selected + delta) % n + n
+        : (_selected + delta) % n);
+  }
+
+  void _accept(int index) {
+    final s = _result.suggestions[index];
+    final text = _input.text;
+    // Values usually end the line; commands/properties get a trailing
+    // space so the next token can be typed (or completed) straight away.
+    final trailing = s.kind == SuggestionKind.value ? '' : ' ';
+    final prefix = text.substring(0, _result.tokenStart);
+    final suffix = text.substring(_result.tokenEnd);
+    final composed = '$prefix${s.insertText}$trailing$suffix';
+    final caret = prefix.length + s.insertText.length + trailing.length;
+    _input.value = TextEditingValue(
+      text: composed,
+      selection: TextSelection.collapsed(offset: caret),
+    );
+    _inputFocus.requestFocus(); // keep focus after a popup-row tap
+    _recompute(); // surface the next argument's completions
+  }
+
+  // ---- history -----------------------------------------------------
+
+  void _recallHistory(int delta) {
+    if (_history.isEmpty) return;
+    final next = (_historyIndex + delta).clamp(0, _history.length);
+    if (next == _historyIndex) return;
+    _historyIndex = next;
+    final text = next == _history.length ? '' : _history[next];
+    _input.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
+  // ---- keyboard ----------------------------------------------------
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
     }
-    if (!mounted) return;
-    setState(() => _watchValues.addAll(updates));
-  }
+    final key = event.logicalKey;
+    final popupOpen = _result.suggestions.isNotEmpty;
 
-  void _addWatch(String raw) {
-    final name = raw.trim();
-    if (name.isEmpty || _watches.contains(name)) return;
-    setState(() {
-      _watches.add(name);
-      _watchValues[name] = '…';
-    });
-    _watchInput.clear();
-    _pollWatches();
-  }
-
-  void _removeWatch(String name) {
-    setState(() {
-      _watches.remove(name);
-      _watchValues.remove(name);
-    });
+    if (key == LogicalKeyboardKey.tab) {
+      if (popupOpen) {
+        _accept(_selected);
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      if (popupOpen) {
+        _closePopup();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      if (popupOpen) {
+        _moveSelection(1);
+      } else {
+        _recallHistory(1);
+      }
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      if (popupOpen) {
+        _moveSelection(-1);
+      } else {
+        _recallHistory(-1);
+      }
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   // ---- build -------------------------------------------------------
@@ -238,168 +325,192 @@ class _ConsolePageState extends State<ConsolePage> {
     return Column(
       children: [
         _Toolbar(
-          tab: _tab,
-          onTab: (t) => setState(() => _tab = t),
-          levelThreshold: _levelThreshold,
-          onLevel: (v) => setState(() => _levelThreshold = v),
+          level: _level,
+          onLevel: _setLevel,
+          search: _search,
+          onSearch: (q) => setState(() => _query = q),
           autoscroll: _autoscroll,
           onAutoscroll: () => setState(() => _autoscroll = !_autoscroll),
           onClear: () => setState(_lines.clear),
           onCopy: _copyAll,
         ),
         const Divider(height: 1, thickness: 1, color: Tokens.line),
-        Expanded(
-          child: _tab == _Tab.console ? _buildConsole() : _buildInspector(),
-        ),
+        Expanded(child: _buildConsole()),
       ],
     );
   }
 
   Widget _buildConsole() {
     final visible = _lines.where(_visible).toList(growable: false);
+    final activeCmd = _completion.activeCommand(_input.text);
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
           child: visible.isEmpty
-              ? const Center(
-                  child: Text('No log output yet.', style: Tokens.caption))
+              ? Center(
+                  child: Text(
+                    _query.isNotEmpty
+                        ? 'No lines match “$_query”.'
+                        : 'No log output yet.',
+                    style: Tokens.caption,
+                  ),
+                )
               : ListView.builder(
                   controller: _scroll,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Tokens.s16,
-                    vertical: Tokens.s8,
+                  padding: const EdgeInsets.fromLTRB(
+                    Tokens.s16,
+                    Tokens.s8,
+                    Tokens.s16,
+                    Tokens.s4,
                   ),
                   itemCount: visible.length,
-                  itemBuilder: (context, i) {
-                    final l = visible[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 1),
-                      child: SelectableText.rich(
-                        TextSpan(
-                          style: _mono,
-                          children: [
-                            if (l.kind == _Kind.log) ...[
-                              TextSpan(
-                                text: '${l.level.mpvValue.padRight(5)} ',
-                                style: _mono.copyWith(color: _color(l)),
-                              ),
-                              if (l.prefix.isNotEmpty)
-                                TextSpan(
-                                  text: '${l.prefix}: ',
-                                  style: _mono.copyWith(color: Tokens.fgFaint),
-                                ),
-                              TextSpan(text: l.text),
-                            ] else
-                              TextSpan(
-                                text: l.text,
-                                style: _mono.copyWith(color: _color(l)),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+                  itemBuilder: (context, i) => _logRow(visible[i]),
                 ),
         ),
-        const Divider(height: 1, thickness: 1, color: Tokens.line),
-        _InputBar(
-          controller: _input,
-          focusNode: _inputFocus,
-          onSubmit: _run,
+        // Popup + command box live in one tap region: tapping anywhere
+        // inside (box or a suggestion row) keeps the popup; tapping outside
+        // closes it and drops focus. The popup opens on a box click /
+        // typing — never on its own when the page first appears.
+        TapRegion(
+          onTapOutside: (_) {
+            if (_result.suggestions.isNotEmpty) _closePopup();
+            if (_inputFocus.hasFocus) _inputFocus.unfocus();
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Popup / signature hint sit directly above the command box,
+              // aligned to it (same inset), with no divider between.
+              if (_result.suggestions.isNotEmpty)
+                Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(Tokens.s16, 0, Tokens.s16, 0),
+                  child: SuggestionPopup(
+                    suggestions: _result.suggestions,
+                    selected: _selected,
+                    tokenSoFar: _result.tokenSoFar,
+                    onTap: _accept,
+                  ),
+                )
+              else if (activeCmd != null && activeCmd.signature.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      Tokens.s24, 0, Tokens.s16, Tokens.s4),
+                  child: Text(
+                    '${activeCmd.name}  ${activeCmd.signature}',
+                    style: Tokens.caption.copyWith(fontFamily: Tokens.mono),
+                  ),
+                ),
+              _inputBar(),
+            ],
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildInspector() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Tokens.s16,
-            Tokens.s8,
-            Tokens.s16,
-            Tokens.s8,
-          ),
-          child: _WatchInput(
-            controller: _watchInput,
-            onAdd: _addWatch,
-          ),
-        ),
-        Expanded(
-          child: _watches.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(Tokens.s24),
-                    child: Text(
-                      'Watch any mpv property live.\n'
-                      'Try: time-pos · ao · cache-buffering-state · metadata',
-                      style: Tokens.caption,
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(vertical: Tokens.s4),
-                  itemCount: _watches.length,
-                  separatorBuilder: (_, __) => const Divider(
-                      height: 1, thickness: 1, color: Tokens.line),
-                  itemBuilder: (context, i) {
-                    final name = _watches[i];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Tokens.s16,
-                        vertical: Tokens.s8,
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Text(name, style: _mono),
-                          ),
-                          const SizedBox(width: Tokens.s12),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              _watchValues[name] ?? '…',
-                              style: _mono.copyWith(color: Tokens.accent),
-                            ),
-                          ),
-                          InkWell(
-                            onTap: () => _removeWatch(name),
-                            child: const Padding(
-                              padding: EdgeInsets.all(2),
-                              child: Icon(Icons.close_rounded,
-                                  size: 15, color: Tokens.fgFaint),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+  Widget _logRow(_Line l) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      child: SelectableText.rich(
+        TextSpan(
+          style: _mono,
+          children: [
+            if (l.kind == _Kind.log) ...[
+              TextSpan(
+                text: '${l.level.mpvValue.padRight(5)} ',
+                style: _mono.copyWith(color: _color(l)),
+              ),
+              if (l.prefix.isNotEmpty)
+                TextSpan(
+                  text: '${l.prefix}: ',
+                  style: _mono.copyWith(color: Tokens.fgFaint),
                 ),
+              TextSpan(text: l.text),
+            ] else
+              TextSpan(
+                text: l.text,
+                style: _mono.copyWith(color: _color(l)),
+              ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _inputBar() {
+    // The prompt now lives inside the box, so the box spans the full width
+    // and lines up exactly with the popup above and the log inset.
+    //
+    // Stable key: the popup is inserted *before* this in the column, which
+    // shifts the input from index 0 to 1. Without a key, Flutter's
+    // position-based reconciliation would rebuild the TextField element and
+    // detach its FocusNode — so opening the popup would steal focus.
+    return Padding(
+      key: const ValueKey('console-input'),
+      padding: const EdgeInsets.fromLTRB(
+          Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+        decoration: ShapeDecoration(
+          color: Tokens.surface2,
+          shape: Tokens.squircle(Tokens.rSm),
+        ),
+        child: Row(
+          children: [
+            const Text('›',
+                style: TextStyle(color: Tokens.accent, fontSize: 16)),
+            const SizedBox(width: Tokens.s8),
+            Expanded(
+              child: TextField(
+                controller: _input,
+                focusNode: _inputFocus,
+                style: const TextStyle(
+                  fontFamily: Tokens.mono,
+                  fontSize: 12.5,
+                  color: Tokens.fg,
+                ),
+                cursorColor: Tokens.accent,
+                textInputAction: TextInputAction.send,
+                // Opens on click / typing; the outer TapRegion owns closing.
+                // No-op here so tapping a popup row doesn't drop focus first.
+                onTapOutside: (_) {},
+                onTap: () => _recompute(),
+                onChanged: (_) => _recompute(),
+                onSubmitted: _run,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: 'command',
+                  hintStyle: Tokens.caption,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: Tokens.s8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
 
 class _Toolbar extends StatelessWidget {
-  final _Tab tab;
-  final ValueChanged<_Tab> onTab;
-  final int levelThreshold;
-  final ValueChanged<int> onLevel;
+  final LogLevel level;
+  final ValueChanged<LogLevel> onLevel;
+  final TextEditingController search;
+  final ValueChanged<String> onSearch;
   final bool autoscroll;
   final VoidCallback onAutoscroll;
   final VoidCallback onClear;
   final VoidCallback onCopy;
 
   const _Toolbar({
-    required this.tab,
-    required this.onTab,
-    required this.levelThreshold,
+    required this.level,
     required this.onLevel,
+    required this.search,
+    required this.onSearch,
     required this.autoscroll,
     required this.onAutoscroll,
     required this.onClear,
@@ -410,106 +521,123 @@ class _Toolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
-        Tokens.s16,
-        Tokens.s8,
-        Tokens.s8,
-        Tokens.s8,
-      ),
+          Tokens.s16, Tokens.s8, Tokens.s8, Tokens.s8),
       child: Row(
         children: [
-          _Pill(
-              label: 'Console',
-              active: tab == _Tab.console,
-              onTap: () => onTab(_Tab.console)),
+          _LevelFilter(level: level, onSelect: onLevel),
+          const SizedBox(width: Tokens.s12),
+          // Search fills the gap and shrinks gracefully on narrow widths.
+          Expanded(child: _SearchField(controller: search, onChanged: onSearch)),
           const SizedBox(width: Tokens.s4),
-          _Pill(
-              label: 'Inspector',
-              active: tab == _Tab.inspector,
-              onTap: () => onTab(_Tab.inspector)),
-          const Spacer(),
-          if (tab == _Tab.console) ...[
-            _LevelFilter(threshold: levelThreshold, onSelect: onLevel),
-            const SizedBox(width: Tokens.s8),
-            IconButton(
-              onPressed: onAutoscroll,
-              icon: Icon(
-                autoscroll
-                    ? Icons.vertical_align_bottom_rounded
-                    : Icons.vertical_align_center_rounded,
-                size: 18,
-              ),
-              color: autoscroll ? Tokens.accent : Tokens.fgDim,
-              tooltip: 'Autoscroll',
-              splashRadius: 18,
+          IconButton(
+            onPressed: onAutoscroll,
+            icon: Icon(
+              autoscroll
+                  ? Icons.vertical_align_bottom_rounded
+                  : Icons.vertical_align_center_rounded,
+              size: 18,
             ),
-            IconButton(
-              onPressed: onCopy,
-              icon: const Icon(Icons.copy_rounded, size: 16),
-              color: Tokens.fgDim,
-              tooltip: 'Copy',
-              splashRadius: 18,
-            ),
-            IconButton(
-              onPressed: onClear,
-              icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              color: Tokens.fgDim,
-              tooltip: 'Clear',
-              splashRadius: 18,
-            ),
-          ],
+            color: autoscroll ? Tokens.accent : Tokens.fgDim,
+            tooltip: 'Autoscroll',
+            splashRadius: 18,
+          ),
+          IconButton(
+            onPressed: onCopy,
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            color: Tokens.fgDim,
+            tooltip: 'Copy',
+            splashRadius: 18,
+          ),
+          IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.delete_outline_rounded, size: 18),
+            color: Tokens.fgDim,
+            tooltip: 'Clear',
+            splashRadius: 18,
+          ),
         ],
       ),
     );
   }
 }
 
-class _Pill extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-  const _Pill({required this.label, required this.active, required this.onTap});
+/// Compact log search box (top-right). Filters the scrollback live; a clear
+/// affordance appears once there's a query.
+class _SearchField extends StatelessWidget {
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  const _SearchField({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: Tokens.squircle(Tokens.rSm),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(
-            horizontal: Tokens.s12,
-            vertical: Tokens.s6,
-          ),
-          decoration: ShapeDecoration(
-            color: active ? Tokens.accent : Tokens.surface2,
-            shape: Tokens.squircle(Tokens.rSm),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w600,
-              color: active ? Tokens.onAccent : Tokens.fgDim,
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 280),
+      height: 30,
+      decoration: ShapeDecoration(
+        color: Tokens.surface2,
+        shape: Tokens.squircle(Tokens.rSm),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.s8),
+      child: Row(
+        children: [
+          const Icon(Icons.search_rounded, size: 15, color: Tokens.fgFaint),
+          const SizedBox(width: Tokens.s6),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              style: const TextStyle(
+                fontFamily: Tokens.mono,
+                fontSize: 12,
+                color: Tokens.fg,
+              ),
+              cursorColor: Tokens.accent,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Search log',
+                hintStyle: Tokens.caption,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+              ),
             ),
           ),
-        ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (context, value, _) => value.text.isEmpty
+                ? const SizedBox.shrink()
+                : InkWell(
+                    onTap: () {
+                      controller.clear();
+                      onChanged('');
+                    },
+                    customBorder: const CircleBorder(),
+                    child: const Padding(
+                      padding: EdgeInsets.all(2),
+                      child: Icon(Icons.close_rounded,
+                          size: 14, color: Tokens.fgFaint),
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
 }
 
+/// Verbosity selector. Picking a level both raises mpv's runtime log level
+/// (so more messages are emitted) and sets the display floor.
 class _LevelFilter extends StatelessWidget {
-  final int threshold;
-  final ValueChanged<int> onSelect;
-  const _LevelFilter({required this.threshold, required this.onSelect});
+  final LogLevel level;
+  final ValueChanged<LogLevel> onSelect;
+  const _LevelFilter({required this.level, required this.onSelect});
 
-  static const _opts = <(String, int)>[
-    ('Err', 1),
-    ('Warn', 2),
-    ('Info', 4),
-    ('All', 8),
+  static const _opts = <(String, LogLevel)>[
+    ('Err', LogLevel.error),
+    ('Warn', LogLevel.warn),
+    ('Info', LogLevel.info),
+    ('Verbose', LogLevel.v),
+    ('Debug', LogLevel.debug),
+    ('Trace', LogLevel.trace),
   ];
 
   @override
@@ -531,13 +659,11 @@ class _LevelFilter extends StatelessWidget {
                 customBorder: Tokens.squircle(Tokens.rSm - 2),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+                    horizontal: 9,
                     vertical: Tokens.s4,
                   ),
                   decoration: ShapeDecoration(
-                    color: threshold == o.$2
-                        ? Tokens.accentWash
-                        : Colors.transparent,
+                    color: level == o.$2 ? Tokens.accent : Colors.transparent,
                     shape: Tokens.squircle(Tokens.rSm - 2),
                   ),
                   child: Text(
@@ -545,7 +671,7 @@ class _LevelFilter extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: threshold == o.$2 ? Tokens.accent : Tokens.fgDim,
+                      color: level == o.$2 ? Tokens.onAccent : Tokens.fgDim,
                     ),
                   ),
                 ),
@@ -553,113 +679,6 @@ class _LevelFilter extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _InputBar extends StatelessWidget {
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onSubmit;
-
-  const _InputBar({
-    required this.controller,
-    required this.focusNode,
-    required this.onSubmit,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
-      child: Row(
-        children: [
-          const Text('›', style: TextStyle(color: Tokens.accent, fontSize: 16)),
-          const SizedBox(width: Tokens.s8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
-              decoration: ShapeDecoration(
-                color: Tokens.surface2,
-                shape: Tokens.squircle(Tokens.rSm),
-              ),
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                style: const TextStyle(
-                  fontFamily: Tokens.mono,
-                  fontSize: 12.5,
-                  color: Tokens.fg,
-                ),
-                cursorColor: Tokens.accent,
-                textInputAction: TextInputAction.send,
-                onSubmitted: onSubmit,
-                decoration: const InputDecoration(
-                  isDense: true,
-                  hintText: 'command  ·  get <prop>  ·  set <prop> <value>',
-                  hintStyle: Tokens.caption,
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: Tokens.s8),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _WatchInput extends StatelessWidget {
-  final TextEditingController controller;
-  final ValueChanged<String> onAdd;
-  const _WatchInput({required this.controller, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: ShapeDecoration(
-              color: Tokens.surface2,
-              shape: Tokens.squircle(Tokens.rSm),
-            ),
-            child: TextField(
-              controller: controller,
-              style: const TextStyle(
-                fontFamily: Tokens.mono,
-                fontSize: 12.5,
-                color: Tokens.fg,
-              ),
-              cursorColor: Tokens.accent,
-              textInputAction: TextInputAction.done,
-              onSubmitted: onAdd,
-              decoration: const InputDecoration(
-                isDense: true,
-                hintText: 'mpv property to watch',
-                hintStyle: Tokens.caption,
-                prefixIcon: Icon(Icons.visibility_rounded,
-                    size: 16, color: Tokens.fgDim),
-                prefixIconConstraints: BoxConstraints(minWidth: 36),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: Tokens.s12,
-                  vertical: Tokens.s8,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: Tokens.s8),
-        IconButton(
-          onPressed: () => onAdd(controller.text),
-          icon: const Icon(Icons.add_rounded, size: 20),
-          color: Tokens.accent,
-          tooltip: 'Watch',
-        ),
-      ],
     );
   }
 }

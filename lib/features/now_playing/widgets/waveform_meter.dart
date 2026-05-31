@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -7,6 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/duration_format.dart';
+import '../../../util/reactive.dart';
 
 /// A Reaper-style tape meter: a time ruler with values on top, the track
 /// waveform below it, and a fixed-zoom view the user pans with a
@@ -32,10 +31,9 @@ class WaveformMeter extends StatefulWidget {
 }
 
 class _WaveformMeterState extends State<WaveformMeter>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, StreamListenerState<WaveformMeter> {
   late final Player _player;
   late final Ticker _ticker;
-  final _subs = <StreamSubscription>[];
   final _sw = Stopwatch();
 
   Duration _anchor = Duration.zero;
@@ -62,9 +60,7 @@ class _WaveformMeterState extends State<WaveformMeter>
   double _viewStart = 0;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_subs.isNotEmpty) return;
+  void onSubscribe() {
     _player = PlayerScope.of(context);
     final s = _player.state;
     _anchor = s.position;
@@ -81,30 +77,30 @@ class _WaveformMeterState extends State<WaveformMeter>
       _ticker.start();
     }
 
-    _subs.add(_player.stream.position.listen((p) {
+    listen(_player.stream.position, (p) {
       _anchor = p;
       _sw
         ..reset()
         ..start();
       if (mounted) setState(() {});
-    }));
-    _subs.add(_player.stream.duration.listen((d) {
+    });
+    listen(_player.stream.duration, (d) {
       if (!mounted) return;
       setState(() {
         if (d != _dur) _viewStart = 0; // new track → reset view to start
         _dur = d;
       });
-    }));
-    _subs.add(_player.stream.rate.listen((r) {
+    });
+    listen(_player.stream.rate, (r) {
       if (mounted) setState(() => _rate = r);
-    }));
-    _subs.add(_player.stream.seekable.listen((v) {
+    });
+    listen(_player.stream.seekable, (v) {
       if (mounted) setState(() => _seekable = v);
-    }));
-    _subs.add(_player.stream.waveform.listen((w) {
+    });
+    listen(_player.stream.waveform, (w) {
       if (mounted) setState(() => _wave = w);
-    }));
-    _subs.add(_player.stream.playWhenReady.listen((v) {
+    });
+    listen(_player.stream.playWhenReady, (v) {
       _playWhenReady = v;
       if (v) {
         _sw
@@ -117,14 +113,11 @@ class _WaveformMeterState extends State<WaveformMeter>
         if (_ticker.isActive) _ticker.stop();
       }
       if (mounted) setState(() {});
-    }));
+    });
   }
 
   @override
   void dispose() {
-    for (final s in _subs) {
-      s.cancel();
-    }
     _ticker.dispose();
     super.dispose();
   }

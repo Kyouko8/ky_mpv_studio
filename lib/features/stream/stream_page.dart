@@ -4,6 +4,8 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/section_body.dart';
+import 'media_server.dart';
+import 'server_library_tab.dart';
 
 /// One streamable reference URL.
 class StreamItem {
@@ -92,9 +94,133 @@ const _streamCategories = <StreamCategory>[
   ]),
 ];
 
-/// Browse and play reference network streams.
-class StreamPage extends StatelessWidget {
+/// The Stream surface: three windowed tabs — **Lab** (reference network
+/// streams), **Jellyfin**, and **Plex** (connect to a server and browse the
+/// paginated music library). The two media-server clients are created once
+/// and kept alive for the lifetime of the page.
+class StreamPage extends StatefulWidget {
   const StreamPage({super.key});
+
+  @override
+  State<StreamPage> createState() => _StreamPageState();
+}
+
+class _StreamPageState extends State<StreamPage> {
+  int _tab = 0;
+  final MediaServer _jellyfin = JellyfinServer();
+  final MediaServer _plex = PlexServer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _ChromeTabBar(
+          selected: _tab,
+          tabs: const ['Lab', 'Jellyfin', 'Plex'],
+          onSelect: (i) => setState(() => _tab = i),
+        ),
+        Expanded(
+          child: IndexedStack(
+            index: _tab,
+            sizing: StackFit.expand,
+            children: [
+              const _LabTab(),
+              ServerLibraryTab(server: _jellyfin),
+              ServerLibraryTab(server: _plex),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A Chrome/VS-Code-style tab strip: a raised [Tokens.surface] bar with
+/// rounded-top tabs. The active tab is filled with the content colour
+/// ([Tokens.bg]) so it visually merges into the page below, topped by an
+/// accent line; inactive tabs are transparent and dim.
+class _ChromeTabBar extends StatelessWidget {
+  final int selected;
+  final List<String> tabs;
+  final ValueChanged<int> onSelect;
+
+  const _ChromeTabBar({
+    required this.selected,
+    required this.tabs,
+    required this.onSelect,
+  });
+
+  static const _radius = BorderRadius.vertical(top: Radius.circular(12));
+  static const _shape = ContinuousRectangleBorder(borderRadius: _radius);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Tokens.surface,
+      padding: const EdgeInsets.only(
+          top: Tokens.s6, left: Tokens.s8, right: Tokens.s8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (var i = 0; i < tabs.length; i++) _tab(i),
+        ],
+      ),
+    );
+  }
+
+  Widget _tab(int i) {
+    final active = i == selected;
+    return Padding(
+      padding: const EdgeInsets.only(right: Tokens.s4),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: () => onSelect(i),
+          customBorder: _shape,
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: ShapeDecoration(
+              color: active ? Tokens.bg : Colors.transparent,
+              shape: _shape,
+            ),
+            // IntrinsicWidth bounds the column to the label width inside the
+            // unconstrained Row, so the stretched accent bar isn't asked for
+            // an infinite width.
+            child: IntrinsicWidth(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    height: 2,
+                    color: active ? Tokens.accent : Colors.transparent,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        Tokens.s16, Tokens.s6, Tokens.s16, Tokens.s12),
+                    child: Text(
+                      tabs[i],
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight:
+                            active ? FontWeight.w600 : FontWeight.w500,
+                        color: active ? Tokens.fg : Tokens.fgDim,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Reference-stream browser (the original Stream content).
+class _LabTab extends StatelessWidget {
+  const _LabTab();
 
   @override
   Widget build(BuildContext context) {

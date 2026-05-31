@@ -26,7 +26,10 @@ class AppTheme {
       splashFactory: NoSplash.splashFactory,
       splashColor: Colors.transparent,
       highlightColor: Colors.transparent,
-      hoverColor: const Color(0x0AFFFFFF),
+      // App-wide hover: a faint accent wash so every InkWell-backed element
+      // (sidebar, settings/effects grids, lists, tiles) lights up under the
+      // pointer.
+      hoverColor: Tokens.accent.withValues(alpha: 0.10),
       dividerColor: Tokens.line,
       textTheme: const TextTheme(
         titleLarge: Tokens.title,

@@ -1,11 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../state/player_scope.dart';
 import '../ui/tokens.dart';
+import '../util/reactive.dart';
 import 'desktop_shell.dart';
 import 'mobile_shell.dart';
 import 'sections.dart';
@@ -24,16 +22,13 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
-  StreamSubscription<MpvPlayerError>? _errorSub;
-
+class _AppShellState extends State<AppShell>
+    with StreamListenerState<AppShell> {
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_errorSub != null) return;
+  void onSubscribe() {
     // Surface engine errors (failed loads, decode errors) so they're not
     // silent — the full log stays in the Console panel.
-    _errorSub = PlayerScope.of(context).stream.error.listen((e) {
+    listen(PlayerScope.of(context).stream.error, (e) {
       if (!mounted) return;
       // Also echo to the debug console so failures show in `flutter run`.
       debugPrint('mpv error: ${e.message}');
@@ -46,12 +41,6 @@ class _AppShellState extends State<AppShell> {
         ),
       );
     });
-  }
-
-  @override
-  void dispose() {
-    _errorSub?.cancel();
-    super.dispose();
   }
 
   void _select(Section section) {

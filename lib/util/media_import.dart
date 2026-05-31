@@ -45,7 +45,7 @@ String baseNameNoExt(String path) {
 /// Opens a multi-select audio file picker. Returns the chosen absolute
 /// paths (empty if the user cancelled).
 Future<List<String>> pickAudioFiles() async {
-  final result = await FilePicker.platform.pickFiles(
+  final result = await FilePicker.pickFiles(
     allowMultiple: true,
     type: FileType.custom,
     allowedExtensions: kAudioExtensions.toList(),
@@ -58,7 +58,7 @@ Future<List<String>> pickAudioFiles() async {
 /// Opens a folder picker and returns every audio file inside it,
 /// recursively, sorted by path. Empty if cancelled or none found.
 Future<List<String>> pickAudioFolder() async {
-  final dir = await FilePicker.platform.getDirectoryPath(
+  final dir = await FilePicker.getDirectoryPath(
     dialogTitle: 'Add a folder of audio',
   );
   if (dir == null) return const [];

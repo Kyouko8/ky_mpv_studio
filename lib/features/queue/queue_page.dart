@@ -216,7 +216,8 @@ class _QueueTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           customBorder: Tokens.squircle(Tokens.rSm),
-          child: Container(
+          // Ink so the hover highlight shows over the card surface.
+          child: Ink(
             padding: const EdgeInsets.fromLTRB(
               Tokens.s12,
               Tokens.s8,

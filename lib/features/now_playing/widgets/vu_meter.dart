@@ -1,79 +1,58 @@
-import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../../audio/level_follower.dart';
+import '../../../audio/pcm_analysis.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
+import '../../../util/reactive.dart';
 
 /// A stereo peak meter fed by `player.stream.pcm`. Two bars (L / R) with
 /// pro PPM ballistics — fast attack, slow release, a latched peak-hold
-/// marker — and flat green/amber/red zones. Subscribing arms the PCM tap
-/// (shared with the spectrum); it disarms on unmount.
+/// marker — and flat green/amber/red zones. The ballistics live in
+/// [LevelFollower]; this widget just pushes frame peaks, ticks, and paints.
+/// Subscribing arms the PCM tap (shared with the spectrum); it disarms on
+/// unmount.
 ///
 /// [axis] picks horizontal bars (default) or vertical bars (for a slim
 /// meter beside the transport).
-class UvMeter extends StatefulWidget {
+class VuMeter extends StatefulWidget {
   final Axis axis;
-  const UvMeter({super.key, this.axis = Axis.horizontal});
+  const VuMeter({super.key, this.axis = Axis.horizontal});
 
   @override
-  State<UvMeter> createState() => _UvMeterState();
+  State<VuMeter> createState() => _VuMeterState();
 }
 
-class _UvMeterState extends State<UvMeter> with SingleTickerProviderStateMixin {
+class _VuMeterState extends State<VuMeter>
+    with SingleTickerProviderStateMixin, StreamListenerState<VuMeter> {
   static const double _minDb = -60;
   static const double _maxDb = 0;
-  static const double _tauAttack = 0.005;
-  static const double _tauRelease = 1.7;
-  static const int _holdMs = 1500;
-  static const double _fallDbPerSec = 12;
 
-  late final Player _player;
-  StreamSubscription<PcmFrame>? _sub;
+  final _left = LevelFollower(minDb: _minDb);
+  final _right = LevelFollower(minDb: _minDb);
+
   late final Ticker _ticker;
   Duration _lastTick = Duration.zero;
 
-  double _dbL = -120, _dbR = -120;
-  double _holdL = -120, _holdR = -120;
-  Duration _holdLAt = Duration.zero, _holdRAt = Duration.zero;
-  double _pendingL = -120, _pendingR = -120;
-
-  static double _ampToDb(double a) =>
-      a <= 1e-9 ? -120 : 20 * (math.log(a) / math.ln10);
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_onTick)..start();
+  }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_sub != null) return;
-    _player = PlayerScope.of(context);
-    _ticker = createTicker(_onTick)..start();
-    _sub = _player.stream.pcm.listen(_onFrame);
+  void onSubscribe() {
+    listen(PlayerScope.of(context).stream.pcm, _onFrame);
   }
 
   void _onFrame(PcmFrame f) {
-    final s = f.samples;
-    final ch = f.channels;
-    double pL = 0, pR = 0;
-    if (ch <= 1) {
-      for (final v in s) {
-        final a = v.abs();
-        if (a > pL) pL = a;
-      }
-      pR = pL;
-    } else {
-      for (var i = 0; i + 1 < s.length; i += ch) {
-        final l = s[i].abs();
-        if (l > pL) pL = l;
-        final r = s[i + 1].abs();
-        if (r > pR) pR = r;
-      }
-    }
-    final dbL = _ampToDb(pL), dbR = _ampToDb(pR);
-    if (dbL > _pendingL) _pendingL = dbL;
-    if (dbR > _pendingR) _pendingR = dbR;
+    final peaks = channelPeaks(f);
+    _left.push(peaks.left);
+    _right.push(peaks.right);
   }
 
   void _onTick(Duration elapsed) {
@@ -81,55 +60,25 @@ class _UvMeterState extends State<UvMeter> with SingleTickerProviderStateMixin {
     _lastTick = elapsed;
     if (dtMs <= 0) return;
     final dtS = dtMs / 1000.0;
-
-    final inL = _pendingL, inR = _pendingR;
-    _pendingL = -120;
-    _pendingR = -120;
-
-    _dbL = _advance(_dbL, inL, dtS);
-    _dbR = _advance(_dbR, inR, dtS);
-
-    final r = _hold(_holdL, _holdLAt, _dbL, elapsed, dtS);
-    _holdL = r.$1;
-    _holdLAt = r.$2;
-    final r2 = _hold(_holdR, _holdRAt, _dbR, elapsed, dtS);
-    _holdR = r2.$1;
-    _holdRAt = r2.$2;
-
+    _left.tick(dtS, elapsed);
+    _right.tick(dtS, elapsed);
     setState(() {});
-  }
-
-  double _advance(double current, double input, double dtS) {
-    final tau = input > current ? _tauAttack : _tauRelease;
-    final alpha = 1 - math.exp(-dtS / tau);
-    return current + alpha * (input - current);
-  }
-
-  (double, Duration) _hold(
-      double hold, Duration setAt, double db, Duration now, double dtS) {
-    if (db > hold) return (db, now);
-    if ((now - setAt).inMilliseconds > _holdMs) {
-      final next = hold - _fallDbPerSec * dtS;
-      return (next < db ? db : next, setAt);
-    }
-    return (hold, setAt);
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
     _ticker.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final painter = _UvPainter(
+    final painter = _VuPainter(
       axis: widget.axis,
-      dbL: _dbL.clamp(_minDb, _maxDb),
-      dbR: _dbR.clamp(_minDb, _maxDb),
-      holdL: _holdL.clamp(_minDb, _maxDb),
-      holdR: _holdR.clamp(_minDb, _maxDb),
+      dbL: _left.db.clamp(_minDb, _maxDb),
+      dbR: _right.db.clamp(_minDb, _maxDb),
+      holdL: _left.holdDb.clamp(_minDb, _maxDb),
+      holdR: _right.holdDb.clamp(_minDb, _maxDb),
       minDb: _minDb,
       maxDb: _maxDb,
     );
@@ -146,13 +95,13 @@ class _UvMeterState extends State<UvMeter> with SingleTickerProviderStateMixin {
   }
 }
 
-class _UvPainter extends CustomPainter {
+class _VuPainter extends CustomPainter {
   final Axis axis;
   final double dbL, dbR, holdL, holdR, minDb, maxDb;
   static const double _amberDb = -18;
   static const double _redDb = -6;
 
-  _UvPainter({
+  _VuPainter({
     required this.axis,
     required this.dbL,
     required this.dbR,
@@ -280,7 +229,7 @@ class _UvPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_UvPainter old) =>
+  bool shouldRepaint(_VuPainter old) =>
       old.axis != axis ||
       old.dbL != dbL ||
       old.dbR != dbR ||

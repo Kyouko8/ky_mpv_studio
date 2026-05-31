@@ -13,8 +13,8 @@ import 'sections.dart';
 /// Builds the app router. One [StatefulShellBranch] per [Section]; every
 /// branch stays mounted inside a keep-alive [IndexedStack], so player
 /// subscriptions and the Now Playing visualizers survive section switches.
-/// The custom [StatefulShellRoute.navigatorContainerBuilder] keeps that
-/// instant, flash-free switch instead of a page transition.
+/// Switching sections from the sidebar is deliberately instant (no
+/// transition) — the shared fade+slide is for in-page navigation only.
 GoRouter createAppRouter() {
   return GoRouter(
     initialLocation: Section.nowPlaying.path,

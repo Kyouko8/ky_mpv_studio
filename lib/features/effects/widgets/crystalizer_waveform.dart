@@ -10,11 +10,11 @@ import '../../../ui/tokens.dart';
 /// — in accent. Positive intensity sharpens transients (the accent trace
 /// grows spikier than the input); negative intensity smooths them. It's an
 /// illustration of the control's behaviour, not a live capture.
-class CrystalizerViz extends StatelessWidget {
+class CrystalizerWaveform extends StatelessWidget {
   final double intensity; // -10..10
   final bool enabled;
 
-  const CrystalizerViz({
+  const CrystalizerWaveform({
     super.key,
     required this.intensity,
     required this.enabled,

@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 /// Top-level navigable sections. The same set drives the desktop
 /// sidebar and the mobile tab bar — only the shell chrome differs.
 enum Section {
-  nowPlaying('Now Playing', 'Play', Icons.play_circle_outline_rounded, '/'),
+  nowPlaying('Playback', 'Play', Icons.play_circle_outline_rounded, '/'),
   queue('Queue', 'Queue', Icons.queue_music_rounded, '/queue'),
-  effects('Effects', 'FX', Icons.graphic_eq_rounded, '/effects'),
   stream('Stream', 'Stream', Icons.podcasts_rounded, '/stream'),
+  effects('Effects', 'FX', Icons.graphic_eq_rounded, '/effects'),
   settings('Settings', 'More', Icons.tune_rounded, '/settings'),
   console('Console', 'Logs', Icons.terminal_rounded, '/console');
 

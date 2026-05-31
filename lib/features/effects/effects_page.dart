@@ -1,20 +1,21 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../audio/biquad.dart';
+import '../../audio/pcm_analysis.dart';
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
+import '../../util/reactive.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/section_body.dart';
+import '../../ui/widgets/section_switcher.dart';
 import '../../generated/catalog.dart';
 import 'widgets/equalizer.dart';
 import 'widgets/compressor_curve.dart';
 import 'widgets/response_curve.dart';
 import 'widgets/stereo_scope.dart';
 import 'widgets/crossfeed_diagram.dart';
-import 'widgets/crystalizer_viz.dart';
+import 'widgets/crystalizer_waveform.dart';
 import 'widgets/loudness_gauge.dart';
 
 /// The DSP rack. The curated effects that earn a bespoke visualiser are
@@ -35,32 +36,24 @@ class EffectsPage extends StatefulWidget {
   State<EffectsPage> createState() => _EffectsPageState();
 }
 
-class _EffectsPageState extends State<EffectsPage> {
+class _EffectsPageState extends State<EffectsPage>
+    with StreamListenerState<EffectsPage> {
   late final Player _player;
   late AudioEffects _fx;
   bool _editing = false;
-  StreamSubscription<AudioEffects>? _sub;
 
   /// Index of the open featured editor; null = the grid landing.
   int? _pushed;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_sub != null) return;
+  void onSubscribe() {
     _player = PlayerScope.of(context);
     _fx = _player.state.audioEffects;
-    _sub = _player.stream.audioEffects.listen((v) {
+    listen(_player.stream.audioEffects, (v) {
       // Resync from the engine only when the user isn't mid-drag, so an
       // optimistic local draft is never clobbered.
       if (!_editing && mounted && v != _fx) setState(() => _fx = v);
     });
-  }
-
-  @override
-  void dispose() {
-    _sub?.cancel();
-    super.dispose();
   }
 
   /// Updates the local draft only (no engine write) — used during drags.
@@ -266,7 +259,7 @@ class _EffectsPageState extends State<EffectsPage> {
             _fx.copyWith(asubboost: AsubboostSettings(enabled: sb.enabled))),
         graphic: ResponseCurve(
           response: BiquadResponse.lowShelf(
-              sb.cutoff, 20 * math.log(sb.boost) / math.ln10),
+              sb.cutoff, amplitudeToDb(sb.boost)),
           markerHz: sb.cutoff,
           enabled: sb.enabled,
         ),
@@ -339,7 +332,7 @@ class _EffectsPageState extends State<EffectsPage> {
             _commitNow(_fx.copyWith(crystalizer: cr.copyWith(enabled: v))),
         onReset: () => _commitNow(
             _fx.copyWith(crystalizer: CrystalizerSettings(enabled: cr.enabled))),
-        graphic: CrystalizerViz(intensity: cr.i, enabled: cr.enabled),
+        graphic: CrystalizerWaveform(intensity: cr.i, enabled: cr.enabled),
         controls: [
           _spec('Intensity', cr.i, -10, 10,
               (v) => _fx.copyWith(crystalizer: cr.copyWith(i: v)),
@@ -381,18 +374,19 @@ class _EffectsPageState extends State<EffectsPage> {
   @override
   Widget build(BuildContext context) {
     final featured = _featured();
-    if (_pushed != null && _pushed! < featured.length) {
-      final f = featured[_pushed!];
-      return Column(
-        children: [
-          _BackRow(title: f.title, onBack: () => setState(() => _pushed = null)),
-          const Divider(height: 1, thickness: 1, color: Tokens.line),
-          Expanded(child: _FeaturedDetail(spec: f)),
-        ],
-      );
-    }
-
-    return SingleChildScrollView(
+    final pushed = _pushed != null && _pushed! < featured.length;
+    final Widget body = pushed
+        ? Column(
+            children: [
+              _BackRow(
+                title: featured[_pushed!].title,
+                onBack: () => setState(() => _pushed = null),
+              ),
+              const Divider(height: 1, thickness: 1, color: Tokens.line),
+              Expanded(child: _FeaturedDetail(spec: featured[_pushed!])),
+            ],
+          )
+        : SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
           Tokens.s20, Tokens.s8, Tokens.s20, Tokens.s32),
       child: Column(
@@ -424,6 +418,12 @@ class _EffectsPageState extends State<EffectsPage> {
           ),
           for (final cat in kCatalogCategories) _CatalogTile(category: cat),
         ],
+      ),
+    );
+    return SectionSwitcher(
+      child: KeyedSubtree(
+        key: ValueKey<int?>(pushed ? _pushed : null),
+        child: body,
       ),
     );
   }
@@ -512,7 +512,9 @@ class _FxTile extends StatelessWidget {
         onTap: onTap,
         customBorder:
             ContinuousRectangleBorder(borderRadius: BorderRadius.circular(40)),
-        child: Container(
+        // Ink (not Container) so the hover/ink highlight paints on the
+        // Material above the surface fill instead of being hidden behind it.
+        child: Ink(
           decoration: ShapeDecoration(color: Tokens.surface, shape: shape),
           padding: const EdgeInsets.all(Tokens.s16),
           child: Stack(
@@ -695,9 +697,7 @@ class _CatalogTile extends StatelessWidget {
         child: InkWell(
           customBorder: Tokens.squircle(Tokens.rMd),
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => _CatalogCategoryScreen(category: category),
-            ),
+            fadeSlidePageRoute(_CatalogCategoryScreen(category: category)),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(

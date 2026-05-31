@@ -160,7 +160,7 @@ class _NavItem extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
             decoration: ShapeDecoration(
-              color: active ? Tokens.accentWash : Colors.transparent,
+              color: active ? Tokens.accent : Colors.transparent,
               shape: Tokens.squircle(Tokens.rSm),
             ),
             child: Padding(
@@ -173,7 +173,7 @@ class _NavItem extends StatelessWidget {
                   Icon(
                     section.icon,
                     size: 18,
-                    color: active ? Tokens.accent : Tokens.fgDim,
+                    color: active ? Tokens.onAccent : Tokens.fgDim,
                   ),
                   const SizedBox(width: Tokens.s12),
                   Text(
@@ -181,7 +181,7 @@ class _NavItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 13.5,
                       fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                      color: active ? Tokens.fg : Tokens.fgDim,
+                      color: active ? Tokens.onAccent : Tokens.fgDim,
                     ),
                   ),
                 ],

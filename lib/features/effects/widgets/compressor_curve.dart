@@ -1,12 +1,12 @@
-import 'dart:async';
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../../audio/dynamics.dart';
+import '../../../audio/pcm_analysis.dart';
 import '../../../state/player_scope.dart';
 import '../../../ui/tokens.dart';
+import '../../../util/reactive.dart';
 
 /// The compressor's transfer curve — the universal dB-in / dB-out knee
 /// diagram. The accent curve bends away from the faint unity (y = x)
@@ -41,68 +41,49 @@ class CompressorCurve extends StatefulWidget {
 const double _dbFloor = -60;
 const double _dbCeil = 0;
 
-double _ampToDb(double v) => 20 * (math.log(v.clamp(1e-9, 64.0)) / math.ln10);
-
-class _CompressorCurveState extends State<CompressorCurve> {
+class _CompressorCurveState extends State<CompressorCurve>
+    with StreamListenerState<CompressorCurve> {
   final _inDb = ValueNotifier<double>(_dbFloor);
   final _grDb = ValueNotifier<double>(0);
-  StreamSubscription<PcmFrame>? _preSub;
-  StreamSubscription<PcmFrame>? _postSub;
   double _inRms = _dbFloor;
   double _outRms = _dbFloor;
   double _inPeak = _dbFloor;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_preSub != null) return;
+  void onSubscribe() {
     final player = PlayerScope.of(context);
-    _preSub = player.stream
-        .tap(AudioEffect.acompressor, side: TapSide.pre)
-        .listen((pcm) {
+    listen(player.stream.tap(AudioEffect.acompressor, side: TapSide.pre),
+        (pcm) {
       if (!mounted) return;
-      _inPeak = _peakDb(pcm, _inPeak);
-      _inRms = _rmsDb(pcm, _inRms);
+      _inPeak = _smoothPeak(pcm, _inPeak);
+      _inRms = _smoothRms(pcm, _inRms);
       _inDb.value = _inPeak;
       _grDb.value = (_inRms - _outRms).clamp(0.0, 24.0);
     });
-    _postSub = player.stream
-        .tap(AudioEffect.acompressor, side: TapSide.post)
-        .listen((pcm) {
+    listen(player.stream.tap(AudioEffect.acompressor, side: TapSide.post),
+        (pcm) {
       if (!mounted) return;
-      _outRms = _rmsDb(pcm, _outRms);
+      _outRms = _smoothRms(pcm, _outRms);
       _grDb.value = (_inRms - _outRms).clamp(0.0, 24.0);
     });
   }
 
-  double _peakDb(PcmFrame f, double prev) {
-    var peak = 0.0;
-    for (final v in f.samples) {
-      final a = v.abs();
-      if (a > peak) peak = a;
-    }
-    final db = peak <= 1e-6 ? _dbFloor : _ampToDb(peak.toDouble());
-    final c = db.clamp(_dbFloor, _dbCeil);
-    final alpha = c > prev ? 0.6 : 0.06;
-    return prev + alpha * (c - prev);
+  /// Peak level in dB, snappy attack / slow release.
+  double _smoothPeak(PcmFrame f, double prev) {
+    final db =
+        amplitudeToDb(framePeak(f), floorDb: _dbFloor).clamp(_dbFloor, _dbCeil);
+    return emaTowards(prev, db.toDouble(), db > prev ? 0.6 : 0.06);
   }
 
-  double _rmsDb(PcmFrame f, double prev) {
-    final s = f.samples;
-    if (s.isEmpty) return prev;
-    var sum = 0.0;
-    for (final v in s) {
-      sum += v * v;
-    }
-    final rms = math.sqrt(sum / s.length);
-    final db = rms <= 1e-6 ? _dbFloor : _ampToDb(rms.toDouble());
-    return prev + 0.3 * (db.clamp(_dbFloor, _dbCeil) - prev);
+  /// Short-term RMS level in dB, medium smoothing.
+  double _smoothRms(PcmFrame f, double prev) {
+    final db =
+        amplitudeToDb(frameRms(f), floorDb: _dbFloor).clamp(_dbFloor, _dbCeil);
+    return emaTowards(prev, db.toDouble(), 0.3);
   }
 
   @override
   void dispose() {
-    _preSub?.cancel();
-    _postSub?.cancel();
     _inDb.dispose();
     _grDb.dispose();
     super.dispose();
@@ -117,10 +98,10 @@ class _CompressorCurveState extends State<CompressorCurve> {
         child: CustomPaint(
           size: Size.infinite,
           painter: _KneePainter(
-            thresholdDb: _ampToDb(widget.threshold),
+            thresholdDb: amplitudeToDb(widget.threshold),
             ratio: widget.ratio,
-            kneeDb: _ampToDb(widget.knee.clamp(1.0, 8.0)),
-            makeupDb: _ampToDb(widget.makeup),
+            kneeDb: amplitudeToDb(widget.knee.clamp(1.0, 8.0)),
+            makeupDb: amplitudeToDb(widget.makeup),
             enabled: widget.enabled,
             inDb: _inDb,
             grDb: _grDb,
@@ -154,19 +135,13 @@ class _KneePainter extends CustomPainter {
   static const double _bottomGutter = 16;
   static const _grid = [-48.0, -36.0, -24.0, -12.0];
 
-  double _kneeOut(double inDb) {
-    final diff = inDb - thresholdDb;
-    double out;
-    if (kneeDb > 0 && (2 * diff).abs() <= kneeDb) {
-      final factor = (1.0 / ratio - 1.0) / (2.0 * kneeDb);
-      out = inDb + factor * math.pow(diff + kneeDb / 2, 2).toDouble();
-    } else if (diff > kneeDb / 2) {
-      out = thresholdDb + diff / ratio;
-    } else {
-      out = inDb;
-    }
-    return out + makeupDb;
-  }
+  double _kneeOut(double inDb) => compressorKneeDb(
+        inDb,
+        thresholdDb: thresholdDb,
+        ratio: ratio,
+        kneeDb: kneeDb,
+        makeupDb: makeupDb,
+      );
 
   @override
   void paint(Canvas canvas, Size size) {

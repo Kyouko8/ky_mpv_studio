@@ -8,7 +8,7 @@ import 'widgets/cover_art.dart';
 import 'widgets/spectrum_curve.dart';
 import 'widgets/track_info.dart';
 import 'widgets/transport_controls.dart';
-import 'widgets/uv_meter.dart';
+import 'widgets/vu_meter.dart';
 import 'widgets/volume_control.dart';
 import 'widgets/waveform_meter.dart';
 
@@ -188,7 +188,7 @@ class _RowControls extends StatelessWidget {
         SizedBox(
           width: 44,
           height: coverSize,
-          child: const UvMeter(axis: Axis.vertical),
+          child: const VuMeter(axis: Axis.vertical),
         ),
       ],
     );
@@ -217,7 +217,7 @@ class _StackedControls extends StatelessWidget {
         const SizedBox(height: Tokens.s12),
         const VolumeControl(axis: Axis.horizontal),
         const SizedBox(height: Tokens.s8),
-        const UvMeter(axis: Axis.horizontal),
+        const VuMeter(axis: Axis.horizontal),
       ],
     );
   }

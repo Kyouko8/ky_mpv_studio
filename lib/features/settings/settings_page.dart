@@ -6,6 +6,7 @@ import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/section_body.dart';
+import '../../ui/widgets/section_switcher.dart';
 import '../../util/reactive.dart';
 import 'groups/ab_loop_group.dart';
 import 'groups/audio_engine_group.dart';
@@ -82,22 +83,24 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     // Grid of squircle boxes; tapping one pushes its detail with a back row.
-    if (_pushed == null) {
-      return _CategoryGrid(
-        categories: _categories,
-        onSelect: (i) => setState(() => _pushed = i),
-      );
-    }
-    final i = _pushed!;
-    return Column(
-      children: [
-        _BackRow(
-          title: _categories[i].title,
-          onBack: () => setState(() => _pushed = null),
-        ),
-        const Divider(height: 1, thickness: 1, color: Tokens.line),
-        Expanded(child: _detail(i)),
-      ],
+    final i = _pushed;
+    final Widget body = i == null
+        ? _CategoryGrid(
+            categories: _categories,
+            onSelect: (j) => setState(() => _pushed = j),
+          )
+        : Column(
+            children: [
+              _BackRow(
+                title: _categories[i].title,
+                onBack: () => setState(() => _pushed = null),
+              ),
+              const Divider(height: 1, thickness: 1, color: Tokens.line),
+              Expanded(child: _detail(i)),
+            ],
+          );
+    return SectionSwitcher(
+      child: KeyedSubtree(key: ValueKey(_pushed), child: body),
     );
   }
 }
@@ -153,7 +156,8 @@ class _CategoryCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         customBorder: shape,
-        child: Container(
+        // Ink (not Container) so the hover highlight shows over the surface.
+        child: Ink(
           decoration: ShapeDecoration(
             color: Tokens.surface,
             shape: ContinuousRectangleBorder(
