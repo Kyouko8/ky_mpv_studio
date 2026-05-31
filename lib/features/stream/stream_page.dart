@@ -269,10 +269,7 @@ class _StreamTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: Tokens.s8),
       decoration: ShapeDecoration(
         color: Tokens.surface,
-        shape: Tokens.squircle(
-          Tokens.rMd,
-          side: const BorderSide(color: Tokens.line, width: 1),
-        ),
+        shape: Tokens.squircle(Tokens.rMd),
       ),
       child: Material(
         type: MaterialType.transparency,

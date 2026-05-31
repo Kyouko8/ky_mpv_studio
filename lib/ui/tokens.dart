@@ -50,6 +50,12 @@ class Tokens {
         side: side,
       );
 
+  /// Shared height for every interactive control app-wide — search/text
+  /// fields, segmented controls, dropdowns — so they line up exactly on a
+  /// row and read uniformly across pages. Matches the segmented control's
+  /// natural height.
+  static const double controlH = 38;
+
   // ---- Spacing ----------------------------------------------------
   static const double s2 = 2;
   static const double s4 = 4;

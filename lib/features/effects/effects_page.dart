@@ -6,6 +6,7 @@ import '../../audio/pcm_analysis.dart';
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../util/reactive.dart';
+import '../../ui/widgets/back_bar.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/section_body.dart';
 import '../../ui/widgets/section_switcher.dart';
@@ -378,11 +379,10 @@ class _EffectsPageState extends State<EffectsPage>
     final Widget body = pushed
         ? Column(
             children: [
-              _BackRow(
+              BackBar(
                 title: featured[_pushed!].title,
                 onBack: () => setState(() => _pushed = null),
               ),
-              const Divider(height: 1, thickness: 1, color: Tokens.line),
               Expanded(child: _FeaturedDetail(spec: featured[_pushed!])),
             ],
           )
@@ -502,10 +502,8 @@ class _FxTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final on = spec.enabled;
-    final shape = ContinuousRectangleBorder(
-      borderRadius: BorderRadius.circular(40),
-      side: BorderSide(color: on ? Tokens.accentDim : Tokens.line, width: 1),
-    );
+    final shape =
+        ContinuousRectangleBorder(borderRadius: BorderRadius.circular(40));
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
@@ -515,7 +513,11 @@ class _FxTile extends StatelessWidget {
         // Ink (not Container) so the hover/ink highlight paints on the
         // Material above the surface fill instead of being hidden behind it.
         child: Ink(
-          decoration: ShapeDecoration(color: Tokens.surface, shape: shape),
+          // Active fill (accent wash) replaces the old "enabled" border.
+          decoration: ShapeDecoration(
+            color: on ? Tokens.accentWash : Tokens.surface,
+            shape: shape,
+          ),
           padding: const EdgeInsets.all(Tokens.s16),
           child: Stack(
             children: [
@@ -633,44 +635,9 @@ class _DetailCard extends StatelessWidget {
       padding: padding,
       decoration: ShapeDecoration(
         color: Tokens.surface,
-        shape: Tokens.squircle(
-          Tokens.rMd,
-          side: const BorderSide(color: Tokens.line, width: 1),
-        ),
+        shape: Tokens.squircle(Tokens.rMd),
       ),
       child: child,
-    );
-  }
-}
-
-/// Back affordance shown atop a pushed editor — mirrors the Settings
-/// detail header.
-class _BackRow extends StatelessWidget {
-  final String title;
-  final VoidCallback onBack;
-  const _BackRow({required this.title, required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onBack,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
-            child: Row(
-              children: [
-                const Icon(Icons.chevron_left_rounded,
-                    size: 22, color: Tokens.fgDim),
-                const SizedBox(width: Tokens.s4),
-                Text(title, style: Tokens.heading),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -687,10 +654,7 @@ class _CatalogTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: Tokens.s8),
       decoration: ShapeDecoration(
         color: Tokens.surface,
-        shape: Tokens.squircle(
-          Tokens.rMd,
-          side: const BorderSide(color: Tokens.line, width: 1),
-        ),
+        shape: Tokens.squircle(Tokens.rMd),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -732,15 +696,19 @@ class _CatalogCategoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Tokens.bg,
-      appBar: AppBar(
-        backgroundColor: Tokens.bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        foregroundColor: Tokens.fg,
-        iconTheme: const IconThemeData(color: Tokens.fgDim),
-        title: Text(category.title, style: Tokens.heading),
+      body: SafeArea(
+        child: Column(
+          children: [
+            BackBar(
+              title: category.title,
+              onBack: () => Navigator.of(context).pop(),
+            ),
+            Expanded(
+              child: SectionBody(children: [category.builder(context)]),
+            ),
+          ],
+        ),
       ),
-      body: SectionBody(children: [category.builder(context)]),
     );
   }
 }

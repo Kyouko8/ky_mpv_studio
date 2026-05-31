@@ -397,36 +397,52 @@ class SegmentOption<T> {
 
 /// A flat squircle pill of mutually-exclusive options. Used for short enum
 /// picks (loop, gapless, cache mode, normalization, FFT window).
+///
+/// By default the segments share the width equally ([expand] `true`); set
+/// [expand] `false` for a compact pill that hugs its content — e.g. when it
+/// sits inline in a toolbar next to other controls.
 class SegmentedControl<T> extends StatelessWidget {
   final List<SegmentOption<T>> options;
   final T selected;
   final ValueChanged<T> onSelect;
+  final bool expand;
 
   const SegmentedControl({
     super.key,
     required this.options,
     required this.selected,
     required this.onSelect,
+    this.expand = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      height: Tokens.controlH,
       decoration: ShapeDecoration(
         color: Tokens.surface2,
         shape: Tokens.squircle(Tokens.rSm),
       ),
       padding: const EdgeInsets.all(3),
       child: Row(
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           for (final o in options)
-            Expanded(
-              child: _Segment(
+            if (expand)
+              Expanded(
+                child: _Segment(
+                  label: o.label,
+                  active: o.value == selected,
+                  onTap: () => onSelect(o.value),
+                ),
+              )
+            else
+              _Segment(
                 label: o.label,
                 active: o.value == selected,
                 onTap: () => onSelect(o.value),
+                hugContent: true,
               ),
-            ),
         ],
       ),
     );
@@ -437,10 +453,16 @@ class _Segment extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
+
+  /// Adds lateral padding so the segment reads well when it sizes to its
+  /// label instead of filling an equal share of the row.
+  final bool hugContent;
+
   const _Segment({
     required this.label,
     required this.active,
     required this.onTap,
+    this.hugContent = false,
   });
 
   @override
@@ -452,7 +474,10 @@ class _Segment extends StatelessWidget {
         customBorder: Tokens.squircle(Tokens.rSm - 2),
         child: Container(
           alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
+          padding: EdgeInsets.symmetric(
+            horizontal: hugContent ? Tokens.s8 : 0,
+            vertical: Tokens.s8,
+          ),
           decoration: ShapeDecoration(
             color: active ? Tokens.accent : Colors.transparent,
             shape: Tokens.squircle(Tokens.rSm - 2),
@@ -560,10 +585,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
         constraints: const BoxConstraints(maxHeight: 280),
         decoration: ShapeDecoration(
           color: Tokens.surface3,
-          shape: Tokens.squircle(
-            Tokens.rSm,
-            side: const BorderSide(color: Tokens.line2, width: 1),
-          ),
+          shape: Tokens.squircle(Tokens.rSm),
         ),
         clipBehavior: Clip.antiAlias,
         child: SingleChildScrollView(
@@ -606,19 +628,11 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
           onTap: _toggle,
           customBorder: Tokens.squircle(Tokens.rSm),
           child: Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Tokens.s12,
-              vertical: 10,
-            ),
+            height: Tokens.controlH,
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
             decoration: ShapeDecoration(
               color: Tokens.surface2,
-              shape: Tokens.squircle(
-                Tokens.rSm,
-                side: BorderSide(
-                  color: _open ? Tokens.accentDim : Tokens.line2,
-                  width: 1,
-                ),
-              ),
+              shape: Tokens.squircle(Tokens.rSm),
             ),
             child: Row(
               children: [

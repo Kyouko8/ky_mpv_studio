@@ -241,10 +241,7 @@ class _LogTile extends StatelessWidget {
       ),
       decoration: ShapeDecoration(
         color: Tokens.surface,
-        shape: Tokens.squircle(
-          Tokens.rSm,
-          side: const BorderSide(color: Tokens.line, width: 1),
-        ),
+        shape: Tokens.squircle(Tokens.rSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

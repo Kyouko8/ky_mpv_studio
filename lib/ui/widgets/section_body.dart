@@ -36,8 +36,8 @@ class SectionBody extends StatelessWidget {
 }
 
 /// A labelled group of settings rows inside a single flat card. The
-/// label sits above the card in caption type; rows are separated by
-/// hairlines.
+/// label sits above the card in caption type; rows sit flush, separated
+/// only by their own vertical rhythm.
 class SettingsGroup extends StatelessWidget {
   final String label;
   final List<Widget> children;
@@ -50,20 +50,15 @@ class SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Each row carries its own horizontal padding; the hairline dividers
-    // are added edge to edge so they run the full width of the card.
-    final rows = <Widget>[];
-    for (var i = 0; i < children.length; i++) {
-      if (i > 0) {
-        rows.add(const Divider(height: 1, thickness: 1, color: Tokens.line));
-      }
-      rows.add(
+    // Each row carries its own horizontal padding and vertical rhythm; the
+    // rows sit flush in the surface card with no separating lines.
+    final rows = <Widget>[
+      for (final child in children)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
-          child: children[i],
+          child: child,
         ),
-      );
-    }
+    ];
     return Padding(
       padding: const EdgeInsets.only(bottom: Tokens.s24),
       child: Column(
@@ -82,10 +77,7 @@ class SettingsGroup extends StatelessWidget {
             clipBehavior: Clip.antiAlias,
             decoration: ShapeDecoration(
               color: Tokens.surface,
-              shape: Tokens.squircle(
-                Tokens.rMd,
-                side: const BorderSide(color: Tokens.line, width: 1),
-              ),
+              shape: Tokens.squircle(Tokens.rMd),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -6,6 +6,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
+import '../../ui/widgets/controls.dart';
 import '../../util/reactive.dart';
 import 'completion_engine.dart';
 import 'suggestion_popup.dart';
@@ -59,6 +60,7 @@ class _ConsolePageState extends State<ConsolePage>
   /// display floor. Starts at info (the engine's configured level).
   LogLevel _level = LogLevel.info;
   bool _autoscroll = true;
+  bool _scrollScheduled = false;
   String _query = '';
 
   // Autocomplete state.
@@ -103,8 +105,14 @@ class _ConsolePageState extends State<ConsolePage>
         _lines.removeFirst();
       }
     });
-    if (_autoscroll) {
+    // Coalesce the jump: a flood of lines can land many times per frame
+    // (ffmpeg debug spam), and scheduling one post-frame callback each
+    // would stack hundreds of redundant jumps. One pending jump per frame
+    // is enough — it always targets the latest maxScrollExtent.
+    if (_autoscroll && !_scrollScheduled) {
+      _scrollScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollScheduled = false;
         if (_scroll.hasClients) {
           _scroll.jumpTo(_scroll.position.maxScrollExtent);
         }
@@ -334,7 +342,6 @@ class _ConsolePageState extends State<ConsolePage>
           onClear: () => setState(_lines.clear),
           onCopy: _copyAll,
         ),
-        const Divider(height: 1, thickness: 1, color: Tokens.line),
         Expanded(child: _buildConsole()),
       ],
     );
@@ -356,16 +363,25 @@ class _ConsolePageState extends State<ConsolePage>
                     style: Tokens.caption,
                   ),
                 )
-              : ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(
-                    Tokens.s16,
-                    Tokens.s8,
-                    Tokens.s16,
-                    Tokens.s4,
+              // One SelectionArea for the whole log keeps text drag-select
+              // (across rows) without making each row a SelectableText. Per-
+              // row SelectableText registers every line as a read-only text
+              // field in the semantics tree; under a high-frequency log flood
+              // that two-pane semantics layout fights SliverList's offset
+              // estimation and throws "RenderViewport exceeded its maximum
+              // number of layout cycles". Plain Text rows avoid that entirely.
+              : SelectionArea(
+                  child: ListView.builder(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(
+                      Tokens.s16,
+                      Tokens.s8,
+                      Tokens.s16,
+                      Tokens.s4,
+                    ),
+                    itemCount: visible.length,
+                    itemBuilder: (context, i) => _logRow(visible[i]),
                   ),
-                  itemCount: visible.length,
-                  itemBuilder: (context, i) => _logRow(visible[i]),
                 ),
         ),
         // Popup + command box live in one tap region: tapping anywhere
@@ -414,7 +430,7 @@ class _ConsolePageState extends State<ConsolePage>
   Widget _logRow(_Line l) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
-      child: SelectableText.rich(
+      child: Text.rich(
         TextSpan(
           style: _mono,
           children: [
@@ -453,6 +469,7 @@ class _ConsolePageState extends State<ConsolePage>
       padding: const EdgeInsets.fromLTRB(
           Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
       child: Container(
+        height: Tokens.controlH,
         padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
         decoration: ShapeDecoration(
           color: Tokens.surface2,
@@ -524,7 +541,19 @@ class _Toolbar extends StatelessWidget {
           Tokens.s16, Tokens.s8, Tokens.s8, Tokens.s8),
       child: Row(
         children: [
-          _LevelFilter(level: level, onSelect: onLevel),
+          SegmentedControl<LogLevel>(
+            expand: false,
+            selected: level,
+            onSelect: onLevel,
+            options: const [
+              SegmentOption(LogLevel.error, 'Err'),
+              SegmentOption(LogLevel.warn, 'Warn'),
+              SegmentOption(LogLevel.info, 'Info'),
+              SegmentOption(LogLevel.v, 'Verbose'),
+              SegmentOption(LogLevel.debug, 'Debug'),
+              SegmentOption(LogLevel.trace, 'Trace'),
+            ],
+          ),
           const SizedBox(width: Tokens.s12),
           // Search fills the gap and shrinks gracefully on narrow widths.
           Expanded(child: _SearchField(controller: search, onChanged: onSearch)),
@@ -572,7 +601,7 @@ class _SearchField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(maxWidth: 280),
-      height: 30,
+      height: Tokens.controlH,
       decoration: ShapeDecoration(
         color: Tokens.surface2,
         shape: Tokens.squircle(Tokens.rSm),
@@ -624,61 +653,3 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// Verbosity selector. Picking a level both raises mpv's runtime log level
-/// (so more messages are emitted) and sets the display floor.
-class _LevelFilter extends StatelessWidget {
-  final LogLevel level;
-  final ValueChanged<LogLevel> onSelect;
-  const _LevelFilter({required this.level, required this.onSelect});
-
-  static const _opts = <(String, LogLevel)>[
-    ('Err', LogLevel.error),
-    ('Warn', LogLevel.warn),
-    ('Info', LogLevel.info),
-    ('Verbose', LogLevel.v),
-    ('Debug', LogLevel.debug),
-    ('Trace', LogLevel.trace),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: ShapeDecoration(
-        color: Tokens.surface2,
-        shape: Tokens.squircle(Tokens.rSm),
-      ),
-      padding: const EdgeInsets.all(2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final o in _opts)
-            Material(
-              type: MaterialType.transparency,
-              child: InkWell(
-                onTap: () => onSelect(o.$2),
-                customBorder: Tokens.squircle(Tokens.rSm - 2),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: Tokens.s4,
-                  ),
-                  decoration: ShapeDecoration(
-                    color: level == o.$2 ? Tokens.accent : Colors.transparent,
-                    shape: Tokens.squircle(Tokens.rSm - 2),
-                  ),
-                  child: Text(
-                    o.$1,
-                    style: TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
-                      color: level == o.$2 ? Tokens.onAccent : Tokens.fgDim,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

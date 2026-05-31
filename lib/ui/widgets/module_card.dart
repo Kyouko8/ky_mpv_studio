@@ -44,14 +44,9 @@ class _ModuleCardState extends State<ModuleCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.s12),
       decoration: ShapeDecoration(
-        color: Tokens.surface,
-        shape: Tokens.squircle(
-          Tokens.rMd,
-          side: BorderSide(
-            color: widget.enabled ? Tokens.accentDim : Tokens.line,
-            width: 1,
-          ),
-        ),
+        // Enabled modules read through an accent wash instead of a border.
+        color: widget.enabled ? Tokens.accentWash : Tokens.surface,
+        shape: Tokens.squircle(Tokens.rMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -128,9 +123,7 @@ class _ModuleCardState extends State<ModuleCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Divider(
-                            height: 1, thickness: 1, color: Tokens.line),
-                        const SizedBox(height: Tokens.s12),
+                        const SizedBox(height: Tokens.s4),
                         widget.child,
                         if (widget.onReset != null) ...[
                           const SizedBox(height: Tokens.s8),

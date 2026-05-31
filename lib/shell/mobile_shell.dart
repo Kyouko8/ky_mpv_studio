@@ -40,10 +40,7 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Tokens.surface,
-        border: Border(top: BorderSide(color: Tokens.line2, width: 1)),
-      ),
+      decoration: const BoxDecoration(color: Tokens.surface),
       padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
       child: Row(
         children: [

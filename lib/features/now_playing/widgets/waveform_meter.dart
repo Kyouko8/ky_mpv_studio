@@ -48,6 +48,11 @@ class _WaveformMeterState extends State<WaveformMeter>
   static const double _minWindow = 5;
   bool _playWhenReady = false;
   bool _seekable = false;
+
+  /// The track's min/max envelope from `stream.waveform`. The engine
+  /// fills this transparently: a full envelope up-front for local files,
+  /// or one that grows during playback for network sources (segmented /
+  /// transcode / live). Either way the meter just renders what it gets.
   WaveformData? _wave;
 
   bool _dragging = false;
@@ -278,10 +283,7 @@ class _ZoomControls extends StatelessWidget {
     return Container(
       decoration: ShapeDecoration(
         color: Tokens.surface2,
-        shape: Tokens.squircle(
-          Tokens.rMd,
-          side: const BorderSide(color: Tokens.line2, width: 1),
-        ),
+        shape: Tokens.squircle(Tokens.rMd),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 2),
       child: Row(
@@ -381,9 +383,9 @@ class _HScrollBar extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             onTapDown: (d) => setFromX(d.localPosition.dx),
             onHorizontalDragUpdate: (d) => setFromX(d.localPosition.dx),
-            // Flush, square strip — a hairline divides it from the waveform.
-            // A recessed track colour so it reads as a control, not blank
-            // space below the waveform.
+            // Flush, square strip — a recessed track colour so it reads as a
+            // control, not blank space below the waveform, with a hairline
+            // above it separating it from the waveform.
             child: Container(
               decoration: const BoxDecoration(
                 color: Tokens.surface2,
@@ -400,7 +402,6 @@ class _HScrollBar extends StatelessWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         color: enabled ? Tokens.surface3 : Tokens.surface2,
-                        border: Border.all(color: Tokens.line2, width: 1),
                       ),
                     ),
                   ),
@@ -594,3 +595,4 @@ class _MeterPainter extends CustomPainter {
       old.rulerHeight != rulerHeight ||
       old.hoverX != hoverX;
 }
+

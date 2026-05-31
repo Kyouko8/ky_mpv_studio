@@ -57,7 +57,6 @@ class _InfoSheet extends StatelessWidget {
                 Tokens.s20, Tokens.s12, Tokens.s20, Tokens.s12),
             child: _identity(),
           ),
-          const Divider(height: 1, thickness: 1, color: Tokens.line),
           Flexible(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(

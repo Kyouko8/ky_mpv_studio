@@ -32,10 +32,7 @@ class TransportControls extends StatelessWidget {
               // A slightly raised squircle container that lifts the
               // transport off the near-black backdrop.
               color: Tokens.surface2,
-              shape: Tokens.squircle(
-                Tokens.rLg,
-                side: const BorderSide(color: Tokens.line2, width: 1),
-              ),
+              shape: Tokens.squircle(Tokens.rLg),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

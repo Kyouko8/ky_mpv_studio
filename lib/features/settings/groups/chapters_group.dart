@@ -140,10 +140,7 @@ class _ChapterTile extends StatelessWidget {
           child: Container(
             decoration: ShapeDecoration(
               color: active ? Tokens.accentWash : Tokens.surface,
-              shape: Tokens.squircle(
-                Tokens.rSm,
-                side: const BorderSide(color: Tokens.line, width: 1),
-              ),
+              shape: Tokens.squircle(Tokens.rSm),
             ),
             padding: const EdgeInsets.symmetric(
               horizontal: Tokens.s12,

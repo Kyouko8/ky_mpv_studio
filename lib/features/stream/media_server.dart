@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:dart_jellyfin/dart_jellyfin.dart';
 import 'package:dart_plex/dart_plex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,9 +14,9 @@ String _newSession() =>
     'mpv-${DateTime.now().microsecondsSinceEpoch}-${_sessionSeq++}';
 
 /// How a track is requested from the server: untouched original bytes
-/// (`direct`), or a server-side transcode to Opus. The transport protocol
-/// for transcoding is server-specific — Jellyfin streams HLS, Plex DASH —
-/// so it isn't a user choice, only Direct vs Transcode is.
+/// (`direct`), or a server-side transcode. The transport protocol for
+/// transcoding is server-specific — Jellyfin streams HLS, Plex DASH — so
+/// it isn't a user choice; the codec and bitrate are (see [TranscodeCodec]).
 enum PlaybackMode { direct, transcode }
 
 extension PlaybackModeLabel on PlaybackMode {
@@ -22,6 +24,18 @@ extension PlaybackModeLabel on PlaybackMode {
         PlaybackMode.direct => 'Direct',
         PlaybackMode.transcode => 'Transcode',
       };
+}
+
+/// Output audio codec for a server-side transcode. [value] is the wire
+/// token both servers accept as their `audioCodec` parameter.
+enum TranscodeCodec {
+  aac('AAC', 'aac'),
+  mp3('MP3', 'mp3'),
+  opus('Opus', 'opus');
+
+  final String label;
+  final String value;
+  const TranscodeCodec(this.label, this.value);
 }
 
 /// A server-agnostic audio track — only what the minimal list needs, plus
@@ -76,13 +90,21 @@ abstract class MediaServer {
   });
 
   /// A URL mpv can open directly (auth token embedded in the query) for
-  /// [track] in the given [mode]. Transcode modes request the Opus codec.
-  String streamUrl(ServerTrack track, PlaybackMode mode);
+  /// [track] in the given [mode]. For [PlaybackMode.transcode] the server
+  /// re-encodes to [codec] capped at [bitrateKbps]; both are ignored for
+  /// direct play.
+  String streamUrl(
+    ServerTrack track,
+    PlaybackMode mode, {
+    String codec,
+    int bitrateKbps,
+  });
 
   /// The real segment container for a transcode [mode] — which mpv can't
   /// report (its `file-format` only shows the `hls`/`dash` protocol). Null
-  /// for direct play, where mpv reports the true container itself.
-  String? segmentContainer(PlaybackMode mode);
+  /// for direct play, where mpv reports the true container itself. Depends
+  /// on [codec] because the chosen codec dictates the segment wrapper.
+  String? segmentContainer(PlaybackMode mode, {String codec});
 
   /// Re-establish a previously saved session (token) without a password.
   /// Returns true when a stored session was restored. Does not verify the
@@ -208,33 +230,42 @@ class JellyfinServer implements MediaServer {
   }
 
   @override
-  String streamUrl(ServerTrack track, PlaybackMode mode) {
+  String streamUrl(
+    ServerTrack track,
+    PlaybackMode mode, {
+    String codec = 'aac',
+    int bitrateKbps = 256,
+  }) {
     final audio = _client!.audio;
     // Jellyfin transcodes over HLS. The playlist stays .m3u8; only the
-    // per-segment container changes. We request fMP4 ('mp4') segments, not
-    // MPEG-TS: MPEG-TS cannot carry edit lists, so the AAC encoder priming
+    // per-segment container changes with the codec. AAC/Opus go in fMP4
+    // ('mp4'): MPEG-TS cannot carry edit lists, so the AAC encoder priming
     // (~2112 samples) is never skipped at each segment boundary → recurring
-    // PTS discontinuities ("Invalid audio PTS"). fMP4 segments carry the
-    // edit list and are demuxed by ffmpeg's mov/mp4 path, so priming is
-    // skipped and segment boundaries are sample-accurate. AAC stays the
-    // codec — it's valid in fMP4 too. (Opus would also be safe here, but
-    // AAC keeps server CPU/compat overhead lowest.)
+    // PTS discontinuities ("Invalid audio PTS"); fMP4 carries the edit list
+    // (demuxed by ffmpeg's mov/mp4 path) so priming is skipped and segment
+    // boundaries stay sample-accurate. Opus is valid in fMP4 too. MP3 has
+    // no edit-list priming problem and is awkward in fMP4, so it rides
+    // MPEG-TS ('ts') — its long-standing native container.
     return switch (mode) {
       PlaybackMode.direct => audio.directStreamUrl(itemId: track.id).$1,
       PlaybackMode.transcode => audio.universalStreamUrl(
           itemId: track.id,
-          audioCodec: 'aac',
+          audioCodec: codec,
           containers: const ['aac', 'mp3', 'flac', 'ogg', 'opus'],
           transcodingProtocol: 'hls',
-          transcodingContainer: 'mp4',
+          transcodingContainer: codec == 'mp3' ? 'ts' : 'mp4',
+          maxStreamingBitrate: bitrateKbps * 1000,
+          audioBitRate: bitrateKbps * 1000,
           playSessionId: _newSession(),
         ),
     };
   }
 
   @override
-  String? segmentContainer(PlaybackMode mode) =>
-      mode == PlaybackMode.transcode ? 'fMP4' : null;
+  String? segmentContainer(PlaybackMode mode, {String codec = 'aac'}) =>
+      mode == PlaybackMode.transcode
+          ? (codec == 'mp3' ? 'MPEG-TS' : 'fMP4')
+          : null;
 }
 
 // ── Plex ──────────────────────────────────────────────────────────────
@@ -244,14 +275,39 @@ class PlexServer implements MediaServer {
   String? _musicSectionId;
   PlexTranscodeSessionManager? _transcodes;
 
-  static const _credentials = PlexCredentials(
+  static final _credentials = PlexCredentials(
     clientIdentifier: 'mpv-studio',
     product: 'MPV Studio',
     version: '0.1.0',
-    device: 'Flutter',
+    device: _platform,
     deviceName: 'MPV Studio',
-    platform: 'Flutter',
+    // The real host OS — must be a platform Plex recognises so the server
+    // loads a base device profile for us. With an unknown platform (e.g.
+    // 'Flutter') Plex finds no client profile and every transcode
+    // /decision + start.mpd fetch fails with "Unable to find client
+    // profile for device".
+    platform: _platform,
+    // Seed a base musicProfile transcode target. The per-track
+    // add-transcode-target in PlexTranscodeSessionManager.resolve only
+    // *extends* an existing music profile — without this seed there is no
+    // musicProfile context to extend, so Plex ignores our audioCodec and
+    // the transcode never starts.
+    clientProfileExtra:
+        'add-transcode-target(type=musicProfile&context=streaming'
+        '&protocol=hls&container=mpegts&audioCodec=aac,mp3)',
   );
+
+  // The host OS as a Plex-recognised platform string. Anything Plex
+  // doesn't know maps to no device profile, so we only emit the names
+  // its built-in profiles cover and fall back to the raw OS name.
+  static String get _platform {
+    if (Platform.isWindows) return 'Windows';
+    if (Platform.isMacOS) return 'macOS';
+    if (Platform.isLinux) return 'Linux';
+    if (Platform.isAndroid) return 'Android';
+    if (Platform.isIOS) return 'iOS';
+    return Platform.operatingSystem;
+  }
 
   static const _kBase = 'plex.base';
   static const _kToken = 'plex.token';
@@ -354,7 +410,12 @@ class PlexServer implements MediaServer {
   }
 
   @override
-  String streamUrl(ServerTrack track, PlaybackMode mode) {
+  String streamUrl(
+    ServerTrack track,
+    PlaybackMode mode, {
+    String codec = 'aac',
+    int bitrateKbps = 256,
+  }) {
     final streaming = _client!.streaming;
     final directUrl = streaming.universalAudioUrl(
       ratingKey: track.id,
@@ -362,24 +423,25 @@ class PlexServer implements MediaServer {
       directPlay: true,
       directStream: true,
     );
-    // Plex transcodes over DASH (fMP4 segments). Unlike Jellyfin, the
-    // transcode can't be a plain URL: Plex needs a /decision call to spin
-    // up the session and pick the codec/container. So we hand mpv a
-    // `plex-transcode://{session}` marker; the global on_load hook resolves
-    // it via the session manager (decision → real start.mpd) right before
-    // playback, and a heartbeat pings the session to keep it alive. The
-    // direct URL is the fallback if /decision refuses.
+    // Plex transcodes over DASH (fMP4 segments) for every codec. Unlike
+    // Jellyfin, the transcode can't be a plain URL: Plex needs a /decision
+    // call to spin up the session and pick the codec/container. So we hand
+    // mpv a `plex-transcode://{session}` marker; the global on_load hook
+    // resolves it via the session manager (decision → real start.mpd) right
+    // before playback, and a heartbeat pings the session to keep it alive.
+    // The direct URL is the fallback if /decision refuses.
     return switch (mode) {
       PlaybackMode.direct => directUrl,
       PlaybackMode.transcode => _transcodes!.register(
           ratingKey: track.id,
-          codec: 'opus',
+          codec: codec,
           fallbackUrl: directUrl,
+          bitrateKbps: bitrateKbps,
         ),
     };
   }
 
   @override
-  String? segmentContainer(PlaybackMode mode) =>
+  String? segmentContainer(PlaybackMode mode, {String codec = 'aac'}) =>
       mode == PlaybackMode.transcode ? 'fMP4' : null;
 }

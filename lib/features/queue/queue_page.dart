@@ -56,12 +56,8 @@ class _QueuePageState extends State<QueuePage> {
         _enqueue(resolveDroppedPaths(detail.files.map((f) => f.path)));
       },
       child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: _dragging ? Tokens.accent : Colors.transparent,
-            width: 2,
-          ),
-        ),
+        // A drag-over wash (no border) signals the drop target.
+        color: _dragging ? Tokens.accentWash : null,
         child: Column(
           children: [
             _Toolbar(
@@ -69,7 +65,6 @@ class _QueuePageState extends State<QueuePage> {
               onAddFolder: _addFolder,
               onClear: _player.clearPlaylist,
             ),
-            const Divider(height: 1, thickness: 1, color: Tokens.line),
             Expanded(
               child: Live<Playlist>(
                 stream: _player.stream.playlist,
@@ -226,13 +221,7 @@ class _QueueTile extends StatelessWidget {
             ),
             decoration: ShapeDecoration(
               color: current ? Tokens.accentWash : Tokens.surface,
-              shape: Tokens.squircle(
-                Tokens.rSm,
-                side: BorderSide(
-                  color: current ? Tokens.accentDim : Tokens.line,
-                  width: 1,
-                ),
-              ),
+              shape: Tokens.squircle(Tokens.rSm),
             ),
             child: Row(
               children: [

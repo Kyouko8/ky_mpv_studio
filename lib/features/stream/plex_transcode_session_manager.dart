@@ -135,7 +135,14 @@ class PlexTranscodeSessionManager {
         params: params,
         extraHeaders: {'X-Plex-Client-Profile-Extra': profileValue},
       );
-      if (!decision.isPlayable) {
+      // Only a *transcode* decision (2xxx) yields a real transcode session
+      // with a populated start.mpd. When Plex decides direct-play /
+      // direct-stream (1xxx) — which happens when the chosen codec+bitrate
+      // already match the source (e.g. AAC→AAC) — there is NO session, so
+      // start.mpd is empty/invalid and feeding it to the DASH demuxer
+      // crashes ffmpeg natively. In that case (and on any non-playable
+      // decision) fall back to the plain direct URL.
+      if (!decision.isTranscode) {
         debugPrint('PlexTranscode: decision=${decision.code} → direct play');
         return pending.resolved =
             (url: pending.fallbackUrl, headers: const <String, String>{});

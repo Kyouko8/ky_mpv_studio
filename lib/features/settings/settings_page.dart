@@ -4,6 +4,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../state/app_settings.dart';
 import '../../state/player_scope.dart';
 import '../../ui/tokens.dart';
+import '../../ui/widgets/back_bar.dart';
 import '../../ui/widgets/controls.dart';
 import '../../ui/widgets/section_body.dart';
 import '../../ui/widgets/section_switcher.dart';
@@ -91,11 +92,10 @@ class _SettingsPageState extends State<SettingsPage> {
           )
         : Column(
             children: [
-              _BackRow(
+              BackBar(
                 title: _categories[i].title,
                 onBack: () => setState(() => _pushed = null),
               ),
-              const Divider(height: 1, thickness: 1, color: Tokens.line),
               Expanded(child: _detail(i)),
             ],
           );
@@ -162,7 +162,6 @@ class _CategoryCard extends StatelessWidget {
             color: Tokens.surface,
             shape: ContinuousRectangleBorder(
               borderRadius: BorderRadius.circular(40),
-              side: const BorderSide(color: Tokens.line, width: 1),
             ),
           ),
           padding: const EdgeInsets.all(Tokens.s16),
@@ -183,36 +182,6 @@ class _CategoryCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _BackRow extends StatelessWidget {
-  final String title;
-  final VoidCallback onBack;
-  const _BackRow({required this.title, required this.onBack});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onBack,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
-            child: Row(
-              children: [
-                const Icon(Icons.chevron_left_rounded,
-                    size: 22, color: Tokens.fgDim),
-                const SizedBox(width: Tokens.s4),
-                Text(title, style: Tokens.heading),
-              ],
-            ),
           ),
         ),
       ),

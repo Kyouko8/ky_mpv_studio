@@ -39,7 +39,13 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
   late final PagingController<int, ServerTrack> _paging;
 
   PlaybackMode _mode = PlaybackMode.transcode;
+  TranscodeCodec _codec = TranscodeCodec.aac;
+  int _bitrateKbps = 256;
   bool _restoring = true;
+
+  /// Transcode bitrate ladder (kbps), matching the server transcoders'
+  /// useful range for music.
+  static const _bitrates = [64, 96, 128, 160, 192, 256];
   bool _connecting = false;
   String? _error;
   String _query = '';
@@ -155,11 +161,16 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     if (index < 0 || index >= items.length) return;
     final window =
         items.sublist(index, math.min(index + _queueMax, items.length));
-    final segment = _server.segmentContainer(_mode);
+    final segment = _server.segmentContainer(_mode, codec: _codec.value);
     final medias = [
       for (final t in window)
         Media(
-          _server.streamUrl(t, _mode),
+          _server.streamUrl(
+            t,
+            _mode,
+            codec: _codec.value,
+            bitrateKbps: _bitrateKbps,
+          ),
           extras: {
             'title': t.title,
             'artist': t.artist,
@@ -253,7 +264,6 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
                   hint: 'Search songs',
                   icon: Icons.search_rounded,
                   onChanged: _onSearch,
-                  dense: true,
                 ),
               ),
               const SizedBox(width: Tokens.s8),
@@ -268,6 +278,39 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
                   ],
                 ),
               ),
+              // Codec + bitrate apply only to a transcode, so they appear
+              // only when Transcode is selected.
+              if (_mode == PlaybackMode.transcode) ...[
+                const SizedBox(width: Tokens.s8),
+                SizedBox(
+                  width: 84,
+                  child: AppDropdown<TranscodeCodec>(
+                    value: _codec,
+                    items: [
+                      for (final c in TranscodeCodec.values)
+                        DropdownMenuItem(value: c, child: Text(c.label)),
+                    ],
+                    onChanged: (c) {
+                      if (c != null) setState(() => _codec = c);
+                    },
+                  ),
+                ),
+                const SizedBox(width: Tokens.s8),
+                SizedBox(
+                  width: 110,
+                  child: AppDropdown<int>(
+                    value: _bitrateKbps,
+                    items: [
+                      for (final b in _bitrates)
+                        DropdownMenuItem(value: b, child: Text('$b kbps')),
+                    ],
+                    onChanged: (b) {
+                      if (b != null) setState(() => _bitrateKbps = b);
+                    },
+                  ),
+                ),
+              ],
+              const SizedBox(width: Tokens.s4),
               IconButton(
                 onPressed: _logout,
                 icon: const Icon(Icons.logout_rounded, size: 18),
@@ -278,7 +321,6 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
             ],
           ),
         ),
-        const Divider(height: 1, thickness: 1, color: Tokens.line),
         Expanded(
           child: PagingListener<int, ServerTrack>(
             controller: _paging,
@@ -352,13 +394,7 @@ class _TrackTile extends StatelessWidget {
                 Tokens.s12, Tokens.s8, Tokens.s12, Tokens.s8),
             decoration: ShapeDecoration(
               color: current ? Tokens.accentWash : Tokens.surface,
-              shape: Tokens.squircle(
-                Tokens.rSm,
-                side: BorderSide(
-                  color: current ? Tokens.accentDim : Tokens.line,
-                  width: 1,
-                ),
-              ),
+              shape: Tokens.squircle(Tokens.rSm),
             ),
             child: Row(
               children: [
@@ -407,7 +443,6 @@ class _Field extends StatelessWidget {
   final String hint;
   final IconData icon;
   final bool obscure;
-  final bool dense;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
 
@@ -416,7 +451,6 @@ class _Field extends StatelessWidget {
     required this.hint,
     required this.icon,
     this.obscure = false,
-    this.dense = false,
     this.onChanged,
     this.onSubmitted,
   });
@@ -424,7 +458,7 @@ class _Field extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: dense ? 36 : 44,
+      height: Tokens.controlH,
       decoration: ShapeDecoration(
         color: Tokens.surface2,
         shape: Tokens.squircle(Tokens.rSm),

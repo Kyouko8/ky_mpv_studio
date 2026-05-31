@@ -276,13 +276,11 @@ class _ClientNameFieldState extends State<_ClientNameField> {
     return SettingTile(
       title: 'Client name',
       below: Container(
+        height: Tokens.controlH,
         padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
         decoration: ShapeDecoration(
           color: Tokens.surface2,
-          shape: Tokens.squircle(
-            Tokens.rSm,
-            side: const BorderSide(color: Tokens.line2, width: 1),
-          ),
+          shape: Tokens.squircle(Tokens.rSm),
         ),
         child: TextField(
           controller: _controller,
