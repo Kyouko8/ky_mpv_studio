@@ -107,11 +107,13 @@ class StreamPage extends StatefulWidget {
 
 class _StreamPageState extends State<StreamPage> {
   int _tab = 0;
-  final MediaServer _jellyfin = JellyfinServer();
-  final MediaServer _plex = PlexServer();
 
   @override
   Widget build(BuildContext context) {
+    // Servers live app-level (see PlayerScope) so their sessions and the
+    // playback reporting persist across navigating away from this page.
+    final jellyfin = PlayerScope.serverOf(context, ServerKind.jellyfin);
+    final plex = PlayerScope.serverOf(context, ServerKind.plex);
     return Column(
       children: [
         _ChromeTabBar(
@@ -125,8 +127,8 @@ class _StreamPageState extends State<StreamPage> {
             sizing: StackFit.expand,
             children: [
               const _LabTab(),
-              ServerLibraryTab(server: _jellyfin),
-              ServerLibraryTab(server: _plex),
+              ServerLibraryTab(server: jellyfin),
+              ServerLibraryTab(server: plex),
             ],
           ),
         ),

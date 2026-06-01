@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import 'features/stream/media_server.dart';
 import 'shell/router.dart';
 import 'state/app_settings.dart';
 import 'state/player_scope.dart';
@@ -12,10 +13,12 @@ import 'ui/theme.dart';
 class MpvStudioApp extends StatefulWidget {
   final Player player;
   final AppSettings settings;
+  final Map<ServerKind, MediaServer> servers;
   const MpvStudioApp({
     super.key,
     required this.player,
     required this.settings,
+    required this.servers,
   });
 
   @override
@@ -39,6 +42,7 @@ class _MpvStudioAppState extends State<MpvStudioApp> {
     return PlayerScope(
       player: widget.player,
       settings: widget.settings,
+      servers: widget.servers,
       child: MaterialApp.router(
         title: 'MPV Studio',
         debugShowCheckedModeBanner: false,

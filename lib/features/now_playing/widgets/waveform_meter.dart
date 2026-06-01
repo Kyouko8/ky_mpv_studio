@@ -515,9 +515,14 @@ class _MeterPainter extends CustomPainter {
     );
     final played = Paint()..color = Tokens.accent;
     final upcoming = Paint()..color = Tokens.line2;
+    // Bins not yet covered (progressive envelope ahead of the playhead, or
+    // a region skipped by a seek) — drawn as a faint baseline, not as a
+    // real flat-zero spike, using the per-bin `filled` flags.
+    final unloaded = Paint()..color = Tokens.line;
     final wv = wave;
     if (wv != null && wv.bins > 0 && durSecs > 0) {
       final bins = wv.bins;
+      final filled = wv.filled;
       final binSecs = wv.duration.inMicroseconds / 1e6 / bins;
       var i = (tLeft / binSecs).floor();
       if (i < 0) i = 0;
@@ -528,6 +533,7 @@ class _MeterPainter extends CustomPainter {
         if (t > tRight) break;
         final x = (t - tLeft) * pxPerSec;
         if (x < -barW || x > w + barW) continue;
+        final covered = i >= filled.length || filled[i] != 0;
         final lo = wv.min[i].clamp(-1.0, 1.0);
         final hi = wv.max[i].clamp(-1.0, 1.0);
         final top = centreY - hi * maxHalf;
@@ -535,7 +541,7 @@ class _MeterPainter extends CustomPainter {
         final bottom = bottomRaw < top + 1 ? top + 1 : bottomRaw;
         canvas.drawRect(
           Rect.fromLTRB(x, top, x + barW, bottom),
-          t <= posSecs ? played : upcoming,
+          !covered ? unloaded : (t <= posSecs ? played : upcoming),
         );
       }
     }

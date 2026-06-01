@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 
 /// Audio container/extension whitelist used for both the file picker
 /// filter and folder scanning. Lower-case, no leading dot.
@@ -45,21 +45,25 @@ String baseNameNoExt(String path) {
 /// Opens a multi-select audio file picker. Returns the chosen absolute
 /// paths (empty if the user cancelled).
 Future<List<String>> pickAudioFiles() async {
-  final result = await FilePicker.pickFiles(
-    allowMultiple: true,
-    type: FileType.custom,
-    allowedExtensions: kAudioExtensions.toList(),
-    dialogTitle: 'Add audio files',
+  final typeGroup = XTypeGroup(
+    label: 'Audio',
+    extensions: kAudioExtensions.toList(),
   );
-  if (result == null) return const [];
-  return result.paths.whereType<String>().toList();
+  final files = await openFiles(
+    acceptedTypeGroups: [typeGroup],
+    confirmButtonText: 'Add audio files',
+  );
+  return files.map((f) => f.path).toList();
 }
 
 /// Opens a folder picker and returns every audio file inside it,
 /// recursively, sorted by path. Empty if cancelled or none found.
+///
+/// Folder selection is a desktop-only operation (file_selector does not
+/// support it on iOS/Android); on mobile users add individual files.
 Future<List<String>> pickAudioFolder() async {
-  final dir = await FilePicker.getDirectoryPath(
-    dialogTitle: 'Add a folder of audio',
+  final dir = await getDirectoryPath(
+    confirmButtonText: 'Add a folder of audio',
   );
   if (dir == null) return const [];
   return scanAudioFolder(dir);

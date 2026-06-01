@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:dart_jellyfin/dart_jellyfin.dart';
 import 'package:dart_plex/dart_plex.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'plex_transcode_session_manager.dart';
@@ -13,11 +15,60 @@ int _sessionSeq = 0;
 String _newSession() =>
     'mpv-${DateTime.now().microsecondsSinceEpoch}-${_sessionSeq++}';
 
+// Human-readable device name shown in the servers' "Now Playing" (e.g.
+// "Alex's MacBook Pro"). Resolved once at startup via [resolveDeviceName]
+// and set with [setMediaDeviceName]; both servers read it when they build
+// their credentials. Defaults to the app name until resolved.
+String _deviceName = 'MPV Studio';
+
+/// Override the reported device name (call before connecting). See
+/// [resolveDeviceName].
+void setMediaDeviceName(String name) {
+  if (name.trim().isNotEmpty) _deviceName = name.trim();
+}
+
+/// Best-effort, header-safe device name for server reporting: the machine
+/// name on desktop, the device name on mobile. Falls back to 'MPV Studio'.
+Future<String> resolveDeviceName() async {
+  try {
+    final info = DeviceInfoPlugin();
+    String name;
+    if (Platform.isMacOS) {
+      name = (await info.macOsInfo).computerName;
+    } else if (Platform.isIOS) {
+      name = (await info.iosInfo).name;
+    } else if (Platform.isWindows) {
+      name = (await info.windowsInfo).computerName;
+    } else if (Platform.isAndroid) {
+      final a = await info.androidInfo;
+      name = '${a.manufacturer} ${a.model}';
+    } else if (Platform.isLinux) {
+      name = (await info.linuxInfo).name;
+    } else {
+      name = 'MPV Studio';
+    }
+    // Normalise smart quotes, drop double quotes, keep printable ASCII only
+    // (X-Plex-* / Jellyfin auth headers must stay ASCII-clean).
+    name = name.replaceAll('’', "'").replaceAll('‘', "'");
+    name = name.replaceAll('"', '');
+    final sanitized = name.replaceAll(RegExp(r'[^\x20-\x7E]'), '').trim();
+    return sanitized.isEmpty ? 'MPV Studio' : sanitized;
+  } catch (e) {
+    debugPrint('resolveDeviceName failed: $e');
+    return 'MPV Studio';
+  }
+}
+
 /// How a track is requested from the server: untouched original bytes
 /// (`direct`), or a server-side transcode. The transport protocol for
 /// transcoding is server-specific — Jellyfin streams HLS, Plex DASH — so
 /// it isn't a user choice; the codec and bitrate are (see [TranscodeCodec]).
 enum PlaybackMode { direct, transcode }
+
+/// The media-server backend kind. Embedded in each server [Media]'s extras
+/// (`'server'`) so the app-level playback reporter can route a report to the
+/// right connected server.
+enum ServerKind { jellyfin, plex }
 
 extension PlaybackModeLabel on PlaybackMode {
   String get label => switch (this) {
@@ -113,6 +164,27 @@ abstract class MediaServer {
 
   /// Drop the session and forget the stored credentials.
   Future<void> logout();
+
+  // ─── Playback reporting ──────────────────────────────────────────────
+  // Tell the server what's playing so it shows in "Now Playing", advances
+  // on-deck / play progress, and scrobbles. All are best-effort: failures
+  // are swallowed (logged) so a reporting hiccup never disrupts playback.
+
+  /// Which backend this is — lets the reporter route to the right server.
+  ServerKind get kind;
+
+  /// Playback of [itemId] has started.
+  Future<void> reportStart(String itemId);
+
+  /// Periodic progress for [itemId]: current [position] and whether [paused].
+  Future<void> reportProgress(
+    String itemId, {
+    required Duration position,
+    required bool paused,
+  });
+
+  /// Playback of [itemId] stopped at [position].
+  Future<void> reportStopped(String itemId, {required Duration position});
 }
 
 /// Adds a scheme (http) and the platform default port when the user typed a
@@ -131,12 +203,15 @@ String _normalizeBase(String host, int defaultPort) {
 class JellyfinServer implements MediaServer {
   JellyfinClient? _client;
 
-  static const _credentials = JellyfinCredentials(
-    client: 'MPV Studio',
-    device: 'MPV Studio',
-    deviceId: 'mpv-studio',
-    version: '0.1.0',
-  );
+  // Built per access so it picks up the resolved [_deviceName]. `client`
+  // is the app (shown as the Jellyfin "Client"); `device` is the machine
+  // name (shown as the "Device").
+  JellyfinCredentials get _credentials => JellyfinCredentials(
+        client: 'MPV Studio',
+        device: _deviceName,
+        deviceId: 'mpv-studio',
+        version: '0.1.0',
+      );
 
   static const _kBase = 'jellyfin.base';
   static const _kToken = 'jellyfin.token';
@@ -266,6 +341,47 @@ class JellyfinServer implements MediaServer {
       mode == PlaybackMode.transcode
           ? (codec == 'mp3' ? 'MPEG-TS' : 'fMP4')
           : null;
+
+  @override
+  ServerKind get kind => ServerKind.jellyfin;
+
+  @override
+  Future<void> reportStart(String itemId) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.start(itemId: itemId);
+    } catch (e) {
+      debugPrint('JellyfinServer: reportStart failed: $e');
+    }
+  }
+
+  @override
+  Future<void> reportProgress(
+    String itemId, {
+    required Duration position,
+    required bool paused,
+  }) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback
+          .progress(itemId: itemId, position: position, isPaused: paused);
+    } catch (e) {
+      debugPrint('JellyfinServer: reportProgress failed: $e');
+    }
+  }
+
+  @override
+  Future<void> reportStopped(String itemId, {required Duration position}) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.stopped(itemId: itemId, position: position);
+    } catch (e) {
+      debugPrint('JellyfinServer: reportStopped failed: $e');
+    }
+  }
 }
 
 // ── Plex ──────────────────────────────────────────────────────────────
@@ -275,38 +391,44 @@ class PlexServer implements MediaServer {
   String? _musicSectionId;
   PlexTranscodeSessionManager? _transcodes;
 
-  static final _credentials = PlexCredentials(
-    clientIdentifier: 'mpv-studio',
-    product: 'MPV Studio',
-    version: '0.1.0',
-    device: _platform,
-    deviceName: 'MPV Studio',
-    // The real host OS — must be a platform Plex recognises so the server
-    // loads a base device profile for us. With an unknown platform (e.g.
-    // 'Flutter') Plex finds no client profile and every transcode
-    // /decision + start.mpd fetch fails with "Unable to find client
-    // profile for device".
-    platform: _platform,
-    // Seed a base musicProfile transcode target. The per-track
-    // add-transcode-target in PlexTranscodeSessionManager.resolve only
-    // *extends* an existing music profile — without this seed there is no
-    // musicProfile context to extend, so Plex ignores our audioCodec and
-    // the transcode never starts.
-    clientProfileExtra:
-        'add-transcode-target(type=musicProfile&context=streaming'
-        '&protocol=hls&container=mpegts&audioCodec=aac,mp3)',
-  );
+  // Built per access so it picks up the resolved [_deviceName]. `device` /
+  // `deviceName` are the machine name (shown in Now Playing); `platform` is
+  // a SEPARATE field — the transcode-profile selector (see [_platform]).
+  PlexCredentials get _credentials => PlexCredentials(
+        clientIdentifier: 'mpv-studio',
+        product: 'MPV Studio',
+        version: '0.1.0',
+        device: _deviceName,
+        deviceName: _deviceName,
+        // Plex selects a base transcode profile by X-Plex-Platform; an
+        // unrecognised value 400s the /decision with "Unable to find
+        // client profile for device". So map the real OS to a
+        // Plex-recognised platform name (see [_platform]).
+        platform: _platform,
+        // Seed a base musicProfile transcode target. The per-track
+        // add-transcode-target in PlexTranscodeSessionManager.resolve only
+        // *extends* an existing music profile — without this seed there is
+        // no musicProfile context to extend, so Plex ignores our audioCodec
+        // and the transcode never starts.
+        clientProfileExtra:
+            'add-transcode-target(type=musicProfile&context=streaming'
+            '&protocol=hls&container=mpegts&audioCodec=aac,mp3)',
+      );
 
-  // The host OS as a Plex-recognised platform string. Anything Plex
-  // doesn't know maps to no device profile, so we only emit the names
-  // its built-in profiles cover and fall back to the raw OS name.
+  // X-Plex-Platform value Plex uses to pick the transcode client profile.
+  // An unrecognised value makes /transcode/universal/decision return 400
+  // ("Unable to find client profile for device"), so transcode never
+  // starts. Verified against a live PMS: iOS / Android / Windows resolve to
+  // a built-in profile; macOS, Linux (and anything else) do NOT — for those
+  // we send 'Generic', Plex's own profile for custom/unrecognised clients,
+  // which transcodes fine. This is the platform reported for profile
+  // matching only; the app's real identity stays in product/deviceName.
   static String get _platform {
-    if (Platform.isWindows) return 'Windows';
-    if (Platform.isMacOS) return 'macOS';
-    if (Platform.isLinux) return 'Linux';
-    if (Platform.isAndroid) return 'Android';
     if (Platform.isIOS) return 'iOS';
-    return Platform.operatingSystem;
+    if (Platform.isAndroid) return 'Android';
+    if (Platform.isWindows) return 'Windows';
+    // macOS, Linux, etc.: no built-in Plex profile → fall back to Generic.
+    return 'Generic';
   }
 
   static const _kBase = 'plex.base';
@@ -423,25 +545,71 @@ class PlexServer implements MediaServer {
       directPlay: true,
       directStream: true,
     );
-    // Plex transcodes over DASH (fMP4 segments) for every codec. Unlike
-    // Jellyfin, the transcode can't be a plain URL: Plex needs a /decision
-    // call to spin up the session and pick the codec/container. So we hand
-    // mpv a `plex-transcode://{session}` marker; the global on_load hook
-    // resolves it via the session manager (decision → real start.mpd) right
-    // before playback, and a heartbeat pings the session to keep it alive.
-    // The direct URL is the fallback if /decision refuses.
-    return switch (mode) {
-      PlaybackMode.direct => directUrl,
-      PlaybackMode.transcode => _transcodes!.register(
-          ratingKey: track.id,
-          codec: codec,
-          fallbackUrl: directUrl,
-          bitrateKbps: bitrateKbps,
-        ),
-    };
+    // BOTH modes hand mpv a `plex-transcode://{session}` marker that the
+    // global on_load hook resolves just before playback. Plex's universal
+    // `start.*` URL isn't openable by mpv, so:
+    //   • direct   → the hook resolves to the original media Part URL;
+    //   • transcode→ /decision spins up a session → real start.mpd (and on a
+    //     non-playable decision, falls back to the same Part URL).
+    // [directUrl] is only the last-resort fallback if the Part can't be found.
+    return _transcodes!.register(
+      ratingKey: track.id,
+      codec: codec,
+      fallbackUrl: directUrl,
+      bitrateKbps: bitrateKbps,
+      transcode: mode == PlaybackMode.transcode,
+    );
   }
 
   @override
   String? segmentContainer(PlaybackMode mode, {String codec = 'aac'}) =>
       mode == PlaybackMode.transcode ? 'fMP4' : null;
+
+  @override
+  ServerKind get kind => ServerKind.plex;
+
+  @override
+  Future<void> reportStart(String itemId) =>
+      _timeline(itemId, PlexPlaybackApi.statePlaying, Duration.zero);
+
+  @override
+  Future<void> reportProgress(
+    String itemId, {
+    required Duration position,
+    required bool paused,
+  }) =>
+      _timeline(
+        itemId,
+        paused ? PlexPlaybackApi.statePaused : PlexPlaybackApi.statePlaying,
+        position,
+      );
+
+  @override
+  Future<void> reportStopped(String itemId, {required Duration position}) =>
+      // `continuing: true` mirrors Plex Web's track-transition report so the
+      // server doesn't reap the (still-warm) transcode session when the next
+      // track starts.
+      _timeline(itemId, PlexPlaybackApi.stateStopped, position,
+          continuing: true);
+
+  Future<void> _timeline(
+    String ratingKey,
+    String state,
+    Duration position, {
+    bool continuing = false,
+  }) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.timeline(
+        ratingKey: ratingKey,
+        state: state,
+        timeMs: position.inMilliseconds,
+        durationMs: 0,
+        continuing: continuing,
+      );
+    } catch (e) {
+      debugPrint('PlexServer: timeline($state) failed: $e');
+    }
+  }
 }

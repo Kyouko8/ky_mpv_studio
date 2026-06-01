@@ -57,10 +57,12 @@ class PlexTranscodeSessionManager {
     required String codec,
     required String fallbackUrl,
     int? bitrateKbps,
+    bool transcode = true,
   }) {
     final session = 'mpv-${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
     final clientId = _client.credentials.clientIdentifier;
     _pending[session] = _PendingTranscode(
+      transcode: transcode,
       params: <String, dynamic>{
         'path': '/library/metadata/$ratingKey',
         'mediaIndex': 0,
@@ -108,6 +110,18 @@ class PlexTranscodeSessionManager {
     final cached = pending.resolved;
     if (cached != null) return cached;
 
+    // Direct-play session: skip /decision entirely and stream the original
+    // media Part (the universal-transcoder start.* URL isn't openable by mpv).
+    if (!pending.transcode) {
+      final direct = await _directPlayUrl(
+        pending.params['path'] as String,
+        pending.fallbackUrl,
+      );
+      debugPrint('PlexTranscode: direct play $session → $direct');
+      return pending.resolved =
+          (url: direct, headers: const <String, String>{});
+    }
+
     final params = pending.params;
     final codec = params['audioCodec'] as String? ?? 'aac';
     final token = _client.token ?? '';
@@ -135,18 +149,25 @@ class PlexTranscodeSessionManager {
         params: params,
         extraHeaders: {'X-Plex-Client-Profile-Extra': profileValue},
       );
-      // Only a *transcode* decision (2xxx) yields a real transcode session
-      // with a populated start.mpd. When Plex decides direct-play /
-      // direct-stream (1xxx) — which happens when the chosen codec+bitrate
-      // already match the source (e.g. AAC→AAC) — there is NO session, so
-      // start.mpd is empty/invalid and feeding it to the DASH demuxer
-      // crashes ffmpeg natively. In that case (and on any non-playable
-      // decision) fall back to the plain direct URL.
-      if (!decision.isTranscode) {
-        debugPrint('PlexTranscode: decision=${decision.code} → direct play');
+      // Accept any *playable* decision, not just isTranscode (2xxx).
+      // With directPlay=0/directStream=0 Plex cannot direct-play, so a
+      // successful decision comes back as 1001 "Direct play not available;
+      // Conversion OK" — that IS a transcode (it spins up a session and a
+      // valid start.mpd). isTranscode only matches 2xxx and so wrongly
+      // rejected 1001, falling back to direct play. isPlayable (isDirect ||
+      // isTranscode) is the correct gate. Only a genuinely non-playable
+      // decision (no/error code) falls through to the direct part URL.
+      if (!decision.isPlayable) {
+        debugPrint('PlexTranscode: decision=${decision.code} not playable '
+            '→ direct play');
+        final direct = await _directPlayUrl(
+          params['path'] as String,
+          pending.fallbackUrl,
+        );
         return pending.resolved =
-            (url: pending.fallbackUrl, headers: const <String, String>{});
+            (url: direct, headers: const <String, String>{});
       }
+      debugPrint('PlexTranscode: decision=${decision.code} → transcode');
 
       // ffmpeg/lavf opens the manifest directly and does NOT inherit the
       // Dio request's X-Plex-* base headers, so we embed the full client
@@ -173,8 +194,40 @@ class PlexTranscodeSessionManager {
       // Network/auth failure: degrade to direct play and memoise so we
       // don't hammer /decision on every re-open.
       debugPrint('PlexTranscode: resolve error for $session: $e → direct play');
+      final direct = await _directPlayUrl(
+        params['path'] as String,
+        pending.fallbackUrl,
+      );
       return pending.resolved =
-          (url: pending.fallbackUrl, headers: const <String, String>{});
+          (url: direct, headers: const <String, String>{});
+    }
+  }
+
+  /// Resolve a track to a *direct-play* URL mpv can actually open.
+  ///
+  /// On a direct-play / direct-stream decision (or any /decision failure)
+  /// the universal-transcoder `start.*` URL is not openable by mpv — Plex
+  /// serves the original file from its media Part instead. So we fetch the
+  /// item metadata, take the first media Part's key and build
+  /// `{baseUrl}{partKey}?download=0&X-Plex-Token=…` (the form a working Plex
+  /// client uses). [metadataPath] is `/library/metadata/{ratingKey}`;
+  /// [lastResort] is returned only if no part can be resolved.
+  Future<String> _directPlayUrl(String metadataPath, String lastResort) async {
+    final ratingKey = metadataPath.split('/').last;
+    try {
+      final meta = await _client.library.item(ratingKey);
+      final media =
+          (meta?.media.isNotEmpty ?? false) ? meta!.media.first : null;
+      final part =
+          (media?.parts.isNotEmpty ?? false) ? media!.parts.first : null;
+      final partKey = part?.key;
+      if (partKey == null) return lastResort;
+      final token = _client.token ?? '';
+      return '${_client.baseUrl}$partKey?download=0'
+          '&X-Plex-Token=${Uri.encodeQueryComponent(token)}';
+    } catch (e) {
+      debugPrint('PlexTranscode: directPlayUrl fetch failed for $ratingKey: $e');
+      return lastResort;
     }
   }
 
@@ -232,8 +285,19 @@ class PlexTranscodeSessionManager {
 }
 
 class _PendingTranscode {
-  _PendingTranscode({required this.params, required this.fallbackUrl});
+  _PendingTranscode({
+    required this.params,
+    required this.fallbackUrl,
+    required this.transcode,
+  });
   final Map<String, dynamic> params;
   final String fallbackUrl;
+
+  /// Whether this session should transcode (`/decision` → `start.mpd`) or
+  /// just direct-play the original media Part. Direct play skips `/decision`
+  /// — the universal-transcoder `start.*` URL is not openable by mpv, so we
+  /// always resolve to the Part URL instead.
+  final bool transcode;
+
   ({String url, Map<String, String> headers})? resolved;
 }

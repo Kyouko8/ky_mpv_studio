@@ -177,6 +177,10 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
             'album': t.album,
             if (t.artUrl != null) 'art': t.artUrl,
             if (segment != null) 'segment': segment,
+            // Lets the app-level PlaybackReporter report this track back to
+            // the right server (Now Playing / progress / scrobble).
+            'serverId': t.id,
+            'server': _server.kind.name,
           },
         ),
     ];
