@@ -19,8 +19,9 @@ Widget _navTransition(Animation<double> animation, Widget child) {
 }
 
 /// A pushed full-page route (over the shell) using the shared fade+slide
-/// transition — for things like the effects catalog category screen, so a
-/// push matches the in-page transitions.
+/// transition — for every grid→detail push (Settings categories, Effects
+/// featured editors and the effects catalog category screen) so a push
+/// matches the in-page transitions.
 Route<T> fadeSlidePageRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
     transitionDuration: kNavTransition,

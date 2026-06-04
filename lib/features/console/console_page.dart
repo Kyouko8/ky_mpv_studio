@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../state/player_scope.dart';
+import '../../studio/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
 import '../../util/reactive.dart';
@@ -76,14 +76,22 @@ class _ConsolePageState extends State<ConsolePage>
   void onSubscribe() {
     _player = PlayerScope.of(context);
     _completion = CompletionEngine(_player)..warmUp();
-    for (final s in [_player.stream.log, _player.stream.internalLog]) {
-      listen(s, (e) => _add(_Line(
-            _Kind.log,
-            e.text,
-            level: e.level,
-            prefix: e.prefix,
-          )));
+    // The engine log is captured app-wide from boot by [ConsoleLog], so the
+    // Console isn't empty when opened mid-session. Seed from that backlog,
+    // then follow live entries. (The buffer already enforces the same cap.)
+    final log = PlayerScope.consoleLogOf(context);
+    for (final e in log.backlog) {
+      _lines.addLast(
+        _Line(_Kind.log, e.text, level: e.level, prefix: e.prefix),
+      );
     }
+    _scheduleScrollToEnd();
+    listen(log.entries, (e) => _add(_Line(
+          _Kind.log,
+          e.text,
+          level: e.level,
+          prefix: e.prefix,
+        )));
   }
 
   @override
@@ -105,19 +113,23 @@ class _ConsolePageState extends State<ConsolePage>
         _lines.removeFirst();
       }
     });
-    // Coalesce the jump: a flood of lines can land many times per frame
-    // (ffmpeg debug spam), and scheduling one post-frame callback each
-    // would stack hundreds of redundant jumps. One pending jump per frame
-    // is enough — it always targets the latest maxScrollExtent.
-    if (_autoscroll && !_scrollScheduled) {
-      _scrollScheduled = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollScheduled = false;
-        if (_scroll.hasClients) {
-          _scroll.jumpTo(_scroll.position.maxScrollExtent);
-        }
-      });
-    }
+    _scheduleScrollToEnd();
+  }
+
+  /// Jump to the newest line after the next frame. Coalesced: a flood of
+  /// lines can land many times per frame (ffmpeg debug spam), and scheduling
+  /// one post-frame callback each would stack hundreds of redundant jumps.
+  /// One pending jump per frame is enough — it always targets the latest
+  /// maxScrollExtent.
+  void _scheduleScrollToEnd() {
+    if (!_autoscroll || _scrollScheduled) return;
+    _scrollScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollScheduled = false;
+      if (_scroll.hasClients) {
+        _scroll.jumpTo(_scroll.position.maxScrollExtent);
+      }
+    });
   }
 
   // Severity rank: lower = more severe.
@@ -481,6 +493,7 @@ class _ConsolePageState extends State<ConsolePage>
                 style: TextStyle(color: Tokens.accent, fontSize: 16)),
             const SizedBox(width: Tokens.s8),
             Expanded(
+              // Content-sized so the Row centres it vertically in the pill.
               child: TextField(
                 controller: _input,
                 focusNode: _inputFocus,
@@ -502,7 +515,7 @@ class _ConsolePageState extends State<ConsolePage>
                   hintText: 'command',
                   hintStyle: Tokens.caption,
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(vertical: Tokens.s8),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ),
@@ -536,55 +549,86 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final levels = SegmentedControl<LogLevel>(
+      expand: false,
+      selected: level,
+      onSelect: onLevel,
+      options: const [
+        SegmentOption(LogLevel.error, 'Err'),
+        SegmentOption(LogLevel.warn, 'Warn'),
+        SegmentOption(LogLevel.info, 'Info'),
+        SegmentOption(LogLevel.v, 'Verbose'),
+        SegmentOption(LogLevel.debug, 'Debug'),
+        SegmentOption(LogLevel.trace, 'Trace'),
+      ],
+    );
+    final searchField = _SearchField(controller: search, onChanged: onSearch);
+    final actions = <Widget>[
+      IconButton(
+        onPressed: onAutoscroll,
+        icon: Icon(
+          autoscroll
+              ? Icons.vertical_align_bottom_rounded
+              : Icons.vertical_align_center_rounded,
+          size: 18,
+        ),
+        color: autoscroll ? Tokens.accent : Tokens.fgDim,
+        tooltip: 'Autoscroll',
+        splashRadius: 18,
+      ),
+      IconButton(
+        onPressed: onCopy,
+        icon: const Icon(Icons.copy_rounded, size: 16),
+        color: Tokens.fgDim,
+        tooltip: 'Copy',
+        splashRadius: 18,
+      ),
+      IconButton(
+        onPressed: onClear,
+        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+        color: Tokens.fgDim,
+        tooltip: 'Clear',
+        splashRadius: 18,
+      ),
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(
           Tokens.s16, Tokens.s8, Tokens.s8, Tokens.s8),
-      child: Row(
-        children: [
-          SegmentedControl<LogLevel>(
-            expand: false,
-            selected: level,
-            onSelect: onLevel,
-            options: const [
-              SegmentOption(LogLevel.error, 'Err'),
-              SegmentOption(LogLevel.warn, 'Warn'),
-              SegmentOption(LogLevel.info, 'Info'),
-              SegmentOption(LogLevel.v, 'Verbose'),
-              SegmentOption(LogLevel.debug, 'Debug'),
-              SegmentOption(LogLevel.trace, 'Trace'),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // The 6-segment level filter + search + actions don't fit one row
+          // on a phone. Above the breakpoint keep the single toolbar row;
+          // below it, drop the level filter to its own row that scrolls
+          // horizontally so it never overflows.
+          if (constraints.maxWidth >= 560) {
+            return Row(
+              children: [
+                levels,
+                const SizedBox(width: Tokens.s12),
+                Expanded(child: searchField),
+                const SizedBox(width: Tokens.s4),
+                ...actions,
+              ],
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: searchField),
+                  const SizedBox(width: Tokens.s4),
+                  ...actions,
+                ],
+              ),
+              const SizedBox(height: Tokens.s8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: levels,
+              ),
             ],
-          ),
-          const SizedBox(width: Tokens.s12),
-          // Search fills the gap and shrinks gracefully on narrow widths.
-          Expanded(child: _SearchField(controller: search, onChanged: onSearch)),
-          const SizedBox(width: Tokens.s4),
-          IconButton(
-            onPressed: onAutoscroll,
-            icon: Icon(
-              autoscroll
-                  ? Icons.vertical_align_bottom_rounded
-                  : Icons.vertical_align_center_rounded,
-              size: 18,
-            ),
-            color: autoscroll ? Tokens.accent : Tokens.fgDim,
-            tooltip: 'Autoscroll',
-            splashRadius: 18,
-          ),
-          IconButton(
-            onPressed: onCopy,
-            icon: const Icon(Icons.copy_rounded, size: 16),
-            color: Tokens.fgDim,
-            tooltip: 'Copy',
-            splashRadius: 18,
-          ),
-          IconButton(
-            onPressed: onClear,
-            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-            color: Tokens.fgDim,
-            tooltip: 'Clear',
-            splashRadius: 18,
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -612,6 +656,7 @@ class _SearchField extends StatelessWidget {
           const Icon(Icons.search_rounded, size: 15, color: Tokens.fgFaint),
           const SizedBox(width: Tokens.s6),
           Expanded(
+            // Content-sized so the Row centres it vertically in the pill.
             child: TextField(
               controller: controller,
               onChanged: onChanged,

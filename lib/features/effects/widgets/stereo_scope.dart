@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../../audio/pcm_analysis.dart';
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/reactive.dart';
 
@@ -127,7 +128,7 @@ class _ScopePainter extends CustomPainter {
     final cy = scopeH / 2;
     // 95% of the radius is "full scale" so peaks don't clip at the edge.
     final radius = side / 2 * 0.92;
-    final accent = enabled ? Tokens.accent : Tokens.fgDim;
+    final accent = enabled ? Tokens.accent : Tokens.fgFaint;
 
     // Frame: circle + the mono(vertical)/anti-phase(horizontal) crosshair.
     final guide = Paint()
@@ -149,9 +150,9 @@ class _ScopePainter extends CustomPainter {
     final d = radius * 0.70710678;
     canvas.drawLine(Offset(cx - d, cy - d), Offset(cx + d, cy + d), diag);
     canvas.drawLine(Offset(cx + d, cy - d), Offset(cx - d, cy + d), diag);
-    _label(canvas, 'L', Offset(cx - d - 10, cy - d - 10), Tokens.fgFaint);
-    _label(canvas, 'R', Offset(cx + d + 4, cy - d - 10), Tokens.fgFaint);
-    _label(canvas, 'M', Offset(cx + 4, cy - radius - 1), Tokens.fgFaint);
+    paintChartLabel(canvas, 'L', Offset(cx - d - 10, cy - d - 10), Tokens.fgFaint);
+    paintChartLabel(canvas, 'R', Offset(cx + d + 4, cy - d - 10), Tokens.fgFaint);
+    paintChartLabel(canvas, 'M', Offset(cx + 4, cy - radius - 1), Tokens.fgFaint);
 
     // Scatter — newest points brightest. Draw as tiny dots.
     final n = count();
@@ -196,25 +197,14 @@ class _ScopePainter extends CustomPainter {
     );
     canvas.drawLine(Offset(mid, barRect.top), Offset(mid, barRect.bottom),
         Paint()..color = Tokens.fgFaint..strokeWidth = 1);
-    _label(canvas, '−1', Offset(4, barTop + _barH - 8), Tokens.fgFaint);
-    _label(
+    paintChartLabel(canvas, '−1', Offset(4, barTop + _barH - 8), Tokens.fgFaint);
+    paintChartLabel(
         canvas,
         enabled ? c.toStringAsFixed(2) : 'corr',
         Offset(mid - 9, barTop + _barH - 8),
         enabled ? fillColor : Tokens.fgFaint);
-    _label(canvas, '+1', Offset(size.width - 14, barTop + _barH - 8),
+    paintChartLabel(canvas, '+1', Offset(size.width - 14, barTop + _barH - 8),
         Tokens.fgFaint);
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
-      ),
-    )..layout();
-    tp.paint(canvas, at);
   }
 
   @override

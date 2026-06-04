@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../state/player_scope.dart';
+import '../studio/player_scope.dart';
 import '../ui/tokens.dart';
 import '../util/reactive.dart';
 import 'desktop_shell.dart';

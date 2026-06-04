@@ -19,7 +19,11 @@ class MobileShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Top/sides are inset normally, but NOT the bottom: the tab bar itself
+    // fills the bottom inset (home indicator) with its own surface so the bar
+    // reads as continuous to the screen edge instead of leaving a bare gap.
     return SafeArea(
+      bottom: false,
       child: Column(
         children: [
           Expanded(
@@ -39,9 +43,18 @@ class _TabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Pad the content above the home indicator while the surface colour fills
+    // the inset, so the bar runs continuously to the screen edge.
+    final bottomInset = MediaQuery.of(context).viewPadding.bottom;
     return Container(
-      decoration: const BoxDecoration(color: Tokens.surface),
-      padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
+      decoration: const BoxDecoration(
+        color: Tokens.surface,
+        border: Border(top: BorderSide(color: Tokens.line)),
+      ),
+      padding: EdgeInsets.only(
+        top: Tokens.s8,
+        bottom: Tokens.s8 + bottomInset,
+      ),
       child: Row(
         children: [
           for (final s in Section.values)
@@ -67,23 +80,42 @@ class _Tab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? Tokens.accent : Tokens.fgFaint;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: Tokens.s4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(section.icon, size: 22, color: color),
-              const SizedBox(height: 3),
-              Text(
-                section.shortLabel,
-                style: TextStyle(fontSize: 9.5, color: color),
-              ),
-            ],
+    // Mirror the desktop sidebar's _NavItem: a solid-accent squircle pill for
+    // the active tab with onAccent contents, inactive tabs in fgDim.
+    final color = active ? Tokens.onAccent : Tokens.fgDim;
+    // The inter-pill gap is a Padding OUTSIDE the InkWell so the ink/hover
+    // area (clipped to the same squircle) lines up exactly with the visible
+    // pill — a margin inside the InkWell would make the highlight overshoot.
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.s4),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: Tokens.squircle(Tokens.rSm),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: Tokens.s8),
+            decoration: ShapeDecoration(
+              color: active ? Tokens.accent : Colors.transparent,
+              shape: Tokens.squircle(Tokens.rSm),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(section.icon, size: 22, color: color),
+                const SizedBox(height: 3),
+                Text(
+                  section.shortLabel,
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

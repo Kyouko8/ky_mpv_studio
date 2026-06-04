@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../tokens.dart';
 import 'controls.dart';
+import 'section_header.dart';
 
 /// Standard scrollable body for a section. Fills the full stage width —
 /// no lateral cap — so content runs edge to edge. The shell already
@@ -64,15 +65,7 @@ class SettingsGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              Tokens.s4,
-              0,
-              Tokens.s4,
-              Tokens.s8,
-            ),
-            child: Text(label.toUpperCase(), style: Tokens.caption),
-          ),
+          SectionHeader(label),
           Container(
             clipBehavior: Clip.antiAlias,
             decoration: ShapeDecoration(

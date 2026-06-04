@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import 'favorites_controller.dart';
 import 'media_server.dart';
 
 /// App-level service that reports playback of media-server tracks back to
@@ -15,10 +16,11 @@ import 'media_server.dart';
 /// those extras (the Lab tab, local files) are ignored. All reporting is
 /// best-effort — the server impls swallow their own errors.
 class PlaybackReporter {
-  PlaybackReporter(this._player, this._servers);
+  PlaybackReporter(this._player, this._servers, this._favorites);
 
   final Player _player;
   final Map<ServerKind, MediaServer> _servers;
+  final FavoritesController _favorites;
 
   /// How often a still-playing track re-reports its position.
   static const _progressInterval = Duration(seconds: 15);
@@ -37,9 +39,14 @@ class PlaybackReporter {
     _subs.add(_player.stream.completed.listen((done) {
       if (done) _reportStop();
     }));
+    // OS lock-screen "like" → toggle the current server track's favourite.
+    _subs.add(_player.stream.mediaSessionCommands.listen(_onSessionCommand));
+    // Keep the lock-screen star in sync with in-app favourite toggles.
+    _favorites.addListener(_syncSessionFavorite);
   }
 
   Future<void> dispose() async {
+    _favorites.removeListener(_syncSessionFavorite);
     _progressTimer?.cancel();
     for (final s in _subs) {
       await s.cancel();
@@ -57,6 +64,41 @@ class PlaybackReporter {
     _itemId = id;
     _started = false;
     _maybeStart();
+    _syncSessionFavorite(); // reflect the new track's favourite on the OS star
+  }
+
+  // ─── Favourites / OS lock-screen "like" ───────────────────────────────
+
+  /// The favourite flag the current [Media] carried in its extras (set by
+  /// the Stream tab at play time) — the fallback before any live toggle.
+  bool _currentFavoriteFallback() {
+    final playlist = _player.state.playlist;
+    final items = playlist.items;
+    final i = playlist.index;
+    if (i < 0 || i >= items.length) return false;
+    return items[i].extras?['isFavorite'] == true;
+  }
+
+  /// Push the current track's favourite state onto the OS media session so the
+  /// like control shows filled/empty (no-op when nothing changed, the session
+  /// is disabled, or the current item isn't a server track).
+  void _syncSessionFavorite() {
+    final session = _player.state.mediaSession;
+    if (session == null) return;
+    final fav = (_kind != null && _itemId != null)
+        ? _favorites.resolved(_kind!, _itemId!, _currentFavoriteFallback())
+        : false;
+    if (session.isFavorite == fav) return;
+    unawaited(_player.setMediaSession(session.copyWith(isFavorite: fav)));
+  }
+
+  void _onSessionCommand(MediaSessionCommand command) {
+    if (command is! MediaSessionCommandLike) return;
+    final kind = _kind, id = _itemId;
+    if (kind == null || id == null) return; // not a server track
+    final current = _favorites.resolved(kind, id, _currentFavoriteFallback());
+    // Flip it; the controller notifies → _syncSessionFavorite updates the star.
+    unawaited(_favorites.setFavorite(kind, id, !current));
   }
 
   void _onPlaying(bool playing) {

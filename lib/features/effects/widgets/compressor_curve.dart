@@ -4,7 +4,8 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../../audio/dynamics.dart';
 import '../../../audio/pcm_analysis.dart';
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/reactive.dart';
 
@@ -165,9 +166,9 @@ class _KneePainter extends CustomPainter {
     for (final db in _grid) {
       canvas.drawLine(Offset(x(db), plot.top), Offset(x(db), plot.bottom), grid);
       canvas.drawLine(Offset(plot.left, y(db)), Offset(plot.right, y(db)), grid);
-      _label(canvas, '${db.toInt()}', Offset(x(db), plot.bottom + 3),
+      paintChartLabel(canvas, '${db.toInt()}', Offset(x(db), plot.bottom + 3),
           Tokens.fgFaint, center: true);
-      _label(canvas, '${db.toInt()}', Offset(plot.right + 3, y(db) - 5),
+      paintChartLabel(canvas, '${db.toInt()}', Offset(plot.right + 3, y(db) - 5),
           Tokens.fgFaint);
     }
 
@@ -247,21 +248,9 @@ class _KneePainter extends CustomPainter {
     // GR readout — top-left chip.
     final gr = grDb.value;
     if (enabled && gr > 0.1) {
-      _label(canvas, '−${gr.toStringAsFixed(1)} dB GR',
+      paintChartLabel(canvas, '−${gr.toStringAsFixed(1)} dB GR',
           Offset(plot.left + 4, plot.top + 2), Tokens.accent);
     }
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color,
-      {bool center = false}) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
-      ),
-    )..layout();
-    tp.paint(canvas, Offset(center ? at.dx - tp.width / 2 : at.dx, at.dy));
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 
 /// A before/after sketch of the crystalizer. A representative waveform is
@@ -100,20 +101,9 @@ class _CrystalPainter extends CustomPainter {
         ..isAntiAlias = true,
     );
 
-    _label(canvas, intensity >= 0 ? 'sharpen' : 'smooth',
+    paintChartLabel(canvas, intensity >= 0 ? 'sharpen' : 'smooth',
         const Offset(4, 4), accent);
-    _label(canvas, 'input', Offset(w - 34, 4), Tokens.fgFaint);
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
-      ),
-    )..layout();
-    tp.paint(canvas, at);
+    paintChartLabel(canvas, 'input', Offset(w - 34, 4), Tokens.fgFaint);
   }
 
   @override

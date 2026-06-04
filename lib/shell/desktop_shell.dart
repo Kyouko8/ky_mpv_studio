@@ -51,10 +51,10 @@ class _DesktopShellState extends State<DesktopShell> {
           ],
         ),
         Positioned(
-          left: _sidebarWidth - 3.5,
+          left: _sidebarWidth - 4.5,
           top: 0,
           bottom: 0,
-          width: 7,
+          width: 9,
           child: ResizeHandle(
             axis: Axis.vertical,
             onDelta: (dx) => setState(

@@ -5,9 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../state/player_scope.dart';
+import '../../studio/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
+import 'favorites_controller.dart';
 import 'media_server.dart';
 
 /// One media-server tab (Jellyfin or Plex): a connect form until
@@ -34,13 +35,23 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
 
   Player? _player;
   StreamSubscription<Playlist>? _plSub;
-  String _currentTitle = '';
+  // The playing track's server id + server name (from its Media extras). Match
+  // on the id, NOT the title — two songs with the same title must not both
+  // light up; and the server name keeps a Jellyfin id from matching a Plex row.
+  String _currentId = '';
+  String _currentServer = '';
 
   late final PagingController<int, ServerTrack> _paging;
 
   PlaybackMode _mode = PlaybackMode.transcode;
   TranscodeCodec _codec = TranscodeCodec.aac;
   int _bitrateKbps = 256;
+  StreamTransport _transport = StreamTransport.fmp4;
+  // Plex defaults to DASH (its documented audio path); Jellyfin is HLS-only,
+  // so DASH is greyed out there (see [_protocolDropdown]).
+  late StreamProtocol _protocol = widget.server.kind == ServerKind.plex
+      ? StreamProtocol.dash
+      : StreamProtocol.hls;
   bool _restoring = true;
 
   /// Transcode bitrate ladder (kbps), matching the server transcoders'
@@ -64,12 +75,21 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
       getNextPageKey: (state) =>
           state.lastPageIsEmpty ? null : (state.items?.length ?? 0),
       fetchPage: (startIndex) async {
-        final page = await _server.fetchTracks(
-          startIndex: startIndex,
-          pageSize: _pageSize,
-          query: _query,
-        );
-        return page.tracks;
+        try {
+          final page = await _server.fetchTracks(
+            startIndex: startIndex,
+            pageSize: _pageSize,
+            query: _query,
+          );
+          return page.tracks;
+        } catch (e) {
+          // A 401/403 means the session token is dead (commonly a stale token
+          // restored on launch — see tryRestore). Drop it and fall back to the
+          // connect form so the user can re-authenticate, instead of leaving a
+          // raw, un-retryable error with a Retry that just 401s again.
+          if (_server.isAuthError(e)) await _expireSession();
+          rethrow;
+        }
       },
     );
     _restore();
@@ -80,20 +100,31 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     super.didChangeDependencies();
     if (_player != null) return;
     _player = PlayerScope.of(context);
-    // Highlight the playing row by matching the *queued* title we set in
-    // extras — reliable even for transcoded streams that carry no metadata.
-    _currentTitle = _titleOf(_player!.state.playlist);
+    final (id, srv) = _currentOf(_player!.state.playlist);
+    _currentId = id;
+    _currentServer = srv;
     _plSub = _player!.stream.playlist.listen((pl) {
-      final t = _titleOf(pl);
-      if (mounted && t != _currentTitle) setState(() => _currentTitle = t);
+      final (id, srv) = _currentOf(pl);
+      if (mounted && (id != _currentId || srv != _currentServer)) {
+        setState(() {
+          _currentId = id;
+          _currentServer = srv;
+        });
+      }
     });
   }
 
-  static String _titleOf(Playlist pl) {
+  /// The playing track's `(serverId, server)` from its Media extras, or empty
+  /// strings when nothing server-backed is playing.
+  static (String, String) _currentOf(Playlist pl) {
     if (pl.items.isEmpty || pl.index < 0 || pl.index >= pl.items.length) {
-      return '';
+      return ('', '');
     }
-    return (pl.items[pl.index].extras?['title'] as String?) ?? '';
+    final ex = pl.items[pl.index].extras;
+    return (
+      (ex?['serverId'] as String?) ?? '',
+      (ex?['server'] as String?) ?? '',
+    );
   }
 
   Future<void> _restore() async {
@@ -143,7 +174,18 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     if (!mounted) return;
     _search.clear();
     _query = '';
-    setState(() {});
+    setState(() => _error = null);
+  }
+
+  /// The session expired mid-use (a 401 on a fetch): drop it and return to the
+  /// connect form with an explanatory note so the user can sign in again. The
+  /// fetch error is otherwise swallowed by the now-hidden paged list.
+  Future<void> _expireSession() async {
+    await _server.logout();
+    if (!mounted) return;
+    _search.clear();
+    _query = '';
+    setState(() => _error = 'Session expired — please sign in again.');
   }
 
   void _onSearch(String q) {
@@ -159,9 +201,23 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
   void _play(int index) {
     final items = _paging.value.items ?? const <ServerTrack>[];
     if (index < 0 || index >= items.length) return;
+    final favorites = PlayerScope.favoritesOf(context);
     final window =
         items.sublist(index, math.min(index + _queueMax, items.length));
-    final segment = _server.segmentContainer(_mode, codec: _codec.value);
+    final segment = _server.segmentContainer(
+      _mode,
+      codec: _codec.value,
+      transport: _transport,
+      protocol: _protocol,
+    );
+    // Per-track demuxer options (e.g. Jellyfin's HLS segment-retry guard);
+    // null for streams that need none.
+    final lavfOptions = _server.demuxerLavfOptions(
+      _mode,
+      codec: _codec.value,
+      transport: _transport,
+      protocol: _protocol,
+    );
     final medias = [
       for (final t in window)
         Media(
@@ -170,7 +226,10 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
             _mode,
             codec: _codec.value,
             bitrateKbps: _bitrateKbps,
+            transport: _transport,
+            protocol: _protocol,
           ),
+          demuxerLavfOptions: lavfOptions,
           extras: {
             'title': t.title,
             'artist': t.artist,
@@ -178,13 +237,109 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
             if (t.artUrl != null) 'art': t.artUrl,
             if (segment != null) 'segment': segment,
             // Lets the app-level PlaybackReporter report this track back to
-            // the right server (Now Playing / progress / scrobble).
+            // the right server (Now Playing / progress / scrobble) and drive
+            // the OS lock-screen "like" from the track's favourite state.
             'serverId': t.id,
             'server': _server.kind.name,
+            'isFavorite': favorites.resolved(_server.kind, t.id, t.isFavorite),
           },
         ),
     ];
     _player?.openAll(medias, play: true, index: 0);
+  }
+
+  // ── Transcode option dropdowns (shown only in transcode mode) ────────
+
+  Widget _codecDropdown() => AppDropdown<TranscodeCodec>(
+        value: _codec,
+        items: [
+          for (final c in TranscodeCodec.values)
+            DropdownMenuItem(value: c, child: Text(c.label)),
+        ],
+        onChanged: (c) {
+          if (c == null) return;
+          setState(() {
+            _codec = c;
+            // MPEG-TS survives only with MP3 — revert if the new codec
+            // forbids it, so the picker and the stream never disagree.
+            if (!mpegtsAllowed(c.value)) _transport = StreamTransport.fmp4;
+          });
+        },
+      );
+
+  Widget _bitrateDropdown() => AppDropdown<int>(
+        value: _bitrateKbps,
+        items: [
+          for (final b in _bitrates)
+            DropdownMenuItem(value: b, child: Text('$b kbps')),
+        ],
+        onChanged: (b) {
+          if (b != null) setState(() => _bitrateKbps = b);
+        },
+      );
+
+  Widget _protocolDropdown() {
+    // DASH is Plex-only; Jellyfin transcodes over HLS only, so it's greyed.
+    final dashOk = _server.kind == ServerKind.plex;
+    return AppDropdown<StreamProtocol>(
+      value: _protocol,
+      items: [
+        const DropdownMenuItem(
+          value: StreamProtocol.hls,
+          child: Text('HLS'),
+        ),
+        DropdownMenuItem(
+          value: StreamProtocol.dash,
+          enabled: dashOk,
+          child: dashOk
+              ? const Text('DASH')
+              : Tooltip(
+                  message: 'DASH is available only on Plex',
+                  child: const Text('DASH'),
+                ),
+        ),
+      ],
+      onChanged: (p) {
+        if (p == null) return;
+        setState(() {
+          _protocol = p;
+          // DASH carries only fMP4 — drop MPEG-TS so the picker and the
+          // stream never disagree.
+          if (p == StreamProtocol.dash) _transport = StreamTransport.fmp4;
+        });
+      },
+    );
+  }
+
+  Widget _transportDropdown() {
+    final dash = _protocol == StreamProtocol.dash;
+    final tsOk = !dash && mpegtsAllowed(_codec.value);
+    // Explain why MPEG-TS is unavailable: blocked by DASH first, else by codec.
+    final tsHint = dash
+        ? 'MPEG-TS is not available over DASH'
+        : 'MPEG-TS is available only with the MP3 codec';
+    return AppDropdown<StreamTransport>(
+      value: _transport,
+      items: [
+        const DropdownMenuItem(
+          value: StreamTransport.fmp4,
+          child: Text('fMP4'),
+        ),
+        DropdownMenuItem(
+          value: StreamTransport.mpegts,
+          enabled: tsOk,
+          child: tsOk
+              ? const Text('MPEG-TS')
+              : Tooltip(
+                  message: tsHint,
+                  child: const Text('MPEG-TS'),
+                ),
+        ),
+      ],
+      onChanged: (t) {
+        if (t != null) setState(() => _transport = t);
+      },
+    );
   }
 
   @override
@@ -259,69 +414,62 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(
-              Tokens.s16, Tokens.s8, Tokens.s12, Tokens.s8),
-          child: Row(
+              Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s8),
+          child: Column(
             children: [
-              Expanded(
-                child: _Field(
-                  controller: _search,
-                  hint: 'Search songs',
-                  icon: Icons.search_rounded,
-                  onChanged: _onSearch,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _Field(
+                      controller: _search,
+                      hint: 'Search songs',
+                      icon: Icons.search_rounded,
+                      onChanged: _onSearch,
+                    ),
+                  ),
+                  const SizedBox(width: Tokens.s8),
+                  SizedBox(
+                    width: 168,
+                    child: SegmentedControl<PlaybackMode>(
+                      selected: _mode,
+                      onSelect: (m) => setState(() => _mode = m),
+                      options: const [
+                        SegmentOption(PlaybackMode.direct, 'Direct'),
+                        SegmentOption(PlaybackMode.transcode, 'Transcode'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: Tokens.s4),
+                  IconButton(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout_rounded, size: 18),
+                    color: Tokens.fgDim,
+                    splashRadius: 18,
+                    tooltip: 'Log out',
+                  ),
+                ],
               ),
-              const SizedBox(width: Tokens.s8),
-              SizedBox(
-                width: 168,
-                child: SegmentedControl<PlaybackMode>(
-                  selected: _mode,
-                  onSelect: (m) => setState(() => _mode = m),
-                  options: const [
-                    SegmentOption(PlaybackMode.direct, 'Direct'),
-                    SegmentOption(PlaybackMode.transcode, 'Transcode'),
+              // Codec / bitrate / protocol / container apply only to a
+              // transcode, so they sit on their own rows that appear only in
+              // that mode. Two rows keep each picker tappable on a phone.
+              if (_mode == PlaybackMode.transcode) ...[
+                const SizedBox(height: Tokens.s8),
+                Row(
+                  children: [
+                    Expanded(child: _codecDropdown()),
+                    const SizedBox(width: Tokens.s8),
+                    Expanded(child: _bitrateDropdown()),
                   ],
                 ),
-              ),
-              // Codec + bitrate apply only to a transcode, so they appear
-              // only when Transcode is selected.
-              if (_mode == PlaybackMode.transcode) ...[
-                const SizedBox(width: Tokens.s8),
-                SizedBox(
-                  width: 84,
-                  child: AppDropdown<TranscodeCodec>(
-                    value: _codec,
-                    items: [
-                      for (final c in TranscodeCodec.values)
-                        DropdownMenuItem(value: c, child: Text(c.label)),
-                    ],
-                    onChanged: (c) {
-                      if (c != null) setState(() => _codec = c);
-                    },
-                  ),
-                ),
-                const SizedBox(width: Tokens.s8),
-                SizedBox(
-                  width: 110,
-                  child: AppDropdown<int>(
-                    value: _bitrateKbps,
-                    items: [
-                      for (final b in _bitrates)
-                        DropdownMenuItem(value: b, child: Text('$b kbps')),
-                    ],
-                    onChanged: (b) {
-                      if (b != null) setState(() => _bitrateKbps = b);
-                    },
-                  ),
+                const SizedBox(height: Tokens.s8),
+                Row(
+                  children: [
+                    Expanded(child: _protocolDropdown()),
+                    const SizedBox(width: Tokens.s8),
+                    Expanded(child: _transportDropdown()),
+                  ],
                 ),
               ],
-              const SizedBox(width: Tokens.s4),
-              IconButton(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout_rounded, size: 18),
-                color: Tokens.fgDim,
-                splashRadius: 18,
-                tooltip: 'Log out',
-              ),
             ],
           ),
         ),
@@ -333,19 +481,21 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
               state: state,
               fetchNextPage: fetchNextPage,
               padding: const EdgeInsets.fromLTRB(
-                  Tokens.s12, Tokens.s8, Tokens.s12, Tokens.s12),
+                  Tokens.s16, Tokens.s8, Tokens.s16, Tokens.s12),
               builderDelegate: PagedChildBuilderDelegate<ServerTrack>(
                 itemBuilder: (context, track, index) => _TrackTile(
                   track: track,
-                  current: track.title.isNotEmpty &&
-                      track.title == _currentTitle,
+                  current: _currentId.isNotEmpty &&
+                      track.id == _currentId &&
+                      _currentServer == _server.kind.name,
+                  kind: _server.kind,
+                  favorites: PlayerScope.favoritesOf(context),
                   onTap: () => _play(index),
                 ),
                 firstPageProgressIndicatorBuilder: (_) => const _Spinner(),
                 newPageProgressIndicatorBuilder: (_) => const _Spinner(),
                 firstPageErrorIndicatorBuilder: (_) => _ErrorState(
-                  message:
-                      _paging.value.error?.toString() ?? 'Failed to load.',
+                  message: _paging.value.error?.toString() ?? 'Failed to load.',
                   onRetry: _paging.refresh,
                 ),
                 noItemsFoundIndicatorBuilder: (_) => const Center(
@@ -371,9 +521,16 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
 class _TrackTile extends StatelessWidget {
   final ServerTrack track;
   final bool current;
+  final ServerKind kind;
+  final FavoritesController favorites;
   final VoidCallback onTap;
-  const _TrackTile(
-      {required this.track, required this.current, required this.onTap});
+  const _TrackTile({
+    required this.track,
+    required this.current,
+    required this.kind,
+    required this.favorites,
+    required this.onTap,
+  });
 
   static String _fmt(Duration d) {
     final m = d.inMinutes;
@@ -431,13 +588,49 @@ class _TrackTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: Tokens.s12),
+                const SizedBox(width: Tokens.s4),
+                _FavoriteStar(favorites: favorites, kind: kind, track: track),
+                const SizedBox(width: Tokens.s4),
                 Text(_fmt(track.duration), style: Tokens.numeric),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The per-row favourite toggle. Rebuilds off the shared [FavoritesController]
+/// so a toggle from the OS lock screen (or another row) reflects immediately.
+class _FavoriteStar extends StatelessWidget {
+  final FavoritesController favorites;
+  final ServerKind kind;
+  final ServerTrack track;
+  const _FavoriteStar({
+    required this.favorites,
+    required this.kind,
+    required this.track,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: favorites,
+      builder: (context, _) {
+        final fav = favorites.resolved(kind, track.id, track.isFavorite);
+        return IconButton(
+          onPressed: () => favorites.setFavorite(kind, track.id, !fav),
+          icon: Icon(fav ? Icons.star_rounded : Icons.star_border_rounded,
+              size: 18),
+          color: fav ? Tokens.accent : Tokens.fgDim,
+          splashRadius: 18,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+          tooltip: fav ? 'Unfavorite' : 'Favorite',
+        );
+      },
     );
   }
 }
@@ -473,6 +666,9 @@ class _Field extends StatelessWidget {
           Icon(icon, size: 16, color: Tokens.fgFaint),
           const SizedBox(width: Tokens.s8),
           Expanded(
+            // Content-sized so the Row's centre cross-axis alignment centres
+            // it vertically in the fixed-height pill — forcing a full height
+            // would top-anchor the text instead.
             child: TextField(
               controller: controller,
               obscureText: obscure,

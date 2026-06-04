@@ -507,12 +507,17 @@ class AppDropdown<T> extends StatefulWidget {
   final ValueChanged<T?> onChanged;
   final String? hint;
 
+  /// When false the control is dimmed and **won't open** on tap (the caller
+  /// no longer needs its own `Opacity` / `IgnorePointer` wrapper).
+  final bool enabled;
+
   const AppDropdown({
     super.key,
     required this.value,
     required this.items,
     required this.onChanged,
     this.hint,
+    this.enabled = true,
   });
 
   @override
@@ -520,7 +525,6 @@ class AppDropdown<T> extends StatefulWidget {
 }
 
 class _AppDropdownState<T> extends State<AppDropdown<T>> {
-  final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
 
   bool get _open => _entry != null;
@@ -548,8 +552,14 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
       return;
     }
     final box = context.findRenderObject() as RenderBox;
+    // Position the menu from the trigger's rect rather than a
+    // CompositedTransformFollower: a RenderFollowerLayer in the overlay would
+    // crash any OverlayPortal-based child (Tooltip, SelectionArea, …) that an
+    // item might contain, because its paint transform isn't known at layout.
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final width = box.size.width;
     final height = box.size.height;
+    final topLeft = box.localToGlobal(Offset.zero, ancestor: overlay);
     _entry = OverlayEntry(
       builder: (context) => Stack(
         children: [
@@ -560,16 +570,11 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               onTap: _close,
             ),
           ),
-          CompositedTransformFollower(
-            link: _link,
-            showWhenUnlinked: false,
-            targetAnchor: Alignment.bottomLeft,
-            followerAnchor: Alignment.topLeft,
-            offset: const Offset(0, Tokens.s4),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: SizedBox(width: width, child: _menu(height)),
-            ),
+          Positioned(
+            left: topLeft.dx,
+            top: topLeft.dy + height + Tokens.s4,
+            width: width,
+            child: _menu(height),
           ),
         ],
       ),
@@ -597,6 +602,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
               for (final item in widget.items)
                 _MenuItem(
                   active: item.value == widget.value,
+                  enabled: item.enabled,
                   onTap: () {
                     widget.onChanged(item.value);
                     _close();
@@ -620,12 +626,13 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
   @override
   Widget build(BuildContext context) {
     final selected = _selectedChild();
-    return CompositedTransformTarget(
-      link: _link,
+    final enabled = widget.enabled;
+    return Opacity(
+      opacity: enabled ? 1 : 0.5,
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
-          onTap: _toggle,
+          onTap: enabled ? _toggle : null,
           customBorder: Tokens.squircle(Tokens.rSm),
           child: Container(
             height: Tokens.controlH,
@@ -664,24 +671,32 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
 
 class _MenuItem extends StatelessWidget {
   final bool active;
+  final bool enabled;
   final VoidCallback onTap;
   final Widget child;
   const _MenuItem({
     required this.active,
     required this.onTap,
     required this.child,
+    this.enabled = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final color = !enabled
+        ? Tokens.fgFaint
+        : active
+            ? Tokens.accent
+            : Tokens.fg;
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
-        onTap: onTap,
+        // A disabled item stays visible but inert (greyed, no tap).
+        onTap: enabled ? onTap : null,
         customBorder: Tokens.squircle(Tokens.rSm - 2),
         child: Container(
           decoration: ShapeDecoration(
-            color: active ? Tokens.accentWash : Colors.transparent,
+            color: active && enabled ? Tokens.accentWash : Colors.transparent,
             shape: Tokens.squircle(Tokens.rSm - 2),
           ),
           padding: const EdgeInsets.symmetric(
@@ -690,7 +705,7 @@ class _MenuItem extends StatelessWidget {
           ),
           child: DefaultTextStyle(
             style: Tokens.body.copyWith(
-              color: active ? Tokens.accent : Tokens.fg,
+              color: color,
               fontWeight: active ? FontWeight.w600 : FontWeight.w400,
             ),
             overflow: TextOverflow.ellipsis,

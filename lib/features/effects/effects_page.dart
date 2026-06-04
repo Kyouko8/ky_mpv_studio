@@ -3,12 +3,14 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../audio/biquad.dart';
 import '../../audio/pcm_analysis.dart';
-import '../../state/player_scope.dart';
+import '../../studio/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../util/reactive.dart';
 import '../../ui/widgets/back_bar.dart';
 import '../../ui/widgets/controls.dart';
+import '../../ui/widgets/grid_card.dart';
 import '../../ui/widgets/section_body.dart';
+import '../../ui/widgets/section_header.dart';
 import '../../ui/widgets/section_switcher.dart';
 import '../../generated/catalog.dart';
 import 'widgets/equalizer.dart';
@@ -43,18 +45,29 @@ class _EffectsPageState extends State<EffectsPage>
   late AudioEffects _fx;
   bool _editing = false;
 
-  /// Index of the open featured editor; null = the grid landing.
-  int? _pushed;
+  /// Mirrors [_fx] so a pushed featured-editor route can rebuild on every edit
+  /// (a route can't observe this State's `setState` directly).
+  late final ValueNotifier<AudioEffects> _fxVN;
 
   @override
   void onSubscribe() {
     _player = PlayerScope.of(context);
     _fx = _player.state.audioEffects;
+    _fxVN = ValueNotifier(_fx);
     listen(_player.stream.audioEffects, (v) {
       // Resync from the engine only when the user isn't mid-drag, so an
       // optimistic local draft is never clobbered.
-      if (!_editing && mounted && v != _fx) setState(() => _fx = v);
+      if (!_editing && mounted && v != _fx) {
+        setState(() => _fx = v);
+        _fxVN.value = v;
+      }
     });
+  }
+
+  @override
+  void dispose() {
+    _fxVN.dispose();
+    super.dispose();
   }
 
   /// Updates the local draft only (no engine write) — used during drags.
@@ -63,6 +76,7 @@ class _EffectsPageState extends State<EffectsPage>
       _fx = next;
       _editing = true;
     });
+    _fxVN.value = next;
   }
 
   /// Pushes the current draft to the engine. Persistence happens
@@ -78,6 +92,7 @@ class _EffectsPageState extends State<EffectsPage>
       _fx = next;
       _editing = false;
     });
+    _fxVN.value = next;
     _player.setAudioEffects(next);
   }
 
@@ -375,27 +390,13 @@ class _EffectsPageState extends State<EffectsPage>
   @override
   Widget build(BuildContext context) {
     final featured = _featured();
-    final pushed = _pushed != null && _pushed! < featured.length;
-    final Widget body = pushed
-        ? Column(
-            children: [
-              BackBar(
-                title: featured[_pushed!].title,
-                onBack: () => setState(() => _pushed = null),
-              ),
-              Expanded(child: _FeaturedDetail(spec: featured[_pushed!])),
-            ],
-          )
-        : SingleChildScrollView(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
           Tokens.s20, Tokens.s8, Tokens.s20, Tokens.s32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
-            child: Text('FEATURED', style: Tokens.caption),
-          ),
+          const SectionHeader('Featured'),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -406,24 +407,65 @@ class _EffectsPageState extends State<EffectsPage>
               childAspectRatio: 1,
             ),
             itemCount: featured.length,
-            itemBuilder: (context, i) => _FxTile(
-              spec: featured[i],
-              onTap: () => setState(() => _pushed = i),
+            itemBuilder: (context, i) => GridCard(
+              icon: featured[i].icon,
+              title: featured[i].title,
+              active: featured[i].enabled,
+              // Push a detail route with the shared fade+slide transition. The
+              // editor rebuilds live off _fxVN (_featured()[i] re-read each
+              // time) so its sliders track the engine state.
+              onTap: () => Navigator.of(context).push(
+                fadeSlidePageRoute(
+                  _FeaturedDetailScreen(
+                    listenable: _fxVN,
+                    title: featured[i].title,
+                    detailBuilder: () => _FeaturedDetail(spec: _featured()[i]),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: Tokens.s24),
-          const Padding(
-            padding: EdgeInsets.fromLTRB(Tokens.s4, 0, Tokens.s4, Tokens.s8),
-            child: Text('ALL EFFECTS', style: Tokens.caption),
-          ),
+          const SectionHeader('All effects'),
           for (final cat in kCatalogCategories) _CatalogTile(category: cat),
         ],
       ),
     );
-    return SectionSwitcher(
-      child: KeyedSubtree(
-        key: ValueKey<int?>(pushed ? _pushed : null),
-        child: body,
+  }
+}
+
+/// A pushed full-page editor for one featured effect. Rebuilds via
+/// [listenable] (the page's `_fxVN`) so its controls stay in sync with the
+/// engine while editing. Pushed via [fadeSlidePageRoute].
+class _FeaturedDetailScreen extends StatelessWidget {
+  final Listenable listenable;
+  final String title;
+  final Widget Function() detailBuilder;
+  const _FeaturedDetailScreen({
+    required this.listenable,
+    required this.title,
+    required this.detailBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Tokens.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            BackBar(
+              title: title,
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(
+              child: ListenableBuilder(
+                listenable: listenable,
+                builder: (_, __) => detailBuilder(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -489,82 +531,6 @@ class SliderRowSpec {
         onChanged: onChanged,
         onChangeEnd: (_) => onChangeEnd(),
       );
-}
-
-/// A squircle tile in the featured grid — icon, title, and an accent
-/// "on" pip + border when the effect is engaged. Tapping opens its editor.
-class _FxTile extends StatelessWidget {
-  final _Featured spec;
-  final VoidCallback onTap;
-
-  const _FxTile({required this.spec, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final on = spec.enabled;
-    final shape =
-        ContinuousRectangleBorder(borderRadius: BorderRadius.circular(40));
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder:
-            ContinuousRectangleBorder(borderRadius: BorderRadius.circular(40)),
-        // Ink (not Container) so the hover/ink highlight paints on the
-        // Material above the surface fill instead of being hidden behind it.
-        child: Ink(
-          // Active fill (accent wash) replaces the old "enabled" border.
-          decoration: ShapeDecoration(
-            color: on ? Tokens.accentWash : Tokens.surface,
-            shape: shape,
-          ),
-          padding: const EdgeInsets.all(Tokens.s16),
-          child: Stack(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(spec.icon,
-                        size: 26, color: on ? Tokens.accent : Tokens.fgDim),
-                    const SizedBox(height: Tokens.s12),
-                    Text(
-                      spec.title,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Tokens.fg,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // "On" pip, top-right.
-              Positioned(
-                top: 0,
-                right: 0,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 160),
-                  opacity: on ? 1 : 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const ShapeDecoration(
-                      color: Tokens.accent,
-                      shape: CircleBorder(),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// The dedicated editor for one featured effect: a bypass toggle, the hero
@@ -701,7 +667,7 @@ class _CatalogCategoryScreen extends StatelessWidget {
           children: [
             BackBar(
               title: category.title,
-              onBack: () => Navigator.of(context).pop(),
+              onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(
               child: SectionBody(children: [category.builder(context)]),

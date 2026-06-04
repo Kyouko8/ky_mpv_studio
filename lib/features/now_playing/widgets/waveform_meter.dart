@@ -1,8 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/duration_format.dart';
 import '../../../util/reactive.dart';
@@ -49,6 +50,11 @@ class _WaveformMeterState extends State<WaveformMeter>
   bool _playWhenReady = false;
   bool _seekable = false;
 
+  /// Current A-B loop markers (mpv `ab-loop-a` / `ab-loop-b`), drawn on the
+  /// meter and set/cleared from the right-click / long-press context menu.
+  Duration? _abA;
+  Duration? _abB;
+
   /// The track's min/max envelope from `stream.waveform`. The engine
   /// fills this transparently: a full envelope up-front for local files,
   /// or one that grows during playback for network sources (segmented /
@@ -64,6 +70,12 @@ class _WaveformMeterState extends State<WaveformMeter>
   /// First visible second of the view. Driven only by the scrollbar.
   double _viewStart = 0;
 
+  /// Live only: the view's left edge in ABSOLUTE media time. The live view
+  /// does NOT auto-follow — it stays exactly where the user left it (anchored
+  /// to the content even as the cache window slides), defaulting to the start
+  /// of the cached window. Navigate the history with the scrollbar.
+  double _viewLeftAbs = 0;
+
   @override
   void onSubscribe() {
     _player = PlayerScope.of(context);
@@ -73,6 +85,8 @@ class _WaveformMeterState extends State<WaveformMeter>
     _rate = s.rate;
     _playWhenReady = s.playWhenReady;
     _seekable = s.seekable;
+    _abA = s.abLoopA;
+    _abB = s.abLoopB;
 
     _ticker = createTicker((_) {
       if (mounted) setState(() {});
@@ -92,7 +106,11 @@ class _WaveformMeterState extends State<WaveformMeter>
     listen(_player.stream.duration, (d) {
       if (!mounted) return;
       setState(() {
-        if (d != _dur) _viewStart = 0; // new track → reset view to start
+        if (d != _dur) {
+          // New source → reset the view to the start.
+          _viewStart = 0;
+          _viewLeftAbs = 0;
+        }
         _dur = d;
       });
     });
@@ -104,6 +122,12 @@ class _WaveformMeterState extends State<WaveformMeter>
     });
     listen(_player.stream.waveform, (w) {
       if (mounted) setState(() => _wave = w);
+    });
+    listen(_player.stream.abLoopA, (v) {
+      if (mounted) setState(() => _abA = v);
+    });
+    listen(_player.stream.abLoopB, (v) {
+      if (mounted) setState(() => _abB = v);
     });
     listen(_player.stream.playWhenReady, (v) {
       _playWhenReady = v;
@@ -140,19 +164,69 @@ class _WaveformMeterState extends State<WaveformMeter>
 
   double get _durSecs => _dur.inMicroseconds / 1e6;
 
+  /// True when the engine is feeding a live (rolling, cache-aligned)
+  /// envelope: there's no fixed track length — the window slides with the
+  /// demuxer cache. The playhead sits at the true playback position (it does
+  /// NOT auto-follow the tail); pan the history manually with the scrollbar.
+  bool get _live => _wave?.live ?? false;
+
+  /// Absolute media time of the timeline's left origin: the start of the
+  /// cached window for a live stream, else 0.
+  double get _originSecs => _live ? _wave!.start.inMicroseconds / 1e6 : 0;
+
   /// Timeline length for the ruler + scroll range. Falls back to a
   /// 5-minute placeholder when nothing is loaded, so the meter is always
   /// populated with a usable timeline.
   static const double _placeholderSecs = 300;
-  double get _timelineSecs => _durSecs > 0 ? _durSecs : _placeholderSecs;
+  double get _timelineSecs {
+    if (_live) {
+      final span = _wave!.duration.inMicroseconds / 1e6; // cached window
+      return span > _minWindow ? span : _minWindow;
+    }
+    return _durSecs > 0 ? _durSecs : _placeholderSecs;
+  }
+
   double get _maxStart =>
       (_timelineSecs - _windowSeconds).clamp(0, _timelineSecs);
-  bool get _hasScroll => _maxStart > 0;
-  double get _visibleSecs => _hasScroll ? _windowSeconds : _timelineSecs;
+
+  /// Whether the non-live timeline has off-screen history to pan to (zoomed
+  /// in past the track length). Live panning is handled separately by the
+  /// scrollbar (enabled whenever [_maxStart] > 0) and never auto-follows the
+  /// tail, so it does not go through this getter.
+  bool get _hasScroll => !_live && _maxStart > 0;
+
+  double get _visibleSecs {
+    // Live keeps a FIXED-width window so the envelope grows into it from the
+    // left (occupying only the elapsed fraction) and advances with the
+    // playhead, instead of being stretched across the whole width while the
+    // cache is still short.
+    if (_live) return _windowSeconds;
+    return _hasScroll ? _windowSeconds : _timelineSecs;
+  }
+
+  /// Left edge of the view, relative to [_originSecs]. Live anchors to the
+  /// user's absolute position (defaulting to the start of the cache, never
+  /// auto-following the tail); a normal track uses the scrolled position.
+  double get _leftRel {
+    if (_live) return (_viewLeftAbs - _originSecs).clamp(0, _maxStart);
+    return _viewStart.clamp(0, _maxStart);
+  }
+
+  /// Absolute media time at the left edge of the view.
+  double get _viewStartAbs => _originSecs + _leftRel;
 
   /// Multiplies the zoom level (factor < 1 zooms in), keeping the current
   /// view centre fixed and the view start within range.
   void _zoomBy(double factor) {
+    if (_live) {
+      // Just change the window width; the user's absolute anchor is
+      // preserved and re-clamped on the next build.
+      setState(() {
+        _windowSeconds =
+            (_windowSeconds * factor).clamp(_minWindow, _timelineSecs);
+      });
+      return;
+    }
     final center = _viewStart + _visibleSecs / 2;
     setState(() {
       _windowSeconds =
@@ -161,11 +235,31 @@ class _WaveformMeterState extends State<WaveformMeter>
     });
   }
 
-  void _seekToX(double localX, double width) {
+  /// Absolute media time at horizontal pixel [localX], clamped to the seekable
+  /// region. Live clamps to the cached window (the only seekable region); a
+  /// normal track clamps to [0, duration]. The live upper bound is the true
+  /// cached end (`_wave.end`), not the placeholder-floored `_timelineSecs`, so
+  /// a sub-`_minWindow` cache can't map a tap past what's actually buffered.
+  Duration _timeAtX(double localX, double width) {
+    // A zero-width meter (first layout pass, collapsed pane) makes pxPerSec 0
+    // or _visibleSecs 0, so tAbs becomes Infinity/NaN and `.round().toInt()`
+    // throws UnsupportedError — crashing the gesture handler. Map to the
+    // region floor instead.
+    if (width <= 0 || !_visibleSecs.isFinite || _visibleSecs <= 0) {
+      return Duration(microseconds: _live ? _wave!.start.inMicroseconds : 0);
+    }
     final pxPerSec = width / _visibleSecs;
-    final t = _viewStart + localX / pxPerSec;
-    final micros = (t * 1e6).round().clamp(0, _dur.inMicroseconds);
-    final target = Duration(microseconds: micros);
+    final tAbs = _viewStartAbs + localX / pxPerSec;
+    if (!tAbs.isFinite) {
+      return Duration(microseconds: _live ? _wave!.start.inMicroseconds : 0);
+    }
+    final loUs = _live ? _wave!.start.inMicroseconds : 0;
+    final hiUs = _live ? _wave!.end.inMicroseconds : _dur.inMicroseconds;
+    final micros = (tAbs * 1e6).round().clamp(loUs, hiUs).toInt();
+    return Duration(microseconds: micros);
+  }
+
+  void _seekTo(Duration target) {
     setState(() {
       _dragPos = target;
       _anchor = target;
@@ -173,14 +267,89 @@ class _WaveformMeterState extends State<WaveformMeter>
     _player.seek(target);
   }
 
+  void _seekToX(double localX, double width) =>
+      _seekTo(_timeAtX(localX, width));
+
+  /// Right-click / long-press context menu at the clicked point: set/clear the
+  /// A-B loop markers (the loop runs once both are set), seek there, and jump
+  /// chapters. Replaces the old Settings "A-B loop" panel.
+  Future<void> _openMenu(Offset globalPos, double localX, double width) async {
+    final time = _timeAtX(localX, width);
+    final hasLoop = _abA != null || _abB != null;
+    final chapters = _player.state.chapters;
+    final cur = _player.state.currentChapter ?? 0;
+    final entries = <_MenuEntry>[
+      _MenuEntry(
+          'a', Icons.flag_outlined, 'Set loop A here', formatDuration(time)),
+      _MenuEntry(
+          'b', Icons.flag_rounded, 'Set loop B here', formatDuration(time)),
+      if (hasLoop)
+        _MenuEntry('clear', Icons.layers_clear_rounded, 'Clear A-B loop', null),
+      if (chapters.isNotEmpty) ...[
+        _MenuEntry.divider,
+        _MenuEntry(
+            'prevch', Icons.skip_previous_rounded, 'Previous chapter', null,
+            enabled: cur > 0),
+        _MenuEntry('nextch', Icons.skip_next_rounded, 'Next chapter', null,
+            enabled: cur < chapters.length - 1),
+      ],
+    ];
+
+    // Root navigator: its overlay is full-screen, so it shares the coordinate
+    // space of `globalPos`. (The page sits in a branch navigator whose overlay
+    // is offset by the sidebar/header — pushing there would place the menu far
+    // from the cursor.)
+    final choice = await Navigator.of(context, rootNavigator: true)
+        .push<String>(_InstantMenuRoute(position: globalPos, entries: entries));
+    if (!mounted) return;
+    switch (choice) {
+      case 'a':
+        _player.setAbLoopA(time);
+      case 'b':
+        _player.setAbLoopB(time);
+      case 'clear':
+        _player.setAbLoopA(null);
+        _player.setAbLoopB(null);
+      case 'prevch':
+        _player.setChapter(cur - 1);
+      case 'nextch':
+        _player.setChapter(cur + 1);
+    }
+  }
+
   void _setViewStart(double v) {
     setState(() => _viewStart = v.clamp(0, _maxStart));
+  }
+
+  /// Mouse wheel / trackpad scroll pans the view horizontally (it never seeks).
+  /// A vertical wheel and a horizontal trackpad swipe both map to left/right;
+  /// the pixel delta becomes seconds via the current zoom, then pans like the
+  /// scrollbar would.
+  void _onScroll(PointerSignalEvent signal, double width) {
+    if (signal is! PointerScrollEvent || _maxStart <= 0) return;
+    final d = signal.scrollDelta;
+    final delta = d.dx.abs() >= d.dy.abs() ? d.dx : d.dy;
+    if (delta == 0 || width <= 0 || _visibleSecs <= 0) return;
+    _onScrub((_leftRel + delta / (width / _visibleSecs)).clamp(0.0, _maxStart));
+  }
+
+  /// Scrollbar drag. A normal track moves the view; a live stream pans
+  /// through the cached history, anchored in absolute media time so the
+  /// position holds as the cache window slides.
+  void _onScrub(double v) {
+    if (!_live) {
+      _setViewStart(v);
+      return;
+    }
+    setState(() => _viewLeftAbs = _originSecs + v.clamp(0, _maxStart));
   }
 
   @override
   Widget build(BuildContext context) {
     final pos = _dragging ? _dragPos : _livePos();
-    final canSeek = _seekable && _dur > Duration.zero;
+    // Live is seekable within its cached window even though mpv flags the
+    // whole stream non-seekable; a normal track needs a known duration.
+    final canSeek = _live || (_seekable && _dur > Duration.zero);
     return Column(
       children: [
         Expanded(
@@ -190,46 +359,62 @@ class _WaveformMeterState extends State<WaveformMeter>
                 child: LayoutBuilder(
                   builder: (context, c) {
                     final w = c.maxWidth;
-                    return MouseRegion(
-                      cursor: canSeek
-                          ? SystemMouseCursors.precise
-                          : MouseCursor.defer,
-                      onHover: (e) {
-                        if (mounted) {
-                          setState(() => _hoverX = e.localPosition.dx);
-                        }
-                      },
-                      onExit: (_) {
-                        if (mounted) setState(() => _hoverX = null);
-                      },
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTapDown: canSeek
-                            ? (d) => _seekToX(d.localPosition.dx, w)
-                            : null,
-                        onHorizontalDragStart: canSeek
-                            ? (d) {
-                                setState(() => _dragging = true);
-                                _seekToX(d.localPosition.dx, w);
-                              }
-                            : null,
-                        onHorizontalDragUpdate: canSeek
-                            ? (d) => _seekToX(d.localPosition.dx, w)
-                            : null,
-                        onHorizontalDragEnd: canSeek
-                            ? (_) => setState(() => _dragging = false)
-                            : null,
-                        child: CustomPaint(
-                          size: Size.infinite,
-                          painter: _MeterPainter(
-                            wave: _wave,
-                            pos: pos,
-                            dur: _dur,
-                            timelineSecs: _timelineSecs,
-                            viewStart: _viewStart,
-                            visibleSecs: _visibleSecs,
-                            rulerHeight: WaveformMeter.rulerHeight,
-                            hoverX: (canSeek && !_dragging) ? _hoverX : null,
+                    return Listener(
+                      onPointerSignal: (s) => _onScroll(s, w),
+                      child: MouseRegion(
+                        cursor: canSeek
+                            ? SystemMouseCursors.precise
+                            : MouseCursor.defer,
+                        onHover: (e) {
+                          if (mounted) {
+                            setState(() => _hoverX = e.localPosition.dx);
+                          }
+                        },
+                        onExit: (_) {
+                          if (mounted) setState(() => _hoverX = null);
+                        },
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTapDown: canSeek
+                              ? (d) => _seekToX(d.localPosition.dx, w)
+                              : null,
+                          // Right-click (desktop) / long-press (touch) → the
+                          // A-B loop + seek + chapter context menu.
+                          onSecondaryTapDown: canSeek
+                              ? (d) => _openMenu(
+                                  d.globalPosition, d.localPosition.dx, w)
+                              : null,
+                          onLongPressStart: canSeek
+                              ? (d) => _openMenu(
+                                  d.globalPosition, d.localPosition.dx, w)
+                              : null,
+                          onHorizontalDragStart: canSeek
+                              ? (d) {
+                                  setState(() => _dragging = true);
+                                  _seekToX(d.localPosition.dx, w);
+                                }
+                              : null,
+                          onHorizontalDragUpdate: canSeek
+                              ? (d) => _seekToX(d.localPosition.dx, w)
+                              : null,
+                          onHorizontalDragEnd: canSeek
+                              ? (_) => setState(() => _dragging = false)
+                              : null,
+                          child: CustomPaint(
+                            size: Size.infinite,
+                            painter: _MeterPainter(
+                              wave: _wave,
+                              pos: pos,
+                              live: _live,
+                              originSecs: _originSecs,
+                              timelineSecs: _timelineSecs,
+                              viewStartAbs: _viewStartAbs,
+                              visibleSecs: _visibleSecs,
+                              rulerHeight: WaveformMeter.rulerHeight,
+                              hoverX: (canSeek && !_dragging) ? _hoverX : null,
+                              abA: _abA,
+                              abB: _abB,
+                            ),
                           ),
                         ),
                       ),
@@ -252,12 +437,14 @@ class _WaveformMeterState extends State<WaveformMeter>
           ),
         ),
         _HScrollBar(
-          enabled: _hasScroll,
-          viewStart: _viewStart,
-          windowSeconds: _windowSeconds,
+          // Scrollable whenever there's history off-screen — including live,
+          // where dragging pans through the cached window (no auto-follow).
+          enabled: _maxStart > 0,
+          viewStart: _leftRel,
+          windowSeconds: _visibleSecs,
           maxStart: _maxStart,
           durSecs: _timelineSecs,
-          onChanged: _setViewStart,
+          onChanged: _onScrub,
         ),
       ],
     );
@@ -343,7 +530,7 @@ class _ZoomBtn extends StatelessWidget {
   }
 }
 
-class _HScrollBar extends StatelessWidget {
+class _HScrollBar extends StatefulWidget {
   final bool enabled;
   final double viewStart;
   final double windowSeconds;
@@ -361,31 +548,49 @@ class _HScrollBar extends StatelessWidget {
   });
 
   @override
+  State<_HScrollBar> createState() => _HScrollBarState();
+}
+
+class _HScrollBarState extends State<_HScrollBar> {
+  bool _hoverThumb = false;
+
+  @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: WaveformMeter.scrollbarHeight,
       child: LayoutBuilder(
         builder: (context, c) {
           final w = c.maxWidth;
-          final frac =
-              (durSecs <= 0 ? 1.0 : (windowSeconds / durSecs)).clamp(0.06, 1.0);
+          final frac = (widget.durSecs <= 0
+                  ? 1.0
+                  : widget.windowSeconds / widget.durSecs)
+              .clamp(0.06, 1.0);
           final thumbW = (w * frac).clamp(28.0, w);
           final avail = w - thumbW;
-          final thumbX = maxStart > 0 ? (viewStart / maxStart) * avail : 0.0;
+          final thumbX = widget.maxStart > 0
+              ? (widget.viewStart / widget.maxStart) * avail
+              : 0.0;
 
           void setFromX(double x) {
-            if (!enabled || avail <= 0) return;
+            if (!widget.enabled || avail <= 0) return;
             final tx = (x - thumbW / 2).clamp(0.0, avail);
-            onChanged((tx / avail) * maxStart);
+            widget.onChanged((tx / avail) * widget.maxStart);
           }
+
+          // Thumb fills with the app accent while hovered (a draggable handle
+          // cue); a recessed track colour otherwise.
+          final thumbColour = !widget.enabled
+              ? Tokens.surface2
+              : _hoverThumb
+                  ? Tokens.accent
+                  : Tokens.surface3;
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: (d) => setFromX(d.localPosition.dx),
             onHorizontalDragUpdate: (d) => setFromX(d.localPosition.dx),
             // Flush, square strip — a recessed track colour so it reads as a
-            // control, not blank space below the waveform, with a hairline
-            // above it separating it from the waveform.
+            // control, with a hairline above separating it from the waveform.
             child: Container(
               decoration: const BoxDecoration(
                 color: Tokens.surface2,
@@ -393,15 +598,21 @@ class _HScrollBar extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  // Thumb — a square pane spanning the full strip height.
                   Positioned(
                     left: thumbX,
                     top: 0,
                     bottom: 0,
                     width: thumbW,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: enabled ? Tokens.surface3 : Tokens.surface2,
+                    child: MouseRegion(
+                      cursor: widget.enabled
+                          ? SystemMouseCursors.click
+                          : MouseCursor.defer,
+                      onEnter: widget.enabled
+                          ? (_) => setState(() => _hoverThumb = true)
+                          : null,
+                      onExit: (_) => setState(() => _hoverThumb = false),
+                      child: Container(
+                        decoration: BoxDecoration(color: thumbColour),
                       ),
                     ),
                   ),
@@ -418,22 +629,36 @@ class _HScrollBar extends StatelessWidget {
 class _MeterPainter extends CustomPainter {
   final WaveformData? wave;
   final Duration pos;
-  final Duration dur;
+  final bool live;
+
+  /// Absolute media time of the timeline's left origin (0 for a normal
+  /// track, the cached-window start for live).
+  final double originSecs;
   final double timelineSecs;
-  final double viewStart;
+
+  /// Absolute media time at the left edge of the view.
+  final double viewStartAbs;
   final double visibleSecs;
   final double rulerHeight;
   final double? hoverX;
 
+  /// A-B loop markers (absolute media time), drawn as amber flags with the
+  /// region between them shaded.
+  final Duration? abA;
+  final Duration? abB;
+
   _MeterPainter({
     required this.wave,
     required this.pos,
-    required this.dur,
+    required this.live,
+    required this.originSecs,
     required this.timelineSecs,
-    required this.viewStart,
+    required this.viewStartAbs,
     required this.visibleSecs,
     required this.rulerHeight,
     required this.hoverX,
+    required this.abA,
+    required this.abB,
   });
 
   static double _niceStep(double visibleSecs) {
@@ -451,11 +676,12 @@ class _MeterPainter extends CustomPainter {
     final h = size.height;
     if (w <= 0 || h <= 0) return;
 
-    final durSecs = dur.inMicroseconds / 1e6;
     final posSecs = pos.inMicroseconds / 1e6;
     final pxPerSec = w / visibleSecs;
-    final tLeft = viewStart;
-    final tRight = viewStart + visibleSecs;
+    final tLeft = viewStartAbs;
+    final tRight = viewStartAbs + visibleSecs;
+    final tlStart = originSecs;
+    final tlEnd = originSecs + timelineSecs;
     final playheadX = (posSecs - tLeft) * pxPerSec;
 
     final waveTop = rulerHeight;
@@ -482,7 +708,7 @@ class _MeterPainter extends CustomPainter {
       final tp = TextPainter(textDirection: TextDirection.ltr);
       var t = (tLeft / step).floorToDouble() * step;
       for (; t <= tRight; t += step) {
-        if (t < 0 || t > timelineSecs) continue;
+        if (t < tlStart || t > tlEnd) continue;
         final x = (t - tLeft) * pxPerSec;
         canvas.drawLine(
           Offset(x, rulerHeight - 5),
@@ -520,16 +746,21 @@ class _MeterPainter extends CustomPainter {
     // real flat-zero spike, using the per-bin `filled` flags.
     final unloaded = Paint()..color = Tokens.line;
     final wv = wave;
-    if (wv != null && wv.bins > 0 && durSecs > 0) {
+    if (wv != null && wv.bins > 0 && wv.duration > Duration.zero) {
       final bins = wv.bins;
       final filled = wv.filled;
+      // Bins are placed in ABSOLUTE media time: bin i starts at
+      // `start + i * binSecs`. For a normal track `start` is 0; for a live
+      // window it's the oldest cached moment, so bins line up with the
+      // playhead and the seek positions.
+      final waveStart = wv.start.inMicroseconds / 1e6;
       final binSecs = wv.duration.inMicroseconds / 1e6 / bins;
-      var i = (tLeft / binSecs).floor();
+      var i = ((tLeft - waveStart) / binSecs).floor();
       if (i < 0) i = 0;
       final maxHalf = waveH / 2 - 3;
       final barW = (pxPerSec * binSecs * 0.7).clamp(0.6, 6.0);
       for (; i < bins; i++) {
-        final t = (i + 0.5) * binSecs;
+        final t = waveStart + (i + 0.5) * binSecs;
         if (t > tRight) break;
         final x = (t - tLeft) * pxPerSec;
         if (x < -barW || x > w + barW) continue;
@@ -546,6 +777,55 @@ class _MeterPainter extends CustomPainter {
       }
     }
 
+    // ── A-B loop markers + region ────────────────────────────────────
+    double xOfSecs(double tSecs) => (tSecs - tLeft) * pxPerSec;
+    final xa = abA == null ? null : xOfSecs(abA!.inMicroseconds / 1e6);
+    final xb = abB == null ? null : xOfSecs(abB!.inMicroseconds / 1e6);
+    const loop = Tokens.amber;
+    // Shade the loop span once both ends are set (A < B).
+    if (xa != null && xb != null && xb > xa) {
+      final l = xa.clamp(0.0, w);
+      final r = xb.clamp(0.0, w);
+      if (r > l) {
+        canvas.drawRect(
+          Rect.fromLTRB(l, waveTop, r, h),
+          Paint()..color = loop.withValues(alpha: 0.12),
+        );
+      }
+    }
+    void drawMarker(double? x, String label) {
+      if (x == null || x < 0 || x > w) return;
+      canvas.drawRect(
+        Rect.fromLTWH(x - 0.75, rulerHeight, 1.5, h - rulerHeight),
+        Paint()..color = loop,
+      );
+      final tp = TextPainter(
+        textDirection: TextDirection.ltr,
+        text: TextSpan(
+          text: label,
+          style: const TextStyle(
+            fontFamily: Tokens.mono,
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: Tokens.onAccent,
+          ),
+        ),
+      )..layout();
+      final boxW = tp.width + 6;
+      final boxH = tp.height + 2;
+      var bx = x + 1;
+      if (bx + boxW > w) bx = x - 1 - boxW;
+      final box = Rect.fromLTWH(bx, rulerHeight + 1, boxW, boxH);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(box, const Radius.circular(2)),
+        Paint()..color = loop,
+      );
+      tp.paint(canvas, Offset(bx + 3, rulerHeight + 2));
+    }
+
+    drawMarker(xa, 'A');
+    drawMarker(xb, 'B');
+
     // ── Hover preview cursor ─────────────────────────────────────────
     final hx = hoverX;
     if (hx != null && hx >= 0 && hx <= w) {
@@ -553,7 +833,7 @@ class _MeterPainter extends CustomPainter {
         Rect.fromLTWH(hx - 0.5, rulerHeight, 1, h - rulerHeight),
         Paint()..color = Tokens.fg.withValues(alpha: 0.28),
       );
-      final t = (tLeft + hx / pxPerSec).clamp(0.0, timelineSecs);
+      final t = (tLeft + hx / pxPerSec).clamp(tlStart, tlEnd);
       final tp = TextPainter(
         textDirection: TextDirection.ltr,
         text: TextSpan(
@@ -594,11 +874,169 @@ class _MeterPainter extends CustomPainter {
   bool shouldRepaint(_MeterPainter old) =>
       old.wave != wave ||
       old.pos != pos ||
-      old.dur != dur ||
+      old.live != live ||
+      old.originSecs != originSecs ||
       old.timelineSecs != timelineSecs ||
-      old.viewStart != viewStart ||
+      old.viewStartAbs != viewStartAbs ||
       old.visibleSecs != visibleSecs ||
       old.rulerHeight != rulerHeight ||
-      old.hoverX != hoverX;
+      old.hoverX != hoverX ||
+      old.abA != abA ||
+      old.abB != abB;
 }
 
+/// One row of the meter context menu (or a divider).
+class _MenuEntry {
+  final String? value;
+  final IconData? icon;
+  final String? label;
+  final String? trailing;
+  final bool enabled;
+  final bool isDivider;
+
+  const _MenuEntry(this.value, this.icon, this.label, this.trailing,
+      {this.enabled = true})
+      : isDivider = false;
+
+  const _MenuEntry._divider()
+      : value = null,
+        icon = null,
+        label = null,
+        trailing = null,
+        enabled = false,
+        isDivider = true;
+
+  static const divider = _MenuEntry._divider();
+}
+
+/// A context-menu route with **no transition** — it just appears and
+/// disappears (the default `showMenu` scale/fade is what we're avoiding).
+/// Dismisses on tap-outside; pops the chosen entry's value.
+class _InstantMenuRoute<T> extends PopupRoute<T> {
+  final Offset position;
+  final List<_MenuEntry> entries;
+
+  _InstantMenuRoute({required this.position, required this.entries});
+
+  @override
+  Duration get transitionDuration => Duration.zero;
+  @override
+  Duration get reverseTransitionDuration => Duration.zero;
+  @override
+  bool get barrierDismissible => true;
+  @override
+  Color? get barrierColor => null;
+  @override
+  String get barrierLabel => 'Dismiss menu';
+
+  @override
+  Widget buildPage(
+      BuildContext context, Animation<double> a, Animation<double> s) {
+    return CustomSingleChildLayout(
+      delegate: _MenuLayoutDelegate(position),
+      child: _InstantMenu(entries: entries),
+    );
+  }
+}
+
+/// Places the menu at the tap point, nudged back on-screen if it would spill
+/// off the right/bottom edge.
+class _MenuLayoutDelegate extends SingleChildLayoutDelegate {
+  final Offset target;
+  _MenuLayoutDelegate(this.target);
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      constraints.loosen();
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    var x = target.dx;
+    var y = target.dy;
+    if (x + childSize.width > size.width) x = size.width - childSize.width;
+    if (y + childSize.height > size.height) y = size.height - childSize.height;
+    return Offset(x.clamp(0, size.width), y.clamp(0, size.height));
+  }
+
+  @override
+  bool shouldRelayout(_MenuLayoutDelegate old) => old.target != target;
+}
+
+/// The flat squircle menu card (matches the app surfaces).
+class _InstantMenu extends StatelessWidget {
+  final List<_MenuEntry> entries;
+  const _InstantMenu({required this.entries});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(4),
+      // A colour-bearing Material (not transparency + Container) so the row
+      // ink/hover renders over the surface; flat squircle, like the app.
+      child: Material(
+        color: Tokens.surface2,
+        clipBehavior: Clip.antiAlias,
+        shape: Tokens.squircle(
+          Tokens.rMd,
+          side: const BorderSide(color: Tokens.line2),
+        ),
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: Tokens.s4),
+              for (final e in entries)
+                if (e.isDivider)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: Tokens.s4),
+                    child:
+                        Divider(height: 1, thickness: 1, color: Tokens.line2),
+                  )
+                else
+                  _MenuRow(entry: e),
+              const SizedBox(height: Tokens.s4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuRow extends StatelessWidget {
+  final _MenuEntry entry;
+  const _MenuRow({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = entry.enabled;
+    return InkWell(
+      onTap: enabled ? () => Navigator.of(context).pop(entry.value) : null,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.s12, vertical: Tokens.s8),
+        child: Row(
+          children: [
+            Icon(entry.icon,
+                size: 16, color: enabled ? Tokens.fgDim : Tokens.fgFaint),
+            const SizedBox(width: Tokens.s12),
+            Expanded(
+              child: Text(
+                entry.label!,
+                style: Tokens.body
+                    .copyWith(color: enabled ? Tokens.fg : Tokens.fgFaint),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (entry.trailing != null) ...[
+              const SizedBox(width: Tokens.s16),
+              Text(entry.trailing!, style: Tokens.numeric),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}

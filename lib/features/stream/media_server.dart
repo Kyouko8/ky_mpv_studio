@@ -8,13 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'plex_transcode_session_manager.dart';
 
-// Monotonic, process-unique transcode session id. A FIXED id made the
-// server reuse one transcode session for every track (so every song played
-// back as the first one) — each request needs its own.
-int _sessionSeq = 0;
-String _newSession() =>
-    'mpv-${DateTime.now().microsecondsSinceEpoch}-${_sessionSeq++}';
-
 // Human-readable device name shown in the servers' "Now Playing" (e.g.
 // "Alex's MacBook Pro"). Resolved once at startup via [resolveDeviceName]
 // and set with [setMediaDeviceName]; both servers read it when they build
@@ -60,9 +53,10 @@ Future<String> resolveDeviceName() async {
 }
 
 /// How a track is requested from the server: untouched original bytes
-/// (`direct`), or a server-side transcode. The transport protocol for
-/// transcoding is server-specific — Jellyfin streams HLS, Plex DASH — so
-/// it isn't a user choice; the codec and bitrate are (see [TranscodeCodec]).
+/// (`direct`), or a server-side transcode. For a transcode the user picks the
+/// codec, bitrate, streaming protocol ([StreamProtocol]) and segment container
+/// ([StreamTransport]); Jellyfin transcodes over HLS only, while Plex offers
+/// both HLS and DASH.
 enum PlaybackMode { direct, transcode }
 
 /// The media-server backend kind. Embedded in each server [Media]'s extras
@@ -89,6 +83,54 @@ enum TranscodeCodec {
   const TranscodeCodec(this.label, this.value);
 }
 
+/// Segment container for a transcoded stream. **fMP4** (fragmented MP4) is
+/// the safe default for every codec — Plex carries it over DASH, Jellyfin
+/// over HLS-fMP4. **MPEG-TS** (Plex HLS / Jellyfin HLS-ts) is offered only
+/// for MP3: AAC/Opus in MPEG-TS reintroduce encoder-priming PTS
+/// discontinuities ("Invalid audio PTS") at segment boundaries, so they
+/// always ride fMP4. Applies to [PlaybackMode.transcode] only — direct play
+/// streams the original file's own container untouched.
+enum StreamTransport {
+  fmp4('fMP4'),
+  mpegts('MPEG-TS');
+
+  final String label;
+  const StreamTransport(this.label);
+}
+
+/// The streaming protocol (manifest/transport) for a transcode: **HLS**
+/// (`start.m3u8`) or **DASH** (`start.mpd`). Independent of the segment
+/// container ([StreamTransport]) save for one physical rule: DASH carries
+/// only fMP4, while HLS carries fMP4 *or* MPEG-TS. Jellyfin transcodes over
+/// HLS only — DASH is Plex-only (the picker greys it out on Jellyfin).
+enum StreamProtocol {
+  hls('HLS'),
+  dash('DASH');
+
+  final String label;
+  const StreamProtocol(this.label);
+}
+
+/// True when [codec] can safely use MPEG-TS (MP3 only). The Container
+/// picker uses this to gate the MPEG-TS option.
+bool mpegtsAllowed(String codec) => codec == TranscodeCodec.mp3.value;
+
+/// The container a transcode will actually use given the chosen [protocol]
+/// and [codec]: DASH always rides fMP4 (it cannot carry MPEG-TS); under HLS
+/// the [requested] container stands when it's allowed (MPEG-TS → MP3 only),
+/// otherwise fMP4. Both servers funnel through this so the picker and the
+/// stream can never disagree.
+StreamTransport effectiveTransport(
+  StreamTransport requested,
+  String codec, {
+  StreamProtocol protocol = StreamProtocol.hls,
+}) {
+  if (protocol == StreamProtocol.dash) return StreamTransport.fmp4;
+  return requested == StreamTransport.mpegts && mpegtsAllowed(codec)
+      ? StreamTransport.mpegts
+      : StreamTransport.fmp4;
+}
+
 /// A server-agnostic audio track — only what the minimal list needs, plus
 /// an optional [artUrl] (token-embedded) so the Playback view can show cover
 /// art for transcoded streams that carry no embedded metadata.
@@ -100,6 +142,10 @@ class ServerTrack {
   final Duration duration;
   final String? artUrl;
 
+  /// Whether the track is a favourite for the current user (Jellyfin
+  /// favourites; Plex `userRating == 10`).
+  final bool isFavorite;
+
   const ServerTrack({
     required this.id,
     required this.title,
@@ -107,6 +153,7 @@ class ServerTrack {
     required this.album,
     required this.duration,
     this.artUrl,
+    this.isFavorite = false,
   });
 }
 
@@ -142,25 +189,59 @@ abstract class MediaServer {
 
   /// A URL mpv can open directly (auth token embedded in the query) for
   /// [track] in the given [mode]. For [PlaybackMode.transcode] the server
-  /// re-encodes to [codec] capped at [bitrateKbps]; both are ignored for
-  /// direct play.
+  /// re-encodes to [codec] capped at [bitrateKbps], streams it over [protocol]
+  /// and packages the segments in [transport] (see [effectiveTransport]); all
+  /// four are ignored for direct play. Jellyfin streams HLS regardless of
+  /// [protocol].
   String streamUrl(
     ServerTrack track,
     PlaybackMode mode, {
     String codec,
     int bitrateKbps,
+    StreamTransport transport,
+    StreamProtocol protocol,
   });
 
   /// The real segment container for a transcode [mode] — which mpv can't
   /// report (its `file-format` only shows the `hls`/`dash` protocol). Null
-  /// for direct play, where mpv reports the true container itself. Depends
-  /// on [codec] because the chosen codec dictates the segment wrapper.
-  String? segmentContainer(PlaybackMode mode, {String codec});
+  /// for direct play, where mpv reports the true container itself. Reflects
+  /// the [effectiveTransport] for [protocol] / [codec] / [transport].
+  String? segmentContainer(
+    PlaybackMode mode, {
+    String codec,
+    StreamTransport transport,
+    StreamProtocol protocol,
+  });
+
+  /// Per-track libavformat demuxer options for this [mode], handed to mpv as
+  /// the file-local `demuxer-lavf-o` (via [Media.demuxerLavfOptions]) so they
+  /// scope to exactly this stream. Null when none are needed — the common
+  /// case. Used to correct a transcoder-specific demuxing quirk without
+  /// changing the stream (see [JellyfinServer.demuxerLavfOptions]).
+  Map<String, String>? demuxerLavfOptions(
+    PlaybackMode mode, {
+    String codec,
+    StreamTransport transport,
+    StreamProtocol protocol,
+  });
+
+  /// Mark/unmark [trackId] as a favourite for the current user. Best-effort
+  /// (errors are swallowed/logged). Jellyfin uses its Favorites API; Plex
+  /// encodes a favourite as `userRating == 10`.
+  Future<void> setFavorite(String trackId, bool isFavorite);
 
   /// Re-establish a previously saved session (token) without a password.
   /// Returns true when a stored session was restored. Does not verify the
-  /// token is still valid — a stale token surfaces as a load error.
+  /// token is still valid — a stale token surfaces as a load error that
+  /// [isAuthError] then recognises.
   Future<bool> tryRestore();
+
+  /// Whether [error] (thrown from [fetchTracks] etc.) is an authentication
+  /// failure — an expired/invalid token, i.e. HTTP 401/403. The UI uses this
+  /// to drop a dead session and fall back to the connect form instead of
+  /// showing a raw, un-retryable error. A stale restored token is the common
+  /// case (see [tryRestore]).
+  bool isAuthError(Object error);
 
   /// Drop the session and forget the stored credentials.
   Future<void> logout();
@@ -217,6 +298,18 @@ class JellyfinServer implements MediaServer {
   static const _kToken = 'jellyfin.token';
   static const _kUserId = 'jellyfin.userId';
 
+  // The PlaySessionId minted for each track's transcode (itemId → session),
+  // captured when [streamUrl] builds the URL so the playback reports
+  // ([reportStart] / [reportProgress] / [reportStopped]) can carry the SAME id.
+  // That linkage is what lets Jellyfin reap a track's transcode the moment we
+  // report it stopped — without it (reports with no session) the server keeps
+  // old transcodes alive across track changes and the pile-up 500s the next
+  // track's first segment. Bounded so a long queue can't grow it unboundedly.
+  final Map<String, String> _playSessionByItem = {};
+  int _sessionSeq = 0;
+  String _nextSession() =>
+      'mpv-${DateTime.now().microsecondsSinceEpoch}-${_sessionSeq++}';
+
   @override
   String get name => 'Jellyfin';
 
@@ -257,11 +350,16 @@ class JellyfinServer implements MediaServer {
   @override
   Future<void> logout() async {
     _client = null;
+    _playSessionByItem.clear();
     final p = await SharedPreferences.getInstance();
     await p.remove(_kBase);
     await p.remove(_kToken);
     await p.remove(_kUserId);
   }
+
+  @override
+  bool isAuthError(Object error) =>
+      error is JellyfinException && error.type.isAuthError;
 
   @override
   Future<TrackPage> fetchTracks({
@@ -290,9 +388,21 @@ class JellyfinServer implements MediaServer {
           // runTimeTicks are 100-ns units → microseconds = ticks / 10.
           duration: Duration(microseconds: (it.runTimeTicks ?? 0) ~/ 10),
           artUrl: _imageUrl(it.id, token),
+          isFavorite: it.isFavorite,
         ),
     ];
     return TrackPage(tracks, res.totalRecordCount);
+  }
+
+  @override
+  Future<void> setFavorite(String trackId, bool isFavorite) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.userData.setFavorite(trackId, isFavorite);
+    } catch (e) {
+      debugPrint('JellyfinServer: setFavorite failed: $e');
+    }
   }
 
   // Primary (album) image. The images API omits the token, so append it —
@@ -310,37 +420,69 @@ class JellyfinServer implements MediaServer {
     PlaybackMode mode, {
     String codec = 'aac',
     int bitrateKbps = 256,
+    StreamTransport transport = StreamTransport.fmp4,
+    // Jellyfin transcodes over HLS only; [protocol] is accepted for interface
+    // parity (the picker greys DASH out on this tab) but never selects DASH.
+    StreamProtocol protocol = StreamProtocol.hls,
   }) {
-    final audio = _client!.audio;
-    // Jellyfin transcodes over HLS. The playlist stays .m3u8; only the
-    // per-segment container changes with the codec. AAC/Opus go in fMP4
-    // ('mp4'): MPEG-TS cannot carry edit lists, so the AAC encoder priming
-    // (~2112 samples) is never skipped at each segment boundary → recurring
-    // PTS discontinuities ("Invalid audio PTS"); fMP4 carries the edit list
-    // (demuxed by ffmpeg's mov/mp4 path) so priming is skipped and segment
-    // boundaries stay sample-accurate. Opus is valid in fMP4 too. MP3 has
-    // no edit-list priming problem and is awkward in fMP4, so it rides
-    // MPEG-TS ('ts') — its long-standing native container.
-    return switch (mode) {
-      PlaybackMode.direct => audio.directStreamUrl(itemId: track.id).$1,
-      PlaybackMode.transcode => audio.universalStreamUrl(
-          itemId: track.id,
-          audioCodec: codec,
-          containers: const ['aac', 'mp3', 'flac', 'ogg', 'opus'],
-          transcodingProtocol: 'hls',
-          transcodingContainer: codec == 'mp3' ? 'ts' : 'mp4',
-          maxStreamingBitrate: bitrateKbps * 1000,
-          audioBitRate: bitrateKbps * 1000,
-          playSessionId: _newSession(),
-        ),
-    };
+    if (mode == PlaybackMode.direct) {
+      return _client!.audio.directStreamUrl(itemId: track.id).$1;
+    }
+    // Transcode over HLS; the container follows the picker — fMP4 ('mp4') by
+    // default, MPEG-TS ('ts') only for MP3 (see [effectiveTransport]). fMP4 is
+    // safe again: the bundled libmpv's waveform analyzer no longer opens the
+    // stream a SECOND time to classify it (libmpv-scripts
+    // patch_bulk_analysis.py — it now arms from mpv's own demuxer info), and it
+    // was that concurrent open of the fMP4 init section that used to make
+    // Jellyfin 500 the first segment. A per-track PlaySessionId is captured so
+    // the playback reports can reap THIS transcode on stop (see
+    // [_playSessionByItem]) instead of leaving it warm to pile up against the
+    // next track's.
+    final t = effectiveTransport(transport, codec);
+    final session = _nextSession();
+    _playSessionByItem[track.id] = session;
+    if (_playSessionByItem.length > 200) {
+      _playSessionByItem.remove(_playSessionByItem.keys.first);
+    }
+    return _client!.audio.universalStreamUrl(
+      itemId: track.id,
+      audioCodec: codec,
+      containers: const ['aac', 'mp3', 'flac', 'ogg', 'opus'],
+      transcodingProtocol: 'hls',
+      transcodingContainer: t == StreamTransport.mpegts ? 'ts' : 'mp4',
+      maxStreamingBitrate: bitrateKbps * 1000,
+      audioBitRate: bitrateKbps * 1000,
+      playSessionId: session,
+    );
   }
 
   @override
-  String? segmentContainer(PlaybackMode mode, {String codec = 'aac'}) =>
+  String? segmentContainer(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.hls,
+  }) =>
       mode == PlaybackMode.transcode
-          ? (codec == 'mp3' ? 'MPEG-TS' : 'fMP4')
+          ? effectiveTransport(transport, codec).label
           : null;
+
+  // `seg_max_retry=5` on the HLS demuxer (via mpv `demuxer-lavf-o`). libav
+  // defaults it to 0 — a single segment error aborts the whole open. A live
+  // Jellyfin transcode can briefly 500 a segment under load (e.g. a
+  // just-started transcode that hasn't produced the segment yet); a few
+  // retries let the demuxer re-request it a moment later instead of failing
+  // the track. Light, codec-agnostic defense (the real waveform/desync fix was
+  // making the libmpv analyzer stop re-opening the stream). Transcode only —
+  // direct play streams the original file and needs nothing.
+  @override
+  Map<String, String>? demuxerLavfOptions(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.hls,
+  }) =>
+      mode == PlaybackMode.transcode ? const {'seg_max_retry': '5'} : null;
 
   @override
   ServerKind get kind => ServerKind.jellyfin;
@@ -350,7 +492,8 @@ class JellyfinServer implements MediaServer {
     final c = _client;
     if (c == null) return;
     try {
-      await c.playback.start(itemId: itemId);
+      await c.playback
+          .start(itemId: itemId, playSessionId: _playSessionByItem[itemId]);
     } catch (e) {
       debugPrint('JellyfinServer: reportStart failed: $e');
     }
@@ -365,8 +508,12 @@ class JellyfinServer implements MediaServer {
     final c = _client;
     if (c == null) return;
     try {
-      await c.playback
-          .progress(itemId: itemId, position: position, isPaused: paused);
+      await c.playback.progress(
+        itemId: itemId,
+        position: position,
+        isPaused: paused,
+        playSessionId: _playSessionByItem[itemId],
+      );
     } catch (e) {
       debugPrint('JellyfinServer: reportProgress failed: $e');
     }
@@ -377,7 +524,13 @@ class JellyfinServer implements MediaServer {
     final c = _client;
     if (c == null) return;
     try {
-      await c.playback.stopped(itemId: itemId, position: position);
+      // Carry the track's PlaySessionId so Jellyfin reaps THIS transcode now,
+      // instead of leaving it warm to pile up against the next track's.
+      await c.playback.stopped(
+        itemId: itemId,
+        position: position,
+        playSessionId: _playSessionByItem.remove(itemId),
+      );
     } catch (e) {
       debugPrint('JellyfinServer: reportStopped failed: $e');
     }
@@ -497,6 +650,10 @@ class PlexServer implements MediaServer {
   }
 
   @override
+  bool isAuthError(Object error) =>
+      error is PlexException && error.type == PlexErrorType.auth;
+
+  @override
   Future<TrackPage> fetchTracks({
     required int startIndex,
     required int pageSize,
@@ -519,9 +676,21 @@ class PlexServer implements MediaServer {
           album: m.parentTitle ?? '',
           duration: Duration(milliseconds: m.durationMs ?? 0),
           artUrl: _imageUrl(m.parentThumb ?? m.grandparentThumb),
+          isFavorite: m.isFavorite,
         ),
     ];
     return TrackPage(tracks, res.totalSize);
+  }
+
+  @override
+  Future<void> setFavorite(String trackId, bool isFavorite) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.setFavorite(ratingKey: trackId, isFavorite: isFavorite);
+    } catch (e) {
+      debugPrint('PlexServer: setFavorite failed: $e');
+    }
   }
 
   // Album/artist thumbnail through Plex's photo transcoder (token embedded).
@@ -537,6 +706,8 @@ class PlexServer implements MediaServer {
     PlaybackMode mode, {
     String codec = 'aac',
     int bitrateKbps = 256,
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
   }) {
     final streaming = _client!.streaming;
     final directUrl = streaming.universalAudioUrl(
@@ -545,12 +716,17 @@ class PlexServer implements MediaServer {
       directPlay: true,
       directStream: true,
     );
+    // Protocol and container are independent on Plex: DASH (start.mpd) always
+    // rides fMP4, while HLS (start.m3u8) carries fMP4 or MPEG-TS. MPEG-TS only
+    // survives with MP3, and never under DASH (see [effectiveTransport]).
+    final t = effectiveTransport(transport, codec, protocol: protocol);
+    final wireProtocol = protocol == StreamProtocol.dash ? 'dash' : 'hls';
     // BOTH modes hand mpv a `plex-transcode://{session}` marker that the
     // global on_load hook resolves just before playback. Plex's universal
     // `start.*` URL isn't openable by mpv, so:
     //   • direct   → the hook resolves to the original media Part URL;
-    //   • transcode→ /decision spins up a session → real start.mpd (and on a
-    //     non-playable decision, falls back to the same Part URL).
+    //   • transcode→ /decision spins up a session → real start.mpd/m3u8 (and
+    //     on a non-playable decision, falls back to the same Part URL).
     // [directUrl] is only the last-resort fallback if the Part can't be found.
     return _transcodes!.register(
       ratingKey: track.id,
@@ -558,12 +734,34 @@ class PlexServer implements MediaServer {
       fallbackUrl: directUrl,
       bitrateKbps: bitrateKbps,
       transcode: mode == PlaybackMode.transcode,
+      protocol: wireProtocol,
+      container: t == StreamTransport.mpegts ? 'mpegts' : 'mp4',
     );
   }
 
   @override
-  String? segmentContainer(PlaybackMode mode, {String codec = 'aac'}) =>
-      mode == PlaybackMode.transcode ? 'fMP4' : null;
+  String? segmentContainer(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
+  }) =>
+      mode == PlaybackMode.transcode
+          ? effectiveTransport(transport, codec, protocol: protocol).label
+          : null;
+
+  // Plex needs no demuxer override: its DASH/HLS segmenter is exactly what the
+  // bundled ffmpeg `advanced_editlist` patch targets, so the patched path is
+  // correct here (the Jellyfin-only override in [JellyfinServer] is what backs
+  // that patch off for Jellyfin's incompatible HLS-fMP4 edit list).
+  @override
+  Map<String, String>? demuxerLavfOptions(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
+  }) =>
+      null;
 
   @override
   ServerKind get kind => ServerKind.plex;

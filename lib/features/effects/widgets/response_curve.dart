@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 
 /// A magnitude-vs-frequency plot — the response any tone control draws on
@@ -100,9 +101,9 @@ class _ResponsePainter extends CustomPainter {
       grid.color = db == 0 ? Tokens.line2 : Tokens.line;
       canvas.drawLine(Offset(plot.left, yy), Offset(plot.right, yy), grid);
     }
-    _label(canvas, '+${maxDb.toInt()}', Offset(plot.right + 3, yOf(maxDb) - 5),
+    paintChartLabel(canvas, '+${maxDb.toInt()}', Offset(plot.right + 3, yOf(maxDb) - 5),
         Tokens.fgFaint);
-    _label(canvas, '${(-maxDb).toInt()}',
+    paintChartLabel(canvas, '${(-maxDb).toInt()}',
         Offset(plot.right + 3, yOf(-maxDb) - 5), Tokens.fgFaint);
 
     // Frequency decade lines + labels.
@@ -110,7 +111,7 @@ class _ResponsePainter extends CustomPainter {
       final xx = xOf(d.$1);
       canvas.drawLine(Offset(xx, plot.top), Offset(xx, plot.bottom),
           Paint()..color = Tokens.line);
-      _label(canvas, d.$2, Offset(xx, plot.bottom + 2), Tokens.fgFaint,
+      paintChartLabel(canvas, d.$2, Offset(xx, plot.bottom + 2), Tokens.fgFaint,
           center: true);
     }
 
@@ -155,18 +156,6 @@ class _ResponsePainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round
         ..isAntiAlias = true,
     );
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color,
-      {bool center = false}) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
-      ),
-    )..layout();
-    tp.paint(canvas, Offset(center ? at.dx - tp.width / 2 : at.dx, at.dy));
   }
 
   @override

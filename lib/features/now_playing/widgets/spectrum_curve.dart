@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
 import '../../../ui/tokens.dart';
 
 /// Flat real-time spectrum drawn as a smooth curve (not bars). Subscribes

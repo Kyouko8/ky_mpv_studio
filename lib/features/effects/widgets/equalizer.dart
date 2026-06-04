@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 
 /// The 18 fixed bands of ffmpeg's `superequalizer`, in order. The key is
@@ -188,12 +189,11 @@ class _EqPainter extends CustomPainter {
       gridPaint.color = db == 0 ? Tokens.line2 : Tokens.line;
       canvas.drawLine(Offset(r.left, y), Offset(r.right, y), gridPaint);
       // dB scale label in the right gutter.
-      _label(
+      paintChartLabel(
         canvas,
         db == 0 ? '0' : '${db > 0 ? '+' : ''}${db.toInt()}',
         Offset(r.right + 4, y - 6),
         Tokens.fgFaint,
-        9,
       );
     }
 
@@ -258,12 +258,11 @@ class _EqPainter extends CustomPainter {
           ..isAntiAlias = true,
       );
       if (i % labelStep == 0) {
-        _label(
+        paintChartLabel(
           canvas,
           kEqBands[i].label,
           Offset(p.dx, r.bottom + 3),
           isActive ? accent : Tokens.fgFaint,
-          9,
           center: true,
         );
       }
@@ -285,23 +284,6 @@ class _EqPainter extends CustomPainter {
       path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
     }
     return path;
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color, double size,
-      {bool center = false}) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: Tokens.mono,
-          fontSize: size,
-          color: color,
-        ),
-      ),
-    )..layout();
-    final dx = center ? at.dx - tp.width / 2 : at.dx;
-    tp.paint(canvas, Offset(dx, at.dy));
   }
 
   @override

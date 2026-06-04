@@ -2,7 +2,7 @@ import 'package:desktop_drop/desktop_drop.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../state/player_scope.dart';
+import '../../studio/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../util/media_import.dart';
 import '../../util/reactive.dart';
@@ -45,6 +45,15 @@ class _QueuePageState extends State<QueuePage> {
 
   Future<void> _addFiles() async => _enqueue(await pickAudioFiles());
   Future<void> _addFolder() async => _enqueue(await pickAudioFolder());
+
+  /// Swap a queue entry for a freshly picked file. `replace` is gapless
+  /// when it targets the currently playing item.
+  Future<void> _replace(int index) async {
+    final paths = await pickAudioFiles();
+    if (paths.isEmpty) return;
+    final p = paths.first;
+    await _player.replace(index, Media(p, extras: {'title': baseNameNoExt(p)}));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,6 +112,7 @@ class _QueuePageState extends State<QueuePage> {
                         source: _sourceOf(item),
                         current: i == playlist.index,
                         onTap: () => _player.jump(i),
+                        onReplace: () => _replace(i),
                         onRemove: () => _player.remove(i),
                       );
                     },
@@ -188,6 +198,7 @@ class _QueueTile extends StatelessWidget {
   final String source;
   final bool current;
   final VoidCallback onTap;
+  final VoidCallback onReplace;
   final VoidCallback onRemove;
 
   const _QueueTile({
@@ -197,6 +208,7 @@ class _QueueTile extends StatelessWidget {
     required this.source,
     required this.current,
     required this.onTap,
+    required this.onReplace,
     required this.onRemove,
   });
 
@@ -272,6 +284,11 @@ class _QueueTile extends StatelessWidget {
                           size: 18, color: Tokens.fgFaint),
                     ),
                   ),
+                ),
+                _IconTap(
+                  icon: Icons.swap_horiz_rounded,
+                  tooltip: 'Replace',
+                  onTap: onReplace,
                 ),
                 _IconTap(
                   icon: Icons.close_rounded,

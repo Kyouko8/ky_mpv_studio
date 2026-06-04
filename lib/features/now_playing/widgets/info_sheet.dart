@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
 import '../../../ui/tokens.dart';
+import '../../../ui/widgets/section_header.dart';
 import '../../../util/reactive.dart';
 
 /// Slides up a compact bottom sheet with the read-only diagnostics for the
@@ -205,6 +206,8 @@ class _InfoSheet extends StatelessWidget {
             player.state.timeRemaining, 'Remaining', _secs),
         _kvLive<bool>(
             player.stream.seekable, player.state.seekable, 'Seekable', _yn),
+        _kvLive<bool>(player.stream.partiallySeekable,
+            player.state.partiallySeekable, 'Partial seek', _yn),
         _kvLive<bool>(
             player.stream.eofReached, player.state.eofReached, 'EOF', _yn),
       ]),
@@ -218,11 +221,7 @@ class _InfoSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                  Tokens.s4, 0, Tokens.s4, Tokens.s8),
-              child: Text(label.toUpperCase(), style: Tokens.caption),
-            ),
+            SectionHeader(label),
             child,
           ],
         ),

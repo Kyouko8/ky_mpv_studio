@@ -46,6 +46,17 @@ class StreamingGroup extends StatelessWidget {
             value: (snap.data ?? MpvPrefetchState.idle).name,
           ),
         ),
+        StreamBuilder<Duration>(
+          stream: player.stream.prefetchCacheDuration,
+          initialData: Duration.zero,
+          builder: (context, snap) {
+            final d = snap.data ?? Duration.zero;
+            return InfoRow(
+              label: 'Prefetched ahead',
+              value: '${(d.inMilliseconds / 1000).toStringAsFixed(1)} s',
+            );
+          },
+        ),
       ],
     );
   }

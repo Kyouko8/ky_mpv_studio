@@ -6,7 +6,8 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../../audio/level_follower.dart';
 import '../../../audio/pcm_analysis.dart';
-import '../../../state/player_scope.dart';
+import '../../../studio/player_scope.dart';
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 import '../../../util/reactive.dart';
 
@@ -119,21 +120,6 @@ class _VuPainter extends CustomPainter {
           ? Tokens.amber
           : Tokens.green;
 
-  void _label(Canvas canvas, String s, Offset topLeft) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: s,
-        style: const TextStyle(
-          fontFamily: Tokens.mono,
-          fontSize: 10,
-          color: Tokens.fgFaint,
-        ),
-      ),
-    )..layout();
-    tp.paint(canvas, topLeft);
-  }
-
   void _barH(Canvas canvas, Rect r, double db, double hold) {
     final rrect = RRect.fromRectAndRadius(r, const Radius.circular(3));
     canvas.drawRRect(rrect, Paint()..color = Tokens.surface2);
@@ -210,8 +196,10 @@ class _VuPainter extends CustomPainter {
       final topY = (h - (barH * 2 + gap)) / 2;
       final lRect = Rect.fromLTWH(barLeft, topY, barW, barH);
       final rRect = Rect.fromLTWH(barLeft, topY + barH + gap, barW, barH);
-      _label(canvas, 'L', Offset(0, lRect.center.dy - 6));
-      _label(canvas, 'R', Offset(0, rRect.center.dy - 6));
+      paintChartLabel(canvas, 'L', Offset(0, lRect.center.dy - 6),
+          Tokens.fgFaint, fontSize: 10);
+      paintChartLabel(canvas, 'R', Offset(0, rRect.center.dy - 6),
+          Tokens.fgFaint, fontSize: 10);
       _barH(canvas, lRect, dbL, holdL);
       _barH(canvas, rRect, dbR, holdR);
     } else {
@@ -223,8 +211,10 @@ class _VuPainter extends CustomPainter {
       final rRect = Rect.fromLTWH(left + barW + gap, 0, barW, barsH);
       _barV(canvas, lRect, dbL, holdL);
       _barV(canvas, rRect, dbR, holdR);
-      _label(canvas, 'L', Offset(lRect.center.dx - 3, barsH + 1));
-      _label(canvas, 'R', Offset(rRect.center.dx - 3, barsH + 1));
+      paintChartLabel(canvas, 'L', Offset(lRect.center.dx - 3, barsH + 1),
+          Tokens.fgFaint, fontSize: 10);
+      paintChartLabel(canvas, 'R', Offset(rRect.center.dx - 3, barsH + 1),
+          Tokens.fgFaint, fontSize: 10);
     }
   }
 

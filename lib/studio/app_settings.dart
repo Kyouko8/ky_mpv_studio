@@ -84,6 +84,7 @@ class AppSettings {
   bool get mute => _bool('mute', false);
   double get rate => _double('rate', 1);
   double get pitch => _double('pitch', 1);
+  double get volumeGain => _double('volumeGain', 0);
   bool get pitchCorrection => _bool('pitchCorrection', true);
   Loop get loop => _enumByName('loop', Loop.values, Loop.off);
   bool get shuffle => _bool('shuffle', false);
@@ -137,6 +138,78 @@ class AppSettings {
         bandCount: specBands,
       );
 
+  // ---- OS media session ----------------------------------------------
+  // The full capability set, in the order the Session page shows them.
+  static const _defaultSessionActions = <MediaAction>[
+    MediaAction.play,
+    MediaAction.pause,
+    MediaAction.playPause,
+    MediaAction.stop,
+    MediaAction.next,
+    MediaAction.previous,
+    MediaAction.seek,
+    MediaAction.fastForward,
+    MediaAction.rewind,
+    MediaAction.setRepeatMode,
+    MediaAction.setShuffle,
+    MediaAction.setPlaybackRate,
+    MediaAction.like,
+  ];
+
+  /// Whether the OS media session is published at all.
+  bool get sessionOn => _bool('sessionOn', true);
+
+  /// The user's ordered set of advertised [MediaAction]s. Absent key →
+  /// the full default set; an empty stored list is a valid "none".
+  List<MediaAction> get sessionActions {
+    final raw = _data['sessionActions'];
+    if (raw is! List) return List.of(_defaultSessionActions);
+    return [
+      for (final n in raw)
+        for (final a in MediaAction.values)
+          if (a.name == n) a,
+    ];
+  }
+
+  /// Interval (seconds) the OS "skip forward / back N seconds" buttons jump
+  /// when [MediaAction.fastForward] / [MediaAction.rewind] are advertised.
+  int get sessionFastForwardSecs => _int('sessionFfSecs', 30);
+  int get sessionRewindSecs => _int('sessionRwSecs', 10);
+
+  /// How playback reacts to an OS audio interruption (call / Siri / alarm).
+  /// Honoured on iOS & Android only (a no-op on desktop).
+  InterruptionPolicy get sessionInterruption => _enumByName(
+        'sessionInterruption',
+        InterruptionPolicy.values,
+        InterruptionPolicy.pauseAndResume,
+      );
+
+  /// Builds the session config the app advertises from [actions], keeping the
+  /// rate ladder / identity. The skip intervals and interruption policy
+  /// default to the persisted values but can be overridden for a live edit.
+  /// Single source of truth shared by [mediaSession] (launch) and the Session
+  /// page (live).
+  MediaSession composeMediaSession(
+    Iterable<MediaAction> actions, {
+    int? fastForwardSecs,
+    int? rewindSecs,
+    InterruptionPolicy? interruptionPolicy,
+  }) =>
+      MediaSession(
+        artwork: MediaSessionArtwork.embedded,
+        actions: actions.toSet(),
+        interruptionPolicy: interruptionPolicy ?? sessionInterruption,
+        fastForwardInterval:
+            Duration(seconds: fastForwardSecs ?? sessionFastForwardSecs),
+        rewindInterval: Duration(seconds: rewindSecs ?? sessionRewindSecs),
+        supportedPlaybackRates: const [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0],
+        appName: 'MPV Studio',
+      );
+
+  /// The session to publish on launch, or `null` when disabled.
+  MediaSession? get mediaSession =>
+      sessionOn ? composeMediaSession(sessionActions) : null;
+
   Map<String, Object?> get _effectsBlob {
     final e = _data['effects'];
     return e is Map ? e.cast<String, Object?>() : const {};
@@ -149,6 +222,19 @@ class AppSettings {
   /// toggle records it explicitly here (and calls the player setter).
   void recordExclusive(bool value) => _snap('audioExclusive', value);
 
+  /// The Session page records its media-session edits explicitly (the
+  /// advertised set isn't reconstructable from the unordered live stream).
+  void recordSessionOn(bool value) => _snap('sessionOn', value);
+  void recordSessionActions(List<MediaAction> actions) {
+    _data['sessionActions'] = [for (final a in actions) a.name];
+    _scheduleSave();
+  }
+
+  void recordSessionFastForward(int secs) => _snap('sessionFfSecs', secs);
+  void recordSessionRewind(int secs) => _snap('sessionRwSecs', secs);
+  void recordSessionInterruption(InterruptionPolicy p) =>
+      _snap('sessionInterruption', p.name);
+
   /// Seeds the live player from the persisted blob on launch. Effects are
   /// applied separately by the caller (they need the codec).
   Future<void> applyTo(Player p) async {
@@ -157,6 +243,7 @@ class AppSettings {
     await p.setMute(mute);
     await p.setRate(rate);
     await p.setPitch(pitch);
+    await p.setVolumeGain(volumeGain);
     await p.setPitchCorrection(pitchCorrection);
     await p.setLoop(loop);
     await p.setShuffle(shuffle);
@@ -188,6 +275,7 @@ class AppSettings {
       s.mute.listen((v) => _snap('mute', v)),
       s.rate.listen((v) => _snap('rate', v)),
       s.pitch.listen((v) => _snap('pitch', v)),
+      s.volumeGain.listen((v) => _snap('volumeGain', v)),
       s.pitchCorrection.listen((v) => _snap('pitchCorrection', v)),
       s.loop.listen((v) => _snap('loop', v.name)),
       s.shuffle.listen((v) => _snap('shuffle', v)),

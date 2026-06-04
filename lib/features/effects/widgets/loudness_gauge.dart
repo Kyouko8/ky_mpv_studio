@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 
 /// A loudness target map for the EBU R128 normaliser — a LUFS scale with
@@ -96,7 +97,7 @@ class _GaugePainter extends CustomPainter {
       Rect.fromLTWH(tx - 1, barTop - 4, 2, barH + 8),
       Paint()..color = accent,
     );
-    _label(canvas, '${target.round()} LUFS', Offset(tx, barTop - 18),
+    paintChartLabel(canvas, '${target.round()} LUFS', Offset(tx, barTop - 18),
         accent, center: true);
 
     // True-peak ceiling.
@@ -105,7 +106,7 @@ class _GaugePainter extends CustomPainter {
       Rect.fromLTWH(px - 1, barTop - 2, 2, barH + 4),
       Paint()..color = enabled ? Tokens.red : Tokens.fgFaint,
     );
-    _label(canvas, 'TP', Offset(px, barTop + barH + 3),
+    paintChartLabel(canvas, 'TP', Offset(px, barTop + barH + 3),
         enabled ? Tokens.red : Tokens.fgFaint,
         center: true);
 
@@ -114,21 +115,9 @@ class _GaugePainter extends CustomPainter {
       final xx = x(lu.toDouble());
       canvas.drawLine(Offset(xx, barTop + barH), Offset(xx, barTop + barH + 3),
           Paint()..color = Tokens.fgFaint);
-      _label(canvas, '$lu', Offset(xx, barTop + barH + 14), Tokens.fgFaint,
+      paintChartLabel(canvas, '$lu', Offset(xx, barTop + barH + 14), Tokens.fgFaint,
           center: true);
     }
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color,
-      {bool center = false}) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(fontFamily: Tokens.mono, fontSize: 9, color: color),
-      ),
-    )..layout();
-    tp.paint(canvas, Offset(center ? at.dx - tp.width / 2 : at.dx, at.dy));
   }
 
   @override

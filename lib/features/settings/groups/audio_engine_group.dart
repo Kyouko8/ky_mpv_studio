@@ -151,27 +151,84 @@ class _AudioEngineGroupState extends State<AudioEngineGroup> {
               builder: (context, v) =>
                   InfoRow(label: 'Output state', value: v.mpvValue),
             ),
+          ],
+        ),
+        SettingsGroup(
+          label: 'Output params',
+          children: [
+            // Codec is a decoder-side property (the track source), so it
+            // comes from audioParams rather than the hardware-output stream.
+            Live<AudioParams>(
+              stream: player.stream.audioParams,
+              initial: player.state.audioParams,
+              builder: (context, p) =>
+                  InfoRow(label: 'Codec', value: _codecLabel(p)),
+            ),
+            // Everything below describes the actual hardware output.
             Live<AudioParams>(
               stream: player.stream.audioOutParams,
               initial: player.state.audioOutParams,
-              builder: (context, p) {
-                final desc = [
-                  if (p.format != null) p.format!,
-                  if (p.sampleRate != null)
-                    '${(p.sampleRate! / 1000).toStringAsFixed(1)} kHz',
-                  if (p.channels != null) p.channels!,
-                ].join(' / ');
-                return InfoRow(
-                  label: 'Output params',
-                  value: desc.isEmpty ? '—' : desc,
-                );
-              },
+              builder: (context, p) => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  InfoRow(
+                    label: 'Format',
+                    value: p.format == null || p.format == Format.auto
+                        ? '—'
+                        : p.format!.mpvValue,
+                  ),
+                  InfoRow(label: 'Bit depth', value: _bitDepthLabel(p.format)),
+                  InfoRow(
+                    label: 'Sample rate',
+                    value: _sampleRateLabel(p.sampleRate),
+                  ),
+                  InfoRow(label: 'Channels', value: _channelsLabel(p)),
+                ],
+              ),
             ),
           ],
         ),
       ],
     );
   }
+}
+
+// ── Output-params formatting ───────────────────────────────────────────
+
+/// The decoded codec, preferring the descriptive `audio-codec-name` and
+/// falling back to the short `audio-codec`. '—' when nothing is decoding.
+String _codecLabel(AudioParams p) {
+  final c = (p.codecName?.isNotEmpty ?? false) ? p.codecName! : (p.codec ?? '');
+  return c.isEmpty ? '—' : c;
+}
+
+/// Human-readable sample depth + type for [f] (e.g. '16-bit signed integer'),
+/// noting planar layouts. '—' when no audio is being output.
+String _bitDepthLabel(Format? f) {
+  if (f == null || f == Format.auto) return '—';
+  final base = switch (f) {
+    Format.u8 || Format.u8Planar => '8-bit unsigned integer',
+    Format.s16 || Format.s16Planar => '16-bit signed integer',
+    Format.s32 || Format.s32Planar => '32-bit signed integer',
+    Format.float32 || Format.float32Planar => '32-bit float',
+    Format.float64 || Format.float64Planar => '64-bit float',
+    Format.auto => '—',
+  };
+  return f.mpvValue.endsWith('p') ? '$base (planar)' : base;
+}
+
+String _sampleRateLabel(int? hz) =>
+    hz == null ? '—' : '${(hz / 1000).toStringAsFixed(1)} kHz';
+
+/// Channel layout: the human-readable name plus the raw count when both are
+/// known (e.g. 'stereo (2 ch)'). '—' when nothing is being output.
+String _channelsLabel(AudioParams p) {
+  final hr = p.hrChannels;
+  final count = p.channelCount;
+  if (hr != null && hr.isNotEmpty) {
+    return count != null ? '$hr ($count ch)' : hr;
+  }
+  return count != null ? '$count ch' : '—';
 }
 
 /// Multi-select pills for S/PDIF passthrough codecs. mpv treats the set
@@ -275,6 +332,11 @@ class _ClientNameFieldState extends State<_ClientNameField> {
   Widget build(BuildContext context) {
     return SettingTile(
       title: 'Client name',
+      // Fixed controlH so it matches the dropdowns/segmented controls exactly.
+      // The field is content-sized inside a Row so its default centre
+      // cross-axis alignment vertically centres the text — a TextField forced
+      // to the full 38 would top-anchor instead (the decorator can't recentre
+      // an externally-imposed height).
       below: Container(
         height: Tokens.controlH,
         padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
@@ -282,17 +344,24 @@ class _ClientNameFieldState extends State<_ClientNameField> {
           color: Tokens.surface2,
           shape: Tokens.squircle(Tokens.rSm),
         ),
-        child: TextField(
-          controller: _controller,
-          style: Tokens.body,
-          cursorColor: Tokens.accent,
-          decoration: const InputDecoration(
-            isDense: true,
-            border: InputBorder.none,
-            hintText: 'mpv_studio',
-            hintStyle: Tokens.caption,
-          ),
-          onSubmitted: widget.onSubmitted,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _controller,
+                style: Tokens.body,
+                cursorColor: Tokens.accent,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: InputBorder.none,
+                  hintText: 'mpv_studio',
+                  hintStyle: Tokens.caption,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onSubmitted: widget.onSubmitted,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../../state/app_settings.dart';
-import '../../state/player_scope.dart';
+import '../../studio/app_settings.dart';
+import '../../studio/player_scope.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/back_bar.dart';
 import '../../ui/widgets/controls.dart';
+import '../../ui/widgets/grid_card.dart';
 import '../../ui/widgets/section_body.dart';
+import '../../ui/widgets/section_header.dart';
 import '../../ui/widgets/section_switcher.dart';
 import '../../util/reactive.dart';
-import 'groups/ab_loop_group.dart';
 import 'groups/audio_engine_group.dart';
 import 'groups/audio_track_group.dart';
-import 'groups/chapters_group.dart';
 import 'groups/demuxer_group.dart';
-import 'groups/hooks_group.dart';
+import 'groups/session_group.dart';
 import 'groups/streaming_group.dart';
 
 /// One settings category — a squircle grid box whose detail is built lazily.
@@ -40,9 +40,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // Which category detail is open; null = showing the squircle grid.
-  int? _pushed;
-
   List<_Category> get _categories => const [
         _Category('Playback', Icons.play_arrow_rounded, _playback),
         _Category('Audio output', Icons.speaker_rounded, _output),
@@ -52,11 +49,9 @@ class _SettingsPageState extends State<SettingsPage> {
         _Category('Cache & network', Icons.cloud_outlined, _cache),
         _Category('Demuxer', Icons.dns_outlined, _demuxer),
         _Category('Streaming', Icons.podcasts_rounded, _streaming),
-        _Category('Chapters', Icons.bookmark_outline_rounded, _chapters),
-        _Category('A-B loop', Icons.repeat_rounded, _abLoop),
+        _Category('Session', Icons.lock_outline_rounded, _session),
         _Category('Visualizer', Icons.graphic_eq_rounded, _visualizer),
         _Category('Cover art', Icons.image_outlined, _coverArt),
-        _Category('Hooks Lab', Icons.cable_rounded, _hooks),
         _Category('About', Icons.info_outline_rounded, _about),
       ];
 
@@ -70,37 +65,47 @@ class _SettingsPageState extends State<SettingsPage> {
   static Widget _cache(BuildContext c) => _CacheGroup(PlayerScope.of(c));
   static Widget _demuxer(BuildContext c) => DemuxerGroup(PlayerScope.of(c));
   static Widget _streaming(BuildContext c) => StreamingGroup(PlayerScope.of(c));
-  static Widget _chapters(BuildContext c) => ChaptersGroup(PlayerScope.of(c));
-  static Widget _abLoop(BuildContext c) => AbLoopGroup(PlayerScope.of(c));
+  static Widget _session(BuildContext c) =>
+      SessionGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _visualizer(BuildContext c) =>
       _VisualizerGroup(PlayerScope.of(c));
   static Widget _coverArt(BuildContext c) => _CoverArtGroup(PlayerScope.of(c));
-  static Widget _hooks(BuildContext c) => HooksGroup(PlayerScope.of(c));
   static Widget _about(BuildContext c) => _AboutGroup(PlayerScope.of(c));
-
-  Widget _detail(int index) =>
-      SectionBody(children: [_categories[index].build(context)]);
 
   @override
   Widget build(BuildContext context) {
-    // Grid of squircle boxes; tapping one pushes its detail with a back row.
-    final i = _pushed;
-    final Widget body = i == null
-        ? _CategoryGrid(
-            categories: _categories,
-            onSelect: (j) => setState(() => _pushed = j),
-          )
-        : Column(
-            children: [
-              BackBar(
-                title: _categories[i].title,
-                onBack: () => setState(() => _pushed = null),
-              ),
-              Expanded(child: _detail(i)),
-            ],
-          );
-    return SectionSwitcher(
-      child: KeyedSubtree(key: ValueKey(_pushed), child: body),
+    // A grid of category boxes; tapping one pushes its detail as a route with
+    // the shared fade+slide transition (see fadeSlidePageRoute).
+    return _CategoryGrid(
+      categories: _categories,
+      onSelect: (j) => Navigator.of(context).push(
+        fadeSlidePageRoute(_CategoryDetailScreen(category: _categories[j])),
+      ),
+    );
+  }
+}
+
+/// A pushed full-page settings detail (one category): a back row above the
+/// category's controls. Pushed via [fadeSlidePageRoute].
+class _CategoryDetailScreen extends StatelessWidget {
+  final _Category category;
+  const _CategoryDetailScreen({required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Tokens.bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            BackBar(
+              title: category.title,
+              onBack: () => Navigator.of(context).maybePop(),
+            ),
+            Expanded(child: SectionBody(children: [category.build(context)])),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -116,74 +121,31 @@ class _CategoryGrid extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         Tokens.s20,
-        Tokens.s20,
+        Tokens.s8,
         Tokens.s20,
         Tokens.s32,
       ),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 168,
-          crossAxisSpacing: Tokens.s12,
-          mainAxisSpacing: Tokens.s12,
-          childAspectRatio: 1,
-        ),
-        itemCount: categories.length,
-        itemBuilder: (context, i) => _CategoryCard(
-          category: categories[i],
-          onTap: () => onSelect(i),
-        ),
-      ),
-    );
-  }
-}
-
-class _CategoryCard extends StatelessWidget {
-  final _Category category;
-  final VoidCallback onTap;
-
-  const _CategoryCard({required this.category, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    // Squircle (superellipse) corners, the same flat surface as the rest.
-    final shape = ContinuousRectangleBorder(
-      borderRadius: BorderRadius.circular(40),
-    );
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: shape,
-        // Ink (not Container) so the hover highlight shows over the surface.
-        child: Ink(
-          decoration: ShapeDecoration(
-            color: Tokens.surface,
-            shape: ContinuousRectangleBorder(
-              borderRadius: BorderRadius.circular(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionHeader('Categories'),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 168,
+              crossAxisSpacing: Tokens.s12,
+              mainAxisSpacing: Tokens.s12,
+              childAspectRatio: 1,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, i) => GridCard(
+              icon: categories[i].icon,
+              title: categories[i].title,
+              onTap: () => onSelect(i),
             ),
           ),
-          padding: const EdgeInsets.all(Tokens.s16),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(category.icon, size: 26, color: Tokens.accent),
-              const SizedBox(height: Tokens.s12),
-              Text(
-                category.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Tokens.fg,
-                ),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -288,6 +250,20 @@ class _PlaybackGroup extends StatelessWidget {
             resetTo: 130,
             format: (x) => '${x.round()}%',
             onChanged: player.setVolumeMax,
+          ),
+        ),
+        Live<double>(
+          stream: player.stream.volumeGain,
+          initial: player.state.volumeGain,
+          builder: (context, v) => SliderRow(
+            label: 'Volume gain',
+            description: 'Decoder-side gain applied before output',
+            value: v,
+            min: -24,
+            max: 24,
+            resetTo: 0,
+            format: (x) => '${x.toStringAsFixed(1)} dB',
+            onChanged: player.setVolumeGain,
           ),
         ),
       ],
@@ -644,6 +620,12 @@ class _CacheGroup extends StatelessWidget {
                 label: 'Buffer fill',
                 value: '${(snap.data ?? 0).toStringAsFixed(1)}%',
               ),
+            ),
+            Live<bool>(
+              stream: player.stream.pausedForCache,
+              initial: player.state.pausedForCache,
+              builder: (context, v) =>
+                  InfoRow(label: 'Paused for cache', value: v ? 'yes' : 'no'),
             ),
           ],
         );

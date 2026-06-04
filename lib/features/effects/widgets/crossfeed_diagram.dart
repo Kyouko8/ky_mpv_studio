@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../ui/chart_text.dart';
 import '../../../ui/tokens.dart';
 
 /// A schematic of headphone crossfeed: two channel sources feeding a
@@ -49,7 +50,7 @@ class _CrossfeedPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final accent = enabled ? Tokens.accent : Tokens.fgDim;
+    final accent = enabled ? Tokens.accent : Tokens.fgFaint;
     final cx = size.width / 2;
     final cy = size.height / 2;
     final span = (size.width * 0.34).clamp(60.0, 220.0);
@@ -109,37 +110,23 @@ class _CrossfeedPainter extends CustomPainter {
         ),
         Paint()..color = Tokens.surface2,
       );
-      _label(canvas, label, at.translate(0, -5), accent, center: true);
+      paintChartLabel(canvas, label, at.translate(0, -5), accent,
+          fontSize: 9.5, center: true, middle: true);
     }
 
     node(lSrc, 'L');
     node(rSrc, 'R');
 
     // Strength caption.
-    _label(
+    paintChartLabel(
       canvas,
       'bleed ${(strength * 100).round()}%',
       Offset(cx, size.height - 14),
       enabled ? Tokens.fgDim : Tokens.fgFaint,
+      fontSize: 9.5,
       center: true,
+      middle: true,
     );
-  }
-
-  void _label(Canvas canvas, String text, Offset at, Color color,
-      {bool center = false}) {
-    final tp = TextPainter(
-      textDirection: TextDirection.ltr,
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-            fontFamily: Tokens.mono,
-            fontSize: 9.5,
-            color: color,
-            height: 1.0),
-      ),
-    )..layout();
-    tp.paint(canvas,
-        Offset(center ? at.dx - tp.width / 2 : at.dx, at.dy - tp.height / 2));
   }
 
   @override

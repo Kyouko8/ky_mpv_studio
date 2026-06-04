@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
-import '../state/player_scope.dart';
+import '../studio/player_scope.dart';
 import '../ui/tokens.dart';
 import '../ui/widgets/controls.dart';
 import '../ui/widgets/module_card.dart';

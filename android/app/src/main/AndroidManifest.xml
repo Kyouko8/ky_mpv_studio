@@ -1,8 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Network streaming (Lab reference streams, Jellyfin / Plex). The Flutter
+         template declares INTERNET only in the debug/profile manifests (for hot
+         reload), so release builds need it here or all network playback fails. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Keep the CPU awake for reliable audio playback while the screen is off
+         (the media-playback foreground service comes from mpv_audio_kit). -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
         android:label="mpv_studio"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
