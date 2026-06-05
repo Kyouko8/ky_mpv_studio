@@ -11,7 +11,7 @@
 
 <table>
 <tr>
-<td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_studio/main/imgs/mpv_studio.png" width="70" alt="logo"></td>
+<td valign="middle" width="90"><img src="https://raw.githubusercontent.com/ales-drnz/mpv_studio/main/assets/mpv_studio.png" width="70" alt="logo"></td>
 <td valign="middle"><b>MPV Studio</b> is the standalone reference client for the <a href="https://pub.dev/packages/mpv_audio_kit"><code>mpv_audio_kit</code></a> engine: a cross-platform audio player with a full DSP rack, real-time visualizers, Jellyfin, Plex and Samba streaming, and a built-in mpv command console.</td>
 </tr>
 </table>
