@@ -11,20 +11,13 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Local path dependency so MPV Studio always tracks the working copy
-  # of the engine package sitting next to it, not a pub.dev release.
-  mpv_audio_kit:
-    path: ../mpv_audio_kit
-
+  mpv_audio_kit: ^0.3.0
   file_selector: ^1.0.3
   desktop_drop: ^0.7.1
   shared_preferences: ^2.5.4
   go_router: ^17.2.3
   infinite_scroll_pagination: ^5.1.1
   flutter_launcher_icons: ^0.14.4
-
-  # Media-server libraries (published by the author) for the Stream page's
-  # Jellyfin / Plex / Samba tabs.
   dart_jellyfin: 0.0.2
   dart_plex: 0.0.2
   dart_smb2: ^0.1.0
@@ -43,5 +36,5 @@ flutter_launcher_icons:
   android: true
   windows:
     generate: true
-  image_path: "assets/MPV Studio.png"
+  image_path: "assets/mpv_studio.png"
   min_sdk_android: 21

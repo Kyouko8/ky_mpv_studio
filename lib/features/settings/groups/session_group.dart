@@ -323,16 +323,13 @@ Set<MediaAction> _unsupportedForPlatform() {
     };
   }
   if (Platform.isAndroid) {
-    // Media3 auto-renders only the play/pause toggle, prev/next and the seek
-    // bar; everything else needs custom CommandButtons the engine doesn't ship.
+    // On top of Media3's play-pause / prev-next / seek bar the plugin ships
+    // custom notification buttons for the skip intervals, repeat, shuffle and
+    // the favourite heart. Only stop and the rate picker have no rendered
+    // control.
     return const {
       MediaAction.stop,
-      MediaAction.fastForward,
-      MediaAction.rewind,
-      MediaAction.setRepeatMode,
-      MediaAction.setShuffle,
       MediaAction.setPlaybackRate,
-      MediaAction.like,
     };
   }
   if (Platform.isWindows) {
