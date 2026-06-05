@@ -1,4 +1,9 @@
-## [0.1.0] - 03-06-2026
+## [0.1.1] - 05-06-2026
+
+### Fixed
+- Minor fix.
+
+## [0.1.0] - 05-06-2026
 
 ### Added
 - Initial release of MPV Studio, the standalone reference player built on `mpv_audio_kit`, for macOS, iOS, Android, Windows and Linux.
