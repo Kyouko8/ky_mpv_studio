@@ -7,7 +7,7 @@
          (the media-playback foreground service comes from mpv_audio_kit). -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <application
-        android:label="mpv_studio"
+        android:label="MPV Studio"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
