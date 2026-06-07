@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show AppExitResponse;
 import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
@@ -20,9 +21,36 @@ class MpvStudioApp extends StatefulWidget {
 class _MpvStudioAppState extends State<MpvStudioApp> {
   late final _router = createAppRouter();
 
+  // Dock-Quit / ⌘Q call NSApplication terminate: without unwinding the widget
+  // tree, so State.dispose never runs before the engine tears down.
+  // onExitRequested is the hook that does fire there: shut the player down
+  // (bounded so it can't itself stall quit), then allow the exit.
+  late final AppLifecycleListener _exitGate;
+  Future<void>? _inFlight;
+
+  @override
+  void initState() {
+    super.initState();
+    _exitGate = AppLifecycleListener(
+      onExitRequested: _onExitRequested,
+      onDetach: () => unawaited(_teardown()),
+    );
+  }
+
+  // Single cached teardown future so repeat lifecycle signals all await the
+  // same shutdown; bounded so a wedged shutdown can never itself block quit.
+  Future<void> _teardown() => _inFlight ??= widget.studio
+      .shutdown()
+      .timeout(const Duration(seconds: 3), onTimeout: () {});
+
+  Future<AppExitResponse> _onExitRequested() async {
+    await _teardown();
+    return AppExitResponse.exit;
+  }
+
   @override
   void dispose() {
-    unawaited(widget.studio.shutdown());
+    _exitGate.dispose();
     super.dispose();
   }
 

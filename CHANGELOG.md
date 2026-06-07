@@ -1,3 +1,11 @@
+## [0.2.2] - 08-06-2026
+
+### Changed
+- Updated `mpv_audio_kit` to version `0.3.4`.
+
+### Fixed
+- The app no longer hangs on quit: the player is now shut down gracefully when the app exits.
+
 ## [0.2.1] - 07-06-2026
 
 ### Fixed
@@ -19,7 +27,7 @@
 - Now Playing: long-press previous/next to force past the queue ends, an undo-last-seek control, and sample-accurate scrubbing on the waveform.
 
 ### Changed
-- Updated to `mpv_audio_kit` to version `0.3.3`.
+- Updated `mpv_audio_kit` to version `0.3.3`.
 
 ## [0.1.2] - 05-06-2026
 
