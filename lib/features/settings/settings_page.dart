@@ -173,6 +173,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.rate,
           builder: (context, v) => SliderRow(
             label: 'Speed',
+            description: 'Playback rate without changing pitch',
             value: v,
             min: 0.25,
             max: 4,
@@ -186,6 +187,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.pitch,
           builder: (context, v) => SliderRow(
             label: 'Pitch',
+            description: 'Shift pitch without changing speed',
             value: v,
             min: 0.5,
             max: 2,
@@ -209,6 +211,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.loop,
           builder: (context, v) => _LabelledControl(
             label: 'Repeat',
+            description: 'Loop the current track or the whole queue',
             child: SegmentedControl<Loop>(
               selected: v,
               onSelect: player.setLoop,
@@ -225,6 +228,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.shuffle,
           builder: (context, v) => SwitchRow(
             label: 'Shuffle',
+            subtitle: 'Play the queue in random order',
             value: v,
             onChanged: player.setShuffle,
           ),
@@ -234,6 +238,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.gapless,
           builder: (context, v) => _LabelledControl(
             label: 'Gapless',
+            description: 'Remove the silence between consecutive tracks',
             child: SegmentedControl<Gapless>(
               selected: v,
               onSelect: player.setGapless,
@@ -250,6 +255,7 @@ class _PlaybackGroup extends StatelessWidget {
           initial: player.state.volumeMax,
           builder: (context, v) => SliderRow(
             label: 'Volume limit',
+            description: 'Ceiling for the soft volume control',
             value: v,
             min: 100,
             max: 1000,
@@ -276,7 +282,8 @@ class _PlaybackGroup extends StatelessWidget {
           stream: player.stream.volumeGainMin,
           initial: player.state.volumeGainMin,
           builder: (context, v) => SliderRow(
-            label: 'Gain clamp — min',
+            label: 'Gain clamp (min)',
+            description: 'Floor for the applied volume gain',
             value: v,
             min: -96,
             max: 0,
@@ -289,7 +296,8 @@ class _PlaybackGroup extends StatelessWidget {
           stream: player.stream.volumeGainMax,
           initial: player.state.volumeGainMax,
           builder: (context, v) => SliderRow(
-            label: 'Gain clamp — max',
+            label: 'Gain clamp (max)',
+            description: 'Ceiling for the applied volume gain',
             value: v,
             min: 0,
             max: 24,
@@ -391,7 +399,7 @@ class _ResumeGroupState extends State<_ResumeGroup> {
           children: [
             SwitchRow(
               label: 'Resume from last position',
-              subtitle: 'Restore position, speed, volume & track on reopen — '
+              subtitle: 'Restore position, speed, volume and track on reopen, '
                   'ideal for audiobooks and podcasts',
               value: _resume,
               onChanged: (v) {
@@ -411,7 +419,6 @@ class _ResumeGroupState extends State<_ResumeGroup> {
             ),
           ],
         ),
-        const SizedBox(height: Tokens.s16),
         SettingsGroup(
           label: 'Current file',
           children: [
@@ -481,6 +488,7 @@ class _OutputGroup extends StatelessWidget {
                 final known = devices.any((d) => d == current);
                 return DropdownRow<Device>(
                   label: 'Device',
+                  description: 'Hardware output the audio is sent to',
                   value: known ? current : null,
                   hint: known ? null : current.description,
                   items: [
@@ -527,6 +535,7 @@ class _OutputGroup extends StatelessWidget {
             final known = shown.contains(v);
             return DropdownRow<Format>(
               label: 'Sample format',
+              description: 'Bit depth and number type sent to the device',
               value: known ? v : null,
               hint: known ? null : v.mpvValue,
               items: const [
@@ -558,6 +567,7 @@ class _OutputGroup extends StatelessWidget {
             }
             return DropdownRow<Channels>(
               label: 'Channels',
+              description: 'Speaker layout requested from the output',
               value: match,
               hint: match == null ? v.mpvValue : null,
               items: [
@@ -577,6 +587,7 @@ class _OutputGroup extends StatelessWidget {
             final rates = {..._sampleRates, v}.toList()..sort();
             return DropdownRow<int>(
               label: 'Sample rate',
+              description: 'Output sampling frequency',
               value: v,
               items: [
                 for (final r in rates)
@@ -598,6 +609,7 @@ class _OutputGroup extends StatelessWidget {
           initial: player.state.audioBuffer,
           builder: (context, v) => SliderRow(
             label: 'Output buffer',
+            description: 'Audio queued at the device; higher hides dropouts',
             value: v.inMilliseconds.toDouble(),
             min: 0,
             max: 2000,
@@ -611,7 +623,8 @@ class _OutputGroup extends StatelessWidget {
           stream: player.stream.audioDelay,
           initial: player.state.audioDelay,
           builder: (context, v) => SliderRow(
-            label: 'A/V sync delay',
+            label: 'Audio delay',
+            description: 'Shift audio earlier or later to fix sync',
             value: v.inMicroseconds / 1e6,
             min: -5,
             max: 5,
@@ -665,57 +678,61 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SettingsGroup(
-          label: 'ReplayGain normalization',
-          children: [
-            _LabelledControl(
-              label: 'Mode',
-              child: SegmentedControl<ReplayGain>(
-                selected: rg.mode,
-                onSelect: (m) => player.setReplayGain(rg.copyWith(mode: m)),
-                options: const [
-                  SegmentOption(ReplayGain.no, 'Off'),
-                  SegmentOption(ReplayGain.track, 'Track'),
-                  SegmentOption(ReplayGain.album, 'Album'),
-                ],
-              ),
+              label: 'ReplayGain normalization',
+              children: [
+                _LabelledControl(
+                  label: 'Mode',
+                  description: 'Match loudness per track or per album',
+                  child: SegmentedControl<ReplayGain>(
+                    selected: rg.mode,
+                    onSelect: (m) => player.setReplayGain(rg.copyWith(mode: m)),
+                    options: const [
+                      SegmentOption(ReplayGain.no, 'Off'),
+                      SegmentOption(ReplayGain.track, 'Track'),
+                      SegmentOption(ReplayGain.album, 'Album'),
+                    ],
+                  ),
+                ),
+                SliderRow(
+                  label: 'Pre-amp',
+                  description: 'Extra gain applied on top of ReplayGain',
+                  value: rg.preamp,
+                  min: -15,
+                  max: 15,
+                  resetTo: 0,
+                  format: (x) => '${x.toStringAsFixed(1)} dB',
+                  enabled: rg.mode != ReplayGain.no,
+                  onChanged: (x) =>
+                      player.setReplayGain(rg.copyWith(preamp: x)),
+                ),
+                SliderRow(
+                  label: 'Fallback gain',
+                  description: 'Gain used when a track has no ReplayGain tags',
+                  value: rg.fallback,
+                  min: -15,
+                  max: 15,
+                  resetTo: 0,
+                  format: (x) => '${x.toStringAsFixed(1)} dB',
+                  enabled: rg.mode != ReplayGain.no,
+                  onChanged: (x) =>
+                      player.setReplayGain(rg.copyWith(fallback: x)),
+                ),
+                SwitchRow(
+                  label: 'Allow clipping',
+                  subtitle: 'Permit output clipping on loud tracks',
+                  value: rg.clip,
+                  enabled: rg.mode != ReplayGain.no,
+                  onChanged: (v) => player.setReplayGain(rg.copyWith(clip: v)),
+                ),
+              ],
             ),
-            SliderRow(
-              label: 'Pre-amp',
-              value: rg.preamp,
-              min: -15,
-              max: 15,
-              resetTo: 0,
-              format: (x) => '${x.toStringAsFixed(1)} dB',
-              enabled: rg.mode != ReplayGain.no,
-              onChanged: (x) => player.setReplayGain(rg.copyWith(preamp: x)),
-            ),
-            SliderRow(
-              label: 'Fallback gain',
-              value: rg.fallback,
-              min: -15,
-              max: 15,
-              resetTo: 0,
-              format: (x) => '${x.toStringAsFixed(1)} dB',
-              enabled: rg.mode != ReplayGain.no,
-              onChanged: (x) => player.setReplayGain(rg.copyWith(fallback: x)),
-            ),
-            SwitchRow(
-              label: 'Allow clipping',
-              subtitle: 'Permit output clipping on loud tracks',
-              value: rg.clip,
-              enabled: rg.mode != ReplayGain.no,
-              onChanged: (v) => player.setReplayGain(rg.copyWith(clip: v)),
-            ),
-          ],
-            ),
-            const SizedBox(height: Tokens.s16),
             SettingsGroup(
               label: 'Downmix (applied on next launch)',
               children: [
                 SwitchRow(
                   label: 'Normalize downmix',
                   subtitle: 'Loudness-normalize surround downmixed to fewer '
-                      'channels, avoiding clipping on 5.1 → stereo',
+                      'channels, avoiding clipping when 5.1 becomes stereo',
                   value: _normalizeDownmix,
                   onChanged: (v) {
                     setState(() => _normalizeDownmix = v);
@@ -749,6 +766,7 @@ class _CacheGroup extends StatelessWidget {
           children: [
             _LabelledControl(
               label: 'Cache',
+              description: 'Buffer the stream ahead of playback',
               child: SegmentedControl<Cache>(
                 selected: cache.mode,
                 onSelect: (m) => player.setCache(cache.copyWith(mode: m)),
@@ -761,6 +779,7 @@ class _CacheGroup extends StatelessWidget {
             ),
             SliderRow(
               label: 'Cache duration',
+              description: 'How much audio to keep buffered ahead',
               value: cache.secs.inSeconds.toDouble(),
               min: 30,
               max: 7200,
@@ -782,13 +801,14 @@ class _CacheGroup extends StatelessWidget {
             ),
             SwitchRow(
               label: 'Pre-buffer on start',
-              subtitle: 'Buffer before playback starts — and after each seek',
+              subtitle: 'Buffer before playback starts, and again after a seek',
               value: cache.pauseInitial,
               onChanged: (v) =>
                   player.setCache(cache.copyWith(pauseInitial: v)),
             ),
             SliderRow(
               label: 'Buffer wait',
+              description: 'How long to wait while the cache refills',
               value: cache.pauseWait.inMicroseconds / 1e6,
               min: 0.1,
               max: 60,
@@ -806,6 +826,7 @@ class _CacheGroup extends StatelessWidget {
               initial: player.state.networkTimeout,
               builder: (context, v) => SliderRow(
                 label: 'Network timeout',
+                description: 'Give up on a stalled connection after this',
                 value: v.inSeconds.toDouble().clamp(5, 120),
                 min: 5,
                 max: 120,
@@ -820,6 +841,7 @@ class _CacheGroup extends StatelessWidget {
               initial: player.state.tlsVerify,
               builder: (context, v) => SwitchRow(
                 label: 'Verify TLS certificates',
+                subtitle: 'Reject servers with an untrusted certificate',
                 value: v,
                 onChanged: player.setTlsVerify,
               ),
@@ -877,6 +899,7 @@ class _VisualizerGroup extends StatelessWidget {
           children: [
             _LabelledControl(
               label: 'FFT window',
+              description: 'Window function applied before the transform',
               child: SegmentedControl<WindowFunction>(
                 selected: spec.window,
                 onSelect: (w) => player.setSpectrum(spec.copyWith(window: w)),
@@ -889,6 +912,7 @@ class _VisualizerGroup extends StatelessWidget {
             ),
             _LabelledControl(
               label: 'FFT size',
+              description: 'Samples per frame; higher resolves finer detail',
               child: SegmentedControl<int>(
                 selected: spec.fftSize,
                 onSelect: (s) => player.setSpectrum(spec.copyWith(fftSize: s)),
@@ -902,6 +926,7 @@ class _VisualizerGroup extends StatelessWidget {
             ),
             SliderRow(
               label: 'Bands',
+              description: 'Number of bars drawn in the spectrum',
               value: spec.bandCount.toDouble(),
               min: 16,
               max: 128,
@@ -933,6 +958,7 @@ class _CoverArtGroup extends StatelessWidget {
           initial: player.state.coverArtAuto,
           builder: (context, v) => _LabelledControl(
             label: 'Load external art',
+            description: 'Look for cover images next to the audio file',
             child: SegmentedControl<Cover>(
               selected: v,
               onSelect: player.setCoverArtAuto,
@@ -977,11 +1003,16 @@ class _AboutGroup extends StatelessWidget {
 /// title (segmented pickers) — same rhythm as the slider/dropdown tiles.
 class _LabelledControl extends StatelessWidget {
   final String label;
+  final String? description;
   final Widget child;
-  const _LabelledControl({required this.label, required this.child});
+  const _LabelledControl({
+    required this.label,
+    required this.child,
+    this.description,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SettingTile(title: label, below: child);
+    return SettingTile(title: label, description: description, below: child);
   }
 }

@@ -141,7 +141,7 @@ class _SessionGroupState extends State<SessionGroup> {
             SwitchRow(
               label: 'Publish to the OS',
               subtitle:
-                  'Lock screen, Control Center, Bluetooth, headset & MPRIS',
+                  'Lock screen, Control Center, Bluetooth, headset and MPRIS',
               value: _on,
               onChanged: _setOn,
             ),
@@ -163,7 +163,7 @@ class _SessionGroupState extends State<SessionGroup> {
                       title: 'When interrupted',
                       description: _interruptionSupported
                           ? 'How playback reacts to a call, Siri or an alarm'
-                          : 'Only on iOS & Android — $_platform leaves audio '
+                          : 'Only on iOS and Android. $_platform leaves audio '
                               'routing to the OS',
                       below: AppDropdown<InterruptionPolicy>(
                         enabled: _interruptionSupported,
@@ -171,7 +171,7 @@ class _SessionGroupState extends State<SessionGroup> {
                         items: const [
                           DropdownMenuItem(
                             value: InterruptionPolicy.pauseAndResume,
-                            child: Text('Pause & resume'),
+                            child: Text('Pause and resume'),
                           ),
                           DropdownMenuItem(
                             value: InterruptionPolicy.pauseOnly,
@@ -225,8 +225,8 @@ class _SessionGroupState extends State<SessionGroup> {
                         Tokens.s4, 0, Tokens.s4, Tokens.s12),
                     child: Text(
                       "$_platform's media UI won't draw these, but you can still "
-                      'advertise them — they may appear on your other devices. '
-                      'Tap to toggle.',
+                      'advertise them anyway; they may appear on your other '
+                      'devices. Tap to toggle.',
                       style: Tokens.caption,
                     ),
                   ),
@@ -263,8 +263,8 @@ class _SessionGroupState extends State<SessionGroup> {
           color: Tokens.surface,
           shape: Tokens.squircle(Tokens.rMd),
         ),
-        child:
-            const Text('No controls — add some below.', style: Tokens.caption),
+        child: const Text('No controls yet. Add some below.',
+            style: Tokens.caption),
       );
     }
     return ReorderableListView(
@@ -387,7 +387,7 @@ int _nearestSkipIndex(int secs) {
       MediaAction.pause => (icon: Icons.pause_rounded, label: 'Pause'),
       MediaAction.playPause => (
           icon: Icons.play_circle_outline_rounded,
-          label: 'Play / Pause'
+          label: 'Play-pause'
         ),
       MediaAction.stop => (icon: Icons.stop_rounded, label: 'Stop'),
       MediaAction.next => (icon: Icons.skip_next_rounded, label: 'Next'),
@@ -568,7 +568,7 @@ class _AddChip extends StatelessWidget {
     if (!unsupported) return chip;
     return Tooltip(
       message: advertised
-          ? "Advertised — won't render on $platform; tap to remove"
+          ? "Advertised but won't render on $platform; tap to remove"
           : "Not drawn by $platform's media controls; tap to advertise anyway",
       child: chip,
     );

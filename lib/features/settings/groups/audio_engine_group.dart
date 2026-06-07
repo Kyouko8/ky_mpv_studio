@@ -76,6 +76,7 @@ class _AudioEngineGroupState extends State<AudioEngineGroup> {
                 ];
                 return DropdownRow<String>(
                   label: 'Driver',
+                  description: 'Backend mpv uses to reach the audio device',
                   value: val,
                   items: [
                     for (final d in options)
@@ -243,6 +244,7 @@ class _SpdifChips extends StatelessWidget {
   Widget build(BuildContext context) {
     return SettingTile(
       title: 'S/PDIF passthrough',
+      description: 'Send compressed audio untouched to a receiver',
       below: Wrap(
         spacing: Tokens.s8,
         runSpacing: Tokens.s8,
@@ -333,6 +335,7 @@ class _ClientNameFieldState extends State<_ClientNameField> {
   Widget build(BuildContext context) {
     return SettingTile(
       title: 'Client name',
+      description: 'Name shown for this app in the OS mixer',
       // Fixed controlH so it matches the dropdowns/segmented controls exactly.
       // The field is content-sized inside a Row so its default centre
       // cross-axis alignment vertically centres the text — a TextField forced

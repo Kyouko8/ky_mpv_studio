@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 
 import 'shell/router.dart';
@@ -35,8 +36,27 @@ class _MpvStudioAppState extends State<MpvStudioApp> {
         title: 'MPV Studio',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
+        // Let the mouse click-and-drag to scroll on desktop, like touch does —
+        // Flutter leaves the mouse out of the default drag devices.
+        scrollBehavior: const _DragScrollBehavior(),
         routerConfig: _router,
       ),
     );
   }
+}
+
+/// Adds the mouse (and the rest) to the scroll drag devices so lists scroll on
+/// click-drag on desktop, not just with the wheel/trackpad.
+class _DragScrollBehavior extends MaterialScrollBehavior {
+  const _DragScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => const {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.invertedStylus,
+        PointerDeviceKind.unknown,
+      };
 }

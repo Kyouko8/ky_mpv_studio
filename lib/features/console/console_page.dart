@@ -1,5 +1,6 @@
 import 'dart:collection';
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
@@ -55,6 +56,10 @@ class _ConsolePageState extends State<ConsolePage>
   final _input = TextEditingController();
   final _search = TextEditingController();
   late final FocusNode _inputFocus = FocusNode(onKeyEvent: _onKey);
+
+  // Shared by the input box and the floating popup so a tap on either counts
+  // as "inside" the group; a tap on the log (outside) dismisses both.
+  final _inputGroup = Object();
 
   /// Selected log verbosity — both the level requested from mpv and the
   /// display floor. Starts at info (the engine's configured level).
@@ -256,6 +261,13 @@ class _ConsolePageState extends State<ConsolePage>
     });
   }
 
+  /// Tap landed outside the input/popup group: close the popup (if open) and
+  /// drop focus. Idempotent — it can fire once per region in the group.
+  void _dismiss() {
+    if (_result.suggestions.isNotEmpty) _closePopup();
+    if (_inputFocus.hasFocus) _inputFocus.unfocus();
+  }
+
   void _moveSelection(int delta) {
     final n = _result.suggestions.length;
     if (n == 0) return;
@@ -362,67 +374,106 @@ class _ConsolePageState extends State<ConsolePage>
   Widget _buildConsole() {
     final visible = _lines.where(_visible).toList(growable: false);
     final activeCmd = _completion.activeCommand(_input.text);
+    final showPopup = _result.suggestions.isNotEmpty;
+    final showHint =
+        !showPopup && activeCmd != null && activeCmd.signature.isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          child: visible.isEmpty
-              ? Center(
-                  child: Text(
-                    _query.isNotEmpty
-                        ? 'No lines match “$_query”.'
-                        : 'No log output yet.',
-                    style: Tokens.caption,
-                  ),
-                )
-              // One SelectionArea for the whole log keeps text drag-select
-              // (across rows) without making each row a SelectableText. Per-
-              // row SelectableText registers every line as a read-only text
-              // field in the semantics tree; under a high-frequency log flood
-              // that two-pane semantics layout fights SliverList's offset
-              // estimation and throws "RenderViewport exceeded its maximum
-              // number of layout cycles". Plain Text rows avoid that entirely.
-              : SelectionArea(
-                  child: ListView.builder(
-                    controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(
-                      Tokens.s16,
-                      Tokens.s8,
-                      Tokens.s16,
-                      Tokens.s4,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: visible.isEmpty
+                    ? Center(
+                        child: Text(
+                          _query.isNotEmpty
+                              ? 'No lines match “$_query”.'
+                              : 'No log output yet.',
+                          style: Tokens.caption,
+                        ),
+                      )
+                    // One SelectionArea for the whole log keeps text drag-select
+                    // (across rows) without making each row a SelectableText.
+                    // Per-row SelectableText registers every line as a read-only
+                    // text field in the semantics tree; under a high-frequency
+                    // log flood that two-pane semantics layout fights
+                    // SliverList's offset estimation and throws "RenderViewport
+                    // exceeded its maximum number of layout cycles". Plain Text
+                    // rows avoid that entirely.
+                    : SelectionArea(
+                        // Drop the mouse from this list's drag devices so a
+                        // mouse drag selects log text (the whole point of the
+                        // SelectionArea) instead of scrolling — the app-wide
+                        // mouse drag-to-scroll would otherwise win the gesture.
+                        // The wheel/trackpad still scroll normally.
+                        child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context).copyWith(
+                            dragDevices: const {
+                              PointerDeviceKind.touch,
+                              PointerDeviceKind.trackpad,
+                              PointerDeviceKind.stylus,
+                              PointerDeviceKind.unknown,
+                            },
+                          ),
+                          child: ListView.builder(
+                            controller: _scroll,
+                            padding: const EdgeInsets.fromLTRB(
+                              Tokens.s16,
+                              Tokens.s8,
+                              Tokens.s16,
+                              Tokens.s4,
+                            ),
+                            itemCount: visible.length,
+                            itemBuilder: (context, i) => _logRow(visible[i]),
+                          ),
+                        ),
+                      ),
+              ),
+              // The autocomplete popup FLOATS over the bottom of the log,
+              // anchored directly above the command box. It grows upward and is
+              // bounded by this area's height (the Stack), so a tall list
+              // scrolls inside itself rather than pushing the box down behind
+              // the keyboard. The box always keeps its place; the popup adapts.
+              if (showPopup)
+                Positioned.fill(
+                  // Fill so the popup is bounded by the log area's height; the
+                  // bottom Align pins it just above the box while letting it
+                  // size to content (and scroll) up to that bound.
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: TapRegion(
+                      groupId: _inputGroup,
+                      onTapOutside: (_) => _dismiss(),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                            Tokens.s16, 0, Tokens.s16, 0),
+                        child: SuggestionPopup(
+                          suggestions: _result.suggestions,
+                          selected: _selected,
+                          tokenSoFar: _result.tokenSoFar,
+                          onTap: _accept,
+                        ),
+                      ),
                     ),
-                    itemCount: visible.length,
-                    itemBuilder: (context, i) => _logRow(visible[i]),
                   ),
                 ),
+            ],
+          ),
         ),
-        // Popup + command box live in one tap region: tapping anywhere
-        // inside (box or a suggestion row) keeps the popup; tapping outside
-        // closes it and drops focus. The popup opens on a box click /
-        // typing — never on its own when the page first appears.
+        // The signature hint and the command box share one tap region (grouped
+        // with the floating popup above): tapping the box or a suggestion row
+        // keeps the popup open; tapping the log dismisses it and drops focus.
+        // The single-line hint stays in flow (it can't overflow the column),
+        // sitting just above the box with the same inset.
         TapRegion(
-          onTapOutside: (_) {
-            if (_result.suggestions.isNotEmpty) _closePopup();
-            if (_inputFocus.hasFocus) _inputFocus.unfocus();
-          },
+          groupId: _inputGroup,
+          onTapOutside: (_) => _dismiss(),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Popup / signature hint sit directly above the command box,
-              // aligned to it (same inset), with no divider between.
-              if (_result.suggestions.isNotEmpty)
-                Padding(
-                  padding:
-                      const EdgeInsets.fromLTRB(Tokens.s16, 0, Tokens.s16, 0),
-                  child: SuggestionPopup(
-                    suggestions: _result.suggestions,
-                    selected: _selected,
-                    tokenSoFar: _result.tokenSoFar,
-                    onTap: _accept,
-                  ),
-                )
-              else if (activeCmd != null && activeCmd.signature.isNotEmpty)
+              if (showHint)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                       Tokens.s24, 0, Tokens.s16, Tokens.s4),

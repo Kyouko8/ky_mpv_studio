@@ -62,6 +62,7 @@ class AudioTrackGroup extends StatelessWidget {
                   children: [
                     DropdownRow<int>(
                       label: 'Track',
+                      description: 'Which audio track to play from the file',
                       value: selected,
                       items: items,
                       onChanged: (v) {
@@ -99,14 +100,13 @@ class AudioTrackGroup extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: Tokens.s16),
                 SettingsGroup(
                   label: 'External tracks',
                   children: [
                     SettingTile(
                       title: 'Add external audio file',
                       description:
-                          'Load a separate dub / commentary as a selectable track',
+                          'Load a separate dub or commentary as a selectable track',
                       trailing: GestureDetector(
                         onTap: () => _addExternal(context),
                         child: const ValueBadge('Add…', color: Tokens.accent),

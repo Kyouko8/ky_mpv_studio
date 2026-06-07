@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../../studio/app_settings.dart';
-import '../../../ui/tokens.dart';
 import '../../../ui/widgets/controls.dart';
 import '../../../ui/widgets/section_body.dart';
 import '../../../util/reactive.dart';
@@ -79,7 +78,6 @@ class _StreamingGroupState extends State<StreamingGroup> {
             ),
           ],
         ),
-        const SizedBox(height: Tokens.s16),
         SettingsGroup(
           label: 'Stream open (applied on next launch)',
           children: [
@@ -87,7 +85,7 @@ class _StreamingGroupState extends State<StreamingGroup> {
               label: 'Force seekable',
               subtitle:
                   'Allow in-cache seeking on streams mpv reports as non-seekable '
-                  '(direct-HTTP / HLS audio)',
+                  '(direct HTTP or HLS audio)',
               value: _forceSeekable,
               onChanged: (v) {
                 setState(() => _forceSeekable = v);

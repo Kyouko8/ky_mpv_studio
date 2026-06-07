@@ -6,6 +6,7 @@ import '../ui/tokens.dart';
 import '../util/reactive.dart';
 import 'desktop_shell.dart';
 import 'mobile_shell.dart';
+import 'router.dart';
 import 'sections.dart';
 
 /// Root chrome. Wraps the routed section bodies (carried by
@@ -44,11 +45,22 @@ class _AppShellState extends State<AppShell>
   }
 
   void _select(Section section) {
-    widget.navigationShell.goBranch(
-      section.index,
-      // Re-tapping the active section pops it back to its initial route.
-      initialLocation: section.index == widget.navigationShell.currentIndex,
-    );
+    final shell = widget.navigationShell;
+    if (section.index == shell.currentIndex) {
+      // Re-tapping the active icon acts as Back: pop this branch's own pushed
+      // detail (e.g. an opened settings category) if there is one. These are
+      // raw Navigator.push routes that go_router doesn't track, so goBranch
+      // alone wouldn't clear them.
+      final nav = branchNavigatorKeys[section.index].currentState;
+      if (nav != null && nav.canPop()) {
+        nav.pop();
+        return;
+      }
+      // Already at the branch root — reset it to its initial location.
+      shell.goBranch(section.index, initialLocation: true);
+      return;
+    }
+    shell.goBranch(section.index);
   }
 
   @override

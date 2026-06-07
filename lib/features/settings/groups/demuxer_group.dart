@@ -48,6 +48,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               initial: player.state.demuxerMaxBytes,
               builder: (context, v) => SliderRow(
                 label: 'Max cache size',
+                description: 'Memory the demuxer may use to read ahead',
                 value: v / _mib,
                 min: 1,
                 max: 2048,
@@ -63,6 +64,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               initial: player.state.demuxerReadaheadSecs,
               builder: (context, v) => SliderRow(
                 label: 'Readahead',
+                description: 'How far ahead of playback the demuxer reads',
                 value: v.inMilliseconds / 1000.0,
                 min: 0,
                 max: 600,
@@ -78,6 +80,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               initial: player.state.demuxerMaxBackBytes,
               builder: (context, v) => SliderRow(
                 label: 'Seekback pool',
+                description: 'Recent audio kept so seeking back is instant',
                 value: v / _mib,
                 min: 0,
                 max: 1024,
@@ -158,8 +161,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
                 value: cache.seekableRanges.isEmpty
                     ? '—'
                     : cache.seekableRanges
-                        .map((r) =>
-                            '${_fmt(r.start)}–${_fmt(r.end)}')
+                        .map((r) => '${_fmt(r.start)}–${_fmt(r.end)}')
                         .join(', '),
               ),
               InfoRow(
@@ -169,9 +171,9 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
                     : '${(cache.rawInputRate! / 1024).toStringAsFixed(1)} KiB/s',
               ),
               InfoRow(
-                label: 'EOF / BOF cached',
-                value: '${cache.eofCached ? 'yes' : 'no'} / '
-                    '${cache.bofCached ? 'yes' : 'no'}',
+                label: 'Cached at ends',
+                value: 'EOF ${cache.eofCached ? 'yes' : 'no'}, '
+                    'BOF ${cache.bofCached ? 'yes' : 'no'}',
               ),
               InfoRow(
                 label: 'Underrun',

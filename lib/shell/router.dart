@@ -10,6 +10,14 @@ import '../features/stream/stream_page.dart';
 import 'app_shell.dart';
 import 'sections.dart';
 
+/// One navigator key per section branch. They let the shell pop a branch's
+/// own pushed detail (e.g. a settings category opened with `Navigator.push`)
+/// when its tab/sidebar icon is tapped again — "tap the active icon to go
+/// back". Top-level and stable so the keys survive rebuilds.
+final List<GlobalKey<NavigatorState>> branchNavigatorKeys = [
+  for (final _ in Section.values) GlobalKey<NavigatorState>(),
+];
+
 /// Builds the app router. One [StatefulShellBranch] per [Section]; every
 /// branch stays mounted inside a keep-alive [IndexedStack], so player
 /// subscriptions and the Now Playing visualizers survive section switches.
@@ -31,6 +39,7 @@ GoRouter createAppRouter() {
         branches: [
           for (final section in Section.values)
             StatefulShellBranch(
+              navigatorKey: branchNavigatorKeys[section.index],
               routes: [
                 GoRoute(
                   path: section.path,

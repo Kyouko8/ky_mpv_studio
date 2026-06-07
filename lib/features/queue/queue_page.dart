@@ -1,5 +1,6 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -54,6 +55,9 @@ class _QueuePageState extends State<QueuePage> {
     const group = XTypeGroup(
       label: 'playlist',
       extensions: ['m3u', 'm3u8', 'pls', 'cue'],
+      // iOS filters by UTI, not extension, and rejects an extension-only group
+      // outright. Playlists are plain text; m3u carries its own system type.
+      uniformTypeIdentifiers: ['public.m3u-playlist', 'public.text'],
     );
     final file = await openFile(acceptedTypeGroups: const [group]);
     if (file == null) return;
@@ -191,6 +195,12 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Folder picking has no file_selector backend on iOS (or web), so the
+    // Add folder button is shown disabled there; it works everywhere else.
+    final folderEnabled =
+        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
+    const folderDisabledTip = 'Folder import isn’t available on iOS';
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         Tokens.s16,
@@ -198,33 +208,78 @@ class _Toolbar extends StatelessWidget {
         Tokens.s16,
         Tokens.s8,
       ),
-      child: Row(
-        children: [
-          ToolButton(
-            icon: Icons.add_rounded,
-            label: 'Add files',
-            onTap: onAddFiles,
-            primary: true,
-          ),
-          const SizedBox(width: Tokens.s8),
-          ToolButton(
-            icon: Icons.folder_open_rounded,
-            label: 'Add folder',
-            onTap: onAddFolder,
-          ),
-          const SizedBox(width: Tokens.s8),
-          ToolButton(
-            icon: Icons.playlist_play_rounded,
-            label: 'Load playlist',
-            onTap: onLoadPlaylist,
-          ),
-          const Spacer(),
-          ToolButton(
-            icon: Icons.clear_all_rounded,
-            label: 'Clear',
-            onTap: onClear,
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Four labelled pills don't fit a phone. Below the desktop
+          // breakpoint, keep every action but collapse them to icon-only
+          // buttons (labels move into tooltips) so nothing overflows.
+          if (constraints.maxWidth < Tokens.desktopBreakpoint) {
+            return Row(
+              children: [
+                ToolButton(
+                  icon: Icons.add_rounded,
+                  label: 'Add files',
+                  onTap: onAddFiles,
+                  primary: true,
+                  iconOnly: true,
+                ),
+                const SizedBox(width: Tokens.s8),
+                ToolButton(
+                  icon: Icons.folder_open_rounded,
+                  label: 'Add folder',
+                  onTap: onAddFolder,
+                  iconOnly: true,
+                  enabled: folderEnabled,
+                  disabledTooltip: folderDisabledTip,
+                ),
+                const SizedBox(width: Tokens.s8),
+                ToolButton(
+                  icon: Icons.playlist_play_rounded,
+                  label: 'Load playlist',
+                  onTap: onLoadPlaylist,
+                  iconOnly: true,
+                ),
+                const Spacer(),
+                ToolButton(
+                  icon: Icons.clear_all_rounded,
+                  label: 'Clear',
+                  onTap: onClear,
+                  iconOnly: true,
+                ),
+              ],
+            );
+          }
+          return Row(
+            children: [
+              ToolButton(
+                icon: Icons.add_rounded,
+                label: 'Add files',
+                onTap: onAddFiles,
+                primary: true,
+              ),
+              const SizedBox(width: Tokens.s8),
+              ToolButton(
+                icon: Icons.folder_open_rounded,
+                label: 'Add folder',
+                onTap: onAddFolder,
+                enabled: folderEnabled,
+                disabledTooltip: folderDisabledTip,
+              ),
+              const SizedBox(width: Tokens.s8),
+              ToolButton(
+                icon: Icons.playlist_play_rounded,
+                label: 'Load playlist',
+                onTap: onLoadPlaylist,
+              ),
+              const Spacer(),
+              ToolButton(
+                icon: Icons.clear_all_rounded,
+                label: 'Clear',
+                onTap: onClear,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -477,12 +532,18 @@ class _EmptyQueue extends StatelessWidget {
   }
 }
 
-/// Small flat pill button used in section toolbars.
+/// Small flat pill button used in section toolbars. Set [iconOnly] to drop
+/// the label (it becomes a tooltip) for tight, phone-width toolbars; set
+/// [enabled] to `false` to show it greyed and inert, with [disabledTooltip]
+/// explaining why.
 class ToolButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool primary;
+  final bool iconOnly;
+  final bool enabled;
+  final String? disabledTooltip;
 
   const ToolButton({
     super.key,
@@ -490,26 +551,22 @@ class ToolButton extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.primary = false,
+    this.iconOnly = false,
+    this.enabled = true,
+    this.disabledTooltip,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fg = primary ? Tokens.onAccent : Tokens.fg;
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: Tokens.squircle(Tokens.rSm),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Tokens.s12,
-            vertical: Tokens.s8,
-          ),
-          decoration: ShapeDecoration(
-            color: primary ? Tokens.accent : Tokens.surface2,
-            shape: Tokens.squircle(Tokens.rSm),
-          ),
-          child: Row(
+    // Disabled wins over primary: a greyed pill must read as inert, not active.
+    final fg = !enabled
+        ? Tokens.fgFaint
+        : (primary ? Tokens.onAccent : Tokens.fg);
+    final bg = !enabled || !primary ? Tokens.surface2 : Tokens.accent;
+
+    final content = iconOnly
+        ? Icon(icon, size: 18, color: fg)
+        : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 16, color: fg),
@@ -523,9 +580,30 @@ class ToolButton extends StatelessWidget {
                 ),
               ),
             ],
+          );
+
+    final pill = Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: enabled ? onTap : null,
+        customBorder: Tokens.squircle(Tokens.rSm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.s12,
+            vertical: Tokens.s8,
           ),
+          decoration: ShapeDecoration(
+            color: bg,
+            shape: Tokens.squircle(Tokens.rSm),
+          ),
+          child: content,
         ),
       ),
     );
+
+    // Icon-only buttons surface their label as a tooltip; a disabled button
+    // explains its inertness instead.
+    final tip = !enabled ? (disabledTooltip ?? label) : (iconOnly ? label : null);
+    return tip == null ? pill : Tooltip(message: tip, child: pill);
   }
 }

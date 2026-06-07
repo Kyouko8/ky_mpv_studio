@@ -38,7 +38,25 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
         // the control layout never disagree — an earlier split check let the
         // meter reserve row-space while the body rendered the taller column,
         // overflowing the bottom and crushing the visualizer to zero height.
-        if (c.maxWidth < _narrowBelow) return const _MobileLayout();
+        if (c.maxWidth < _narrowBelow) {
+          // The meter is resizable on mobile too. The controls below adapt
+          // (they scale down as one cluster — see [_MobileLayout]), so the
+          // meter is free to take most of the surface; the bounds here are
+          // just a usable floor and a "don't swallow everything" ceiling.
+          final h = c.maxHeight;
+          final w = c.maxWidth;
+          final maxMeter = (h * 0.62).clamp(160.0, 520.0);
+          final meterH = _meterHeight.clamp(110.0, maxMeter);
+          final cover =
+              math.min(w * 0.5, h * 0.26).clamp(120.0, 200.0).toDouble();
+          return _MobileLayout(
+            meterHeight: meterH,
+            coverSize: cover,
+            onResize: (dy) => setState(
+              () => _meterHeight = (meterH + dy).clamp(110.0, maxMeter),
+            ),
+          );
+        }
 
         final maxMeter = (c.maxHeight - 320).clamp(120.0, 600.0);
         final meterH = _meterHeight.clamp(120.0, maxMeter);
@@ -59,12 +77,13 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               ],
             ),
             Positioned(
-              top: meterH - 3.5,
+              top: meterH - 6,
               left: 0,
               right: 0,
-              height: 7,
+              height: 12,
               child: ResizeHandle(
                 axis: Axis.horizontal,
+                hitThickness: 12,
                 onDelta: (dy) => setState(
                   () => _meterHeight = (meterH + dy).clamp(120.0, maxMeter),
                 ),
@@ -104,51 +123,99 @@ class _RowBottom extends StatelessWidget {
   }
 }
 
-/// Mobile surface: a slim fixed meter up top, then the stacked controls
-/// over the spectrum, which fills whatever height is left. The meter and
-/// artwork scale with the available height, so the column always fits a
-/// portrait viewport without overflowing — and the visualizer keeps a real,
-/// non-zero height instead of being squeezed out.
+/// Mobile surface: a resizable meter up top, then the stacked controls over
+/// the spectrum, which fills whatever height is left. The meter height is the
+/// shared [_meterHeight] (drag the grip on its bottom seam); the artwork
+/// scales with the available height, so the column always fits a portrait
+/// viewport without overflowing — and the visualizer keeps a real, non-zero
+/// height instead of being squeezed out.
 class _MobileLayout extends StatelessWidget {
-  const _MobileLayout();
+  final double meterHeight;
+  final double coverSize;
+  final ValueChanged<double> onResize;
+  const _MobileLayout({
+    required this.meterHeight,
+    required this.coverSize,
+    required this.onResize,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final h = c.maxHeight;
-        final w = c.maxWidth;
-        final meterH = (h * 0.16).clamp(96.0, 150.0).toDouble();
-        final cover =
-            math.min(w * 0.5, h * 0.26).clamp(120.0, 200.0).toDouble();
-        return Column(
+    return Stack(
+      children: [
+        Column(
           children: [
             SizedBox(
-              height: meterH,
+              height: meterHeight,
               child: const ColoredBox(
                 color: Tokens.surface,
                 child: WaveformMeter(),
               ),
             ),
             Expanded(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      Tokens.s20,
-                      Tokens.s16,
-                      Tokens.s20,
-                      Tokens.s12,
-                    ),
-                    child: _StackedControls(coverSize: cover),
-                  ),
-                  const Expanded(child: SpectrumCurve()),
-                ],
+              // The control block adapts to whatever height the meter leaves
+              // it: at natural size when there's room, scaled down as a single
+              // cluster (the [FittedBox]) once the meter is dragged large — so
+              // the meter can grow freely without the fixed-height transport
+              // ever overflowing. The visualizer keeps the remainder.
+              child: LayoutBuilder(
+                builder: (context, cc) {
+                  final avail = cc.maxHeight;
+                  const spectrumMin = 28.0;
+                  // Approx. natural height of the stacked controls (cover plus
+                  // the fixed transport/volume/VU rows and gaps). It only
+                  // steers where scaling begins and the controls/visualizer
+                  // split; FittedBox guarantees no overflow even if it's off.
+                  final naturalControls = coverSize + 304;
+                  final upper = math.max(0.0, avail - spectrumMin);
+                  final controlsBudget = naturalControls.clamp(0.0, upper);
+                  final spectrumH = avail - controlsBudget;
+                  return Column(
+                    children: [
+                      SizedBox(
+                        height: controlsBudget,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: cc.maxWidth,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                Tokens.s20,
+                                Tokens.s16,
+                                Tokens.s20,
+                                Tokens.s12,
+                              ),
+                              child: _StackedControls(coverSize: coverSize),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: spectrumH,
+                        child: const SpectrumCurve(),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
-        );
-      },
+        ),
+        // Resize grip on the meter's bottom seam — a tall band so it's an easy
+        // touch target on a phone.
+        Positioned(
+          top: meterHeight - 11,
+          left: 0,
+          right: 0,
+          height: 22,
+          child: ResizeHandle(
+            axis: Axis.horizontal,
+            hitThickness: 22,
+            onDelta: onResize,
+          ),
+        ),
+      ],
     );
   }
 }
