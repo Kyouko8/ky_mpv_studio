@@ -368,6 +368,9 @@ class _InfoSheet extends StatelessWidget {
       case Format.s32:
       case Format.s32Planar:
         return '32-bit int';
+      case Format.s64:
+      case Format.s64Planar:
+        return '64-bit int';
       case Format.float32:
       case Format.float32Planar:
         return '32-bit float';

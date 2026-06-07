@@ -42,7 +42,9 @@ class TransportControls extends StatelessWidget {
                   icon: Icons.skip_previous_rounded,
                   size: 28,
                   onTap: player.previous,
-                  tooltip: 'Previous',
+                  // Long-press forces past the first entry (stops playback).
+                  onLongPress: () => player.previous(force: true),
+                  tooltip: 'Previous (long-press to force)',
                 ),
                 const SizedBox(width: Tokens.s16),
                 _Glyph(
@@ -72,7 +74,9 @@ class TransportControls extends StatelessWidget {
                   icon: Icons.skip_next_rounded,
                   size: 28,
                   onTap: player.next,
-                  tooltip: 'Next',
+                  // Long-press forces past the last entry (stops playback).
+                  onLongPress: () => player.next(force: true),
+                  tooltip: 'Next (long-press to force)',
                 ),
               ],
             ),
@@ -115,6 +119,13 @@ class TransportControls extends StatelessWidget {
                   onTap: () => player.setLoop(_nextLoop(loop)),
                   tooltip: 'Repeat',
                 ),
+              ),
+              const SizedBox(width: Tokens.s24),
+              _Glyph(
+                icon: Icons.settings_backup_restore_rounded,
+                size: 19,
+                onTap: player.revertSeek,
+                tooltip: 'Undo last seek',
               ),
               const SizedBox(width: Tokens.s24),
               _Glyph(
@@ -179,6 +190,7 @@ class _Glyph extends StatelessWidget {
   final IconData icon;
   final double size;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final bool active;
   final String? tooltip;
 
@@ -186,6 +198,7 @@ class _Glyph extends StatelessWidget {
     required this.icon,
     required this.size,
     required this.onTap,
+    this.onLongPress,
     this.active = false,
     this.tooltip,
   });
@@ -196,6 +209,7 @@ class _Glyph extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         customBorder: const CircleBorder(),
         child: Padding(
           padding: const EdgeInsets.all(Tokens.s8),

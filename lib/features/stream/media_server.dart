@@ -5,6 +5,7 @@ import 'package:dart_plex/dart_plex.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 import 'plex_transcode_session_manager.dart';
 
@@ -18,6 +19,30 @@ String _deviceName = 'MPV Studio';
 /// [resolveDeviceName].
 void setMediaDeviceName(String name) {
   if (name.trim().isNotEmpty) _deviceName = name.trim();
+}
+
+// Stable, per-install unique device identifier. Jellyfin binds each access
+// token to the DeviceId and treats a device as a single session, so a constant
+// id shared across installs/devices makes the server invalidate the restored
+// token — surfacing as "session expired" on (nearly) every launch. Generated
+// once and persisted; Plex's clientIdentifier reuses it too (best practice:
+// one stable, unique id per install — Plex is unaffected only because its token
+// is account-level, not device-bound).
+String _deviceId = 'mpv-studio';
+
+const _kDeviceIdPref = 'media.deviceId';
+
+/// Loads the persisted per-install device id, generating + storing a fresh
+/// UUID on first run. Call once at startup before connecting (see
+/// [resolveDeviceName]).
+Future<void> resolveDeviceId() async {
+  final p = await SharedPreferences.getInstance();
+  var id = p.getString(_kDeviceIdPref);
+  if (id == null || id.isEmpty) {
+    id = const Uuid().v4();
+    await p.setString(_kDeviceIdPref, id);
+  }
+  _deviceId = id;
 }
 
 /// Best-effort, header-safe device name for server reporting: the machine
@@ -290,7 +315,7 @@ class JellyfinServer implements MediaServer {
   JellyfinCredentials get _credentials => JellyfinCredentials(
         client: 'MPV Studio',
         device: _deviceName,
-        deviceId: 'mpv-studio',
+        deviceId: _deviceId,
         version: '0.1.0',
       );
 
@@ -548,7 +573,7 @@ class PlexServer implements MediaServer {
   // `deviceName` are the machine name (shown in Now Playing); `platform` is
   // a SEPARATE field — the transcode-profile selector (see [_platform]).
   PlexCredentials get _credentials => PlexCredentials(
-        clientIdentifier: 'mpv-studio',
+        clientIdentifier: _deviceId,
         product: 'MPV Studio',
         version: '0.1.0',
         device: _deviceName,

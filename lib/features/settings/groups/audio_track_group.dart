@@ -1,14 +1,27 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../../ui/tokens.dart';
 import '../../../ui/widgets/controls.dart';
 import '../../../ui/widgets/section_body.dart';
 
 /// Audio track (`aid`) selector. Lists the file's audio tracks plus the
-/// two synthetic picks mpv understands — `auto` and `no`.
+/// two synthetic picks mpv understands — `auto` and `no` — and lets the user
+/// load or drop an external audio file as an extra selectable track.
 class AudioTrackGroup extends StatelessWidget {
   final Player player;
   const AudioTrackGroup(this.player, {super.key});
+
+  Future<void> _addExternal(BuildContext context) async {
+    const group = XTypeGroup(
+      label: 'audio',
+      extensions: ['mka', 'mp3', 'm4a', 'aac', 'flac', 'opus', 'ogg', 'wav'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [group]);
+    if (file == null) return;
+    await player.addAudioTrack(Media(file.path), select: true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,29 +54,75 @@ class AudioTrackGroup extends StatelessWidget {
             final selected =
                 items.any((i) => i.value == currentId) ? currentId : -1;
 
-            return SettingsGroup(
-              label: 'Audio track',
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownRow<int>(
-                  label: 'Track',
-                  value: selected,
-                  items: items,
-                  onChanged: (v) {
-                    if (v == null) return;
-                    final mode = switch (v) {
-                      -1 => Track.auto,
-                      -2 => Track.off,
-                      _ => Track.id(v),
-                    };
-                    player.setAudioTrack(mode);
-                  },
+                SettingsGroup(
+                  label: 'Audio track',
+                  children: [
+                    DropdownRow<int>(
+                      label: 'Track',
+                      value: selected,
+                      items: items,
+                      onChanged: (v) {
+                        if (v == null) return;
+                        final mode = switch (v) {
+                          -1 => Track.auto,
+                          -2 => Track.off,
+                          _ => Track.id(v),
+                        };
+                        player.setAudioTrack(mode);
+                      },
+                    ),
+                    InfoRow(
+                      label: 'Active',
+                      value: current == null
+                          ? 'no audio'
+                          : 'aid=${current.id}'
+                              '${current.lang != null ? ' (${current.lang})' : ''}',
+                    ),
+                    if (current != null) ...[
+                      InfoRow(
+                        label: 'Source',
+                        value: current.external ? 'external file' : 'container',
+                      ),
+                      if (current.externalFilename != null)
+                        InfoRow(
+                          label: 'File',
+                          value: current.externalFilename!,
+                        ),
+                      if (current.codecProfile != null)
+                        InfoRow(
+                          label: 'Codec profile',
+                          value: current.codecProfile!,
+                        ),
+                    ],
+                  ],
                 ),
-                InfoRow(
-                  label: 'Active',
-                  value: current == null
-                      ? 'no audio'
-                      : 'aid=${current.id}'
-                          '${current.lang != null ? ' (${current.lang})' : ''}',
+                const SizedBox(height: Tokens.s16),
+                SettingsGroup(
+                  label: 'External tracks',
+                  children: [
+                    SettingTile(
+                      title: 'Add external audio file',
+                      description:
+                          'Load a separate dub / commentary as a selectable track',
+                      trailing: GestureDetector(
+                        onTap: () => _addExternal(context),
+                        child: const ValueBadge('Add…', color: Tokens.accent),
+                      ),
+                    ),
+                    if (current != null && current.external)
+                      SettingTile(
+                        title: 'Remove current external track',
+                        description: 'Detach the loaded external audio file',
+                        trailing: GestureDetector(
+                          onTap: () =>
+                              player.removeAudioTrack(Track.id(current.id)),
+                          child: const ValueBadge('Remove'),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             );
@@ -75,8 +134,9 @@ class AudioTrackGroup extends StatelessWidget {
 
   static String _trackLabel(MpvTrack t) {
     final lang = t.lang != null ? ' [${t.lang}]' : '';
+    final ext = t.external ? ' ·ext' : '';
     return t.title?.isNotEmpty == true
-        ? '${t.id}: ${t.title}$lang'
-        : '${t.id}$lang';
+        ? '${t.id}: ${t.title}$lang$ext'
+        : '${t.id}$lang$ext';
   }
 }

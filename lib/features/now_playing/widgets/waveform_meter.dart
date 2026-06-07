@@ -264,7 +264,9 @@ class _WaveformMeterState extends State<WaveformMeter>
       _dragPos = target;
       _anchor = target;
     });
-    _player.seek(target);
+    // Sample-accurate landing — this is a precise waveform editor, exactly
+    // where exact (vs keyframe) seeking matters.
+    _player.seek(target, exact: true);
   }
 
   void _seekToX(double localX, double width) =>

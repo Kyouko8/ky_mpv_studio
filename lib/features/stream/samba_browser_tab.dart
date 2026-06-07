@@ -486,13 +486,14 @@ class _EntryTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final dir = entry.isDirectory;
     // Leading: folder glyph for dirs, a speaker glyph for the playing file, and
-    // a reserved blank for other files (no note icon) so labels stay aligned.
+    // a music-note glyph for every other (track) file.
     final Widget leading = dir
         ? const Icon(Icons.folder_rounded, size: 18, color: Tokens.accent)
         : current
             ? const Icon(Icons.volume_up_rounded,
                 size: 18, color: Tokens.accent)
-            : const SizedBox(width: 18);
+            : const Icon(Icons.music_note_rounded,
+                size: 18, color: Tokens.fgFaint);
     return Padding(
       padding: const EdgeInsets.only(bottom: Tokens.s6),
       child: Material(

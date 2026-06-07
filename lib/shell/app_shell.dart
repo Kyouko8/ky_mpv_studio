@@ -60,6 +60,10 @@ class _AppShellState extends State<AppShell>
     // (the shells themselves are custom, not Scaffolds).
     return Scaffold(
       backgroundColor: Tokens.bg,
+      // The bottom tab bar must stay pinned when the soft keyboard opens — the
+      // mobile shell lifts only the body content above the keyboard itself
+      // (see [MobileShell]). Letting the Scaffold resize would push the bar up.
+      resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final desktop = constraints.maxWidth >= Tokens.desktopBreakpoint;

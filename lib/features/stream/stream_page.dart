@@ -353,7 +353,12 @@ class _YouTubeTabState extends State<_YouTubeTab> {
     super.dispose();
   }
 
-  Future<void> _play(String urlOrId) async {
+  Future<void> _play(String urlOrId) => _resolveAnd(urlOrId, enqueue: false);
+  Future<void> _enqueue(String urlOrId) => _resolveAnd(urlOrId, enqueue: true);
+
+  /// Resolves [urlOrId] to its best audio stream, then plays it now — or, when
+  /// [enqueue] and a queue already exists, appends it to the queue instead.
+  Future<void> _resolveAnd(String urlOrId, {required bool enqueue}) async {
     final player = _player;
     if (player == null) return;
     setState(() {
@@ -362,30 +367,32 @@ class _YouTubeTabState extends State<_YouTubeTab> {
     });
     try {
       final r = await _resolver.resolve(urlOrId);
-      await player.open(
-        Media(
-          r.streamUrl,
-          // 8 MiB bounded range requests (Media.httpChunkSize → request_size/
-          // initial_request_size) so googlevideo doesn't throttle a whole-file
-          // request. NB: a 403 that persists on a fresh URL + cooled/other IP
-          // is upstream auth (n-sig/PoToken), not the range — fix that in the
-          // resolver, not here.
-          httpChunkSize: _ytChunkSize,
-          // Defensive: replay with the resolving client's User-Agent (matches
-          // the client that minted the URL).
-          httpHeaders: r.userAgent.isEmpty ? null : {'User-Agent': r.userAgent},
-          // `origin` = the URL the user actually tapped/typed (the watch URL),
-          // so the matching example row lights up while it plays — the resolved
-          // `streamUrl` (googlevideo) wouldn't match anything.
-          extras: {
-            'title': r.title,
-            'artist': r.author,
-            'source': 'youtube',
-            'origin': urlOrId,
-          },
-        ),
-        play: true,
+      final media = Media(
+        r.streamUrl,
+        // 8 MiB bounded range requests (Media.httpChunkSize → request_size/
+        // initial_request_size) so googlevideo doesn't throttle a whole-file
+        // request. NB: a 403 that persists on a fresh URL + cooled/other IP
+        // is upstream auth (n-sig/PoToken), not the range — fix that in the
+        // resolver, not here.
+        httpChunkSize: _ytChunkSize,
+        // Defensive: replay with the resolving client's User-Agent (matches
+        // the client that minted the URL).
+        httpHeaders: r.userAgent.isEmpty ? null : {'User-Agent': r.userAgent},
+        // `origin` = the URL the user actually tapped/typed (the watch URL),
+        // so the matching example row lights up while it plays — the resolved
+        // `streamUrl` (googlevideo) wouldn't match anything.
+        extras: {
+          'title': r.title,
+          'artist': r.author,
+          'source': 'youtube',
+          'origin': urlOrId,
+        },
       );
+      if (enqueue && player.state.playlist.items.isNotEmpty) {
+        await player.add(media);
+      } else {
+        await player.open(media, play: true);
+      }
       if (!mounted) return;
       setState(() => _resolvingUrl = null);
       // Chapters live in the description, not the audio stream — inject them
@@ -436,7 +443,9 @@ class _YouTubeTabState extends State<_YouTubeTab> {
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            const SizedBox(height: Tokens.s20),
+            // Match the Lab/Chapters tabs' spacing above the first section
+            // header so the row block doesn't sit lower when switching tabs.
+            const SizedBox(height: Tokens.s16),
             const SectionHeader('Royalty-free songs · NCS'),
             for (final ex in _youtubeExamples)
               _YtExampleTile(
@@ -444,6 +453,7 @@ class _YouTubeTabState extends State<_YouTubeTab> {
                 current: ex.url == origin,
                 resolving: ex.url == _resolvingUrl,
                 onTap: () => _play(ex.url),
+                onQueue: () => _enqueue(ex.url),
               ),
           ],
         );
@@ -575,7 +585,12 @@ class _NowPlayingChaptersState extends State<_NowPlayingChapters> {
 /// resolves and plays via the tab's [_YouTubeTabState._play].
 class _YtExampleTile extends StatelessWidget {
   final _YtExample example;
+
+  /// Resolve + play this example now.
   final VoidCallback onTap;
+
+  /// Resolve + append this example to the queue.
+  final VoidCallback onQueue;
 
   /// Whether this example started the currently-playing track.
   final bool current;
@@ -587,6 +602,7 @@ class _YtExampleTile extends StatelessWidget {
   const _YtExampleTile({
     required this.example,
     required this.onTap,
+    required this.onQueue,
     this.current = false,
     this.resolving = false,
   });
@@ -609,22 +625,22 @@ class _YtExampleTile extends StatelessWidget {
                 Tokens.s16, Tokens.s12, Tokens.s8, Tokens.s12),
             child: Row(
               children: [
-                // Leading slot: a spinner while the raw URL resolves, the
-                // speaker glyph while playing, otherwise empty (the reserved
-                // 18px keeps the labels aligned and avoids a jump when the
-                // spinner appears). No idle video icon.
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: resolving
-                      ? const CircularProgressIndicator(
-                          strokeWidth: 2, color: Tokens.accent)
-                      : current
-                          ? const Icon(Icons.volume_up_rounded,
-                              size: 18, color: Tokens.accent)
-                          : null,
-                ),
-                const SizedBox(width: Tokens.s12),
+                // Leading slot: a spinner while the raw URL resolves, or the
+                // speaker glyph while playing. Nothing (and no reserved width)
+                // when idle, so the label sits flush — the spinner appears on
+                // its own only during resolution.
+                if (resolving || current) ...[
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: resolving
+                        ? const CircularProgressIndicator(
+                            strokeWidth: 2, color: Tokens.accent)
+                        : const Icon(Icons.volume_up_rounded,
+                            size: 18, color: Tokens.accent),
+                  ),
+                  const SizedBox(width: Tokens.s12),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -649,9 +665,20 @@ class _YtExampleTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(Icons.play_arrow_rounded,
-                    size: 20, color: Tokens.accent),
-                const SizedBox(width: Tokens.s8),
+                IconButton(
+                  onPressed: onQueue,
+                  icon: const Icon(Icons.playlist_add_rounded, size: 18),
+                  color: Tokens.fgDim,
+                  splashRadius: 18,
+                  tooltip: 'Add to queue',
+                ),
+                IconButton(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  color: Tokens.accent,
+                  splashRadius: 18,
+                  tooltip: 'Play',
+                ),
               ],
             ),
           ),

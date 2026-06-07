@@ -1,11 +1,16 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../ui/tokens.dart';
 import 'sections.dart';
 
-/// Mobile chrome: a slim top bar (section title), the section body, and a
-/// bottom tab bar. Every top-level view — including the Console — is a tab.
-class MobileShell extends StatelessWidget {
+/// Mobile chrome: the section body with a bottom tab bar that stays **pinned**
+/// to the screen edge. The soft keyboard overlays the bar instead of pushing it
+/// up — only the body content lifts above the keyboard, so a focused text field
+/// (e.g. the Console input) stays visible. The root [Scaffold] sets
+/// `resizeToAvoidBottomInset: false`, so this widget owns the keyboard inset.
+class MobileShell extends StatefulWidget {
   final Section section;
   final ValueChanged<Section> onSelect;
   final Widget body;
@@ -18,18 +23,65 @@ class MobileShell extends StatelessWidget {
   });
 
   @override
+  State<MobileShell> createState() => _MobileShellState();
+}
+
+class _MobileShellState extends State<MobileShell> {
+  final GlobalKey _tabBarKey = GlobalKey();
+  // Measured tab-bar height (includes the home-indicator inset). The body
+  // reserves this much at the bottom when the keyboard is down; the keyboard
+  // inset takes over when it's up — so the content clears whichever is taller.
+  double _tabBarHeight = 0;
+
+  void _measureTabBar() {
+    final h = _tabBarKey.currentContext?.size?.height;
+    if (h != null && h != _tabBarHeight && mounted) {
+      setState(() => _tabBarHeight = h);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // The bar height is stable after layout; re-measure post-frame (guarded so
+    // it only commits on a real change — e.g. an orientation / inset change).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _measureTabBar());
+
+    final keyboard = MediaQuery.of(context).viewInsets.bottom;
+    // Reserve the keyboard (when up) or the tab bar (when down) at the bottom,
+    // whichever is taller, so the body content is never hidden behind either.
+    final bottomReserve = math.max(keyboard, _tabBarHeight);
+
     // Top/sides are inset normally, but NOT the bottom: the tab bar itself
-    // fills the bottom inset (home indicator) with its own surface so the bar
-    // reads as continuous to the screen edge instead of leaving a bare gap.
+    // fills the bottom inset (home indicator) with its own surface so it reads
+    // as continuous to the screen edge.
     return SafeArea(
       bottom: false,
-      child: Column(
+      child: Stack(
         children: [
-          Expanded(
-            child: Material(type: MaterialType.transparency, child: body),
+          // Body fills the whole area, reserving the bottom for the keyboard /
+          // tab bar so a bottom-anchored input lifts above the keyboard while
+          // the bar below stays put.
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: bottomReserve),
+              child: Material(
+                type: MaterialType.transparency,
+                child: widget.body,
+              ),
+            ),
           ),
-          _TabBar(section: section, onSelect: onSelect),
+          // Tab bar pinned to the screen bottom — the keyboard overlays it
+          // instead of pushing it up.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _TabBar(
+              key: _tabBarKey,
+              section: widget.section,
+              onSelect: widget.onSelect,
+            ),
+          ),
         ],
       ),
     );
@@ -39,7 +91,7 @@ class MobileShell extends StatelessWidget {
 class _TabBar extends StatelessWidget {
   final Section section;
   final ValueChanged<Section> onSelect;
-  const _TabBar({required this.section, required this.onSelect});
+  const _TabBar({super.key, required this.section, required this.onSelect});
 
   @override
   Widget build(BuildContext context) {

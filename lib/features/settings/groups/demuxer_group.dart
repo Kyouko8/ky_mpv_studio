@@ -1,17 +1,39 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../../studio/app_settings.dart';
+import '../../../ui/tokens.dart';
 import '../../../ui/widgets/controls.dart';
 import '../../../ui/widgets/section_body.dart';
 import '../../../util/reactive.dart';
 
-/// Demuxer cache tuning and live status. Sizes are exposed in MiB; the
-/// engine stores raw bytes.
-class DemuxerGroup extends StatelessWidget {
+/// Demuxer cache tuning, the on-disk cache directory (build-time), and the
+/// live demuxer / cache status. Sizes are exposed in MiB; the engine stores
+/// raw bytes.
+class DemuxerGroup extends StatefulWidget {
   final Player player;
-  const DemuxerGroup(this.player, {super.key});
+  final AppSettings settings;
+  const DemuxerGroup(this.player, this.settings, {super.key});
 
+  @override
+  State<DemuxerGroup> createState() => _DemuxerGroupState();
+}
+
+class _DemuxerGroupState extends State<DemuxerGroup> {
   static const _mib = 1024 * 1024;
+
+  Player get player => widget.player;
+  AppSettings get settings => widget.settings;
+
+  late String _cacheDir = settings.demuxerCacheDir;
+
+  Future<void> _pickCacheDir() async {
+    final dir = await getDirectoryPath();
+    if (dir == null) return;
+    setState(() => _cacheDir = dir);
+    settings.recordDemuxerCacheDir(dir);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,17 +56,21 @@ class DemuxerGroup extends StatelessWidget {
                 onChanged: (x) => player.setDemuxerMaxBytes((x * _mib).round()),
               ),
             ),
-            Live<int>(
+            // mpv's demuxer-readahead-secs is fractional seconds, so the API
+            // is a Duration. The slider scrubs whole seconds.
+            Live<Duration>(
               stream: player.stream.demuxerReadaheadSecs,
               initial: player.state.demuxerReadaheadSecs,
               builder: (context, v) => SliderRow(
                 label: 'Readahead',
-                value: v.toDouble(),
+                value: v.inMilliseconds / 1000.0,
                 min: 0,
                 max: 600,
                 resetTo: 1,
                 format: (x) => '${x.round()} s',
-                onChanged: (x) => player.setDemuxerReadaheadSecs(x.round()),
+                onChanged: (x) => player.setDemuxerReadaheadSecs(
+                  Duration(milliseconds: (x * 1000).round()),
+                ),
               ),
             ),
             Live<int>(
@@ -59,6 +85,21 @@ class DemuxerGroup extends StatelessWidget {
                 format: (x) => '${x.round()} MiB',
                 onChanged: (x) =>
                     player.setDemuxerMaxBackBytes((x * _mib).round()),
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          label: 'On-disk cache (applied on next launch)',
+          children: [
+            SettingTile(
+              title: 'Cache directory',
+              description: _cacheDir.isEmpty
+                  ? 'mpv default (often not writable on mobile)'
+                  : _cacheDir,
+              trailing: GestureDetector(
+                onTap: _pickCacheDir,
+                child: const ValueBadge('Choose…', color: Tokens.accent),
               ),
             ),
           ],
@@ -104,7 +145,49 @@ class DemuxerGroup extends StatelessWidget {
             ),
           ],
         ),
+        // Structured cache-state snapshot for streaming sources (empty for
+        // directly-seekable local files).
+        Live<DemuxerCacheState>(
+          stream: player.stream.demuxerCacheState,
+          initial: player.state.demuxerCacheState,
+          builder: (context, cache) => SettingsGroup(
+            label: 'Network cache state',
+            children: [
+              InfoRow(
+                label: 'Buffered ranges',
+                value: cache.seekableRanges.isEmpty
+                    ? '—'
+                    : cache.seekableRanges
+                        .map((r) =>
+                            '${_fmt(r.start)}–${_fmt(r.end)}')
+                        .join(', '),
+              ),
+              InfoRow(
+                label: 'Raw input rate',
+                value: cache.rawInputRate == null
+                    ? '—'
+                    : '${(cache.rawInputRate! / 1024).toStringAsFixed(1)} KiB/s',
+              ),
+              InfoRow(
+                label: 'EOF / BOF cached',
+                value: '${cache.eofCached ? 'yes' : 'no'} / '
+                    '${cache.bofCached ? 'yes' : 'no'}',
+              ),
+              InfoRow(
+                label: 'Underrun',
+                value: cache.underrun ? 'yes' : 'no',
+              ),
+            ],
+          ),
+        ),
       ],
     );
+  }
+
+  static String _fmt(Duration d) {
+    final s = d.inSeconds;
+    final m = s ~/ 60;
+    final r = s % 60;
+    return '$m:${r.toString().padLeft(2, '0')}';
   }
 }

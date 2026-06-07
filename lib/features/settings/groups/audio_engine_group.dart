@@ -210,6 +210,7 @@ String _bitDepthLabel(Format? f) {
     Format.u8 || Format.u8Planar => '8-bit unsigned integer',
     Format.s16 || Format.s16Planar => '16-bit signed integer',
     Format.s32 || Format.s32Planar => '32-bit signed integer',
+    Format.s64 || Format.s64Planar => '64-bit signed integer',
     Format.float32 || Format.float32Planar => '32-bit float',
     Format.float64 || Format.float64Planar => '64-bit float',
     Format.auto => '—',

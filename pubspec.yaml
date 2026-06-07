@@ -1,7 +1,7 @@
 name: mpv_studio
 description: "MPV Studio"
 publish_to: 'none'
-version: 0.1.2
+version: 0.2.0
 
 environment:
   sdk: ^3.6.0
@@ -11,7 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  mpv_audio_kit: ^0.3.2
+  mpv_audio_kit: ^0.3.3
+  # Local dev: comment the line above and uncomment the next to use the in-repo package.
+  #mpv_audio_kit: {path: ../mpv_audio_kit}
   file_selector: ^1.0.3
   desktop_drop: ^0.7.1
   shared_preferences: ^2.5.4
@@ -23,6 +25,7 @@ dependencies:
   dart_smb2: ^0.1.0
   device_info_plus: ^13.1.0
   youtube_explode_dart: ^3.1.0
+  uuid: ^4.5.2
 
 dev_dependencies:
   flutter_test:

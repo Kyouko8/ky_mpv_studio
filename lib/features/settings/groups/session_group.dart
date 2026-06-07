@@ -189,7 +189,6 @@ class _SessionGroupState extends State<SessionGroup> {
                     ),
                   ],
                 ),
-                const SizedBox(height: Tokens.s24),
                 const SectionHeader('Shown controls'),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(

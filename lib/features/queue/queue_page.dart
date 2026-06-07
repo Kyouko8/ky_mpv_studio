@@ -1,4 +1,5 @@
 import 'package:desktop_drop/desktop_drop.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -46,6 +47,19 @@ class _QueuePageState extends State<QueuePage> {
   Future<void> _addFiles() async => _enqueue(await pickAudioFiles());
   Future<void> _addFolder() async => _enqueue(await pickAudioFolder());
 
+  /// Load a playlist FILE or URL (.m3u / .m3u8 / .pls / .cue): its entries are
+  /// expanded into the queue via the engine's `openPlaylistFile` (loadlist),
+  /// unlike `open`, which would load the playlist as a single entry.
+  Future<void> _loadPlaylist() async {
+    const group = XTypeGroup(
+      label: 'playlist',
+      extensions: ['m3u', 'm3u8', 'pls', 'cue'],
+    );
+    final file = await openFile(acceptedTypeGroups: const [group]);
+    if (file == null) return;
+    await _player.openPlaylistFile(Media(file.path), play: true);
+  }
+
   /// Swap a queue entry for a freshly picked file. `replace` is gapless
   /// when it targets the currently playing item.
   Future<void> _replace(int index) async {
@@ -72,7 +86,23 @@ class _QueuePageState extends State<QueuePage> {
             _Toolbar(
               onAddFiles: _addFiles,
               onAddFolder: _addFolder,
+              onLoadPlaylist: _loadPlaylist,
               onClear: _player.clearPlaylist,
+            ),
+            // Source-playlist banner (.m3u/.pls the current entry was expanded
+            // from) with cross-playlist navigation, shown only when loaded via
+            // a playlist file.
+            Live<String>(
+              stream: _player.stream.playlistPath,
+              initial: _player.state.playlistPath,
+              builder: (context, path) {
+                if (path.isEmpty) return const SizedBox.shrink();
+                return _PlaylistBanner(
+                  path: path,
+                  onPrevPlaylist: _player.previousPlaylist,
+                  onNextPlaylist: _player.nextPlaylist,
+                );
+              },
             ),
             Expanded(
               child: Live<Playlist>(
@@ -150,10 +180,12 @@ class _QueuePageState extends State<QueuePage> {
 class _Toolbar extends StatelessWidget {
   final VoidCallback onAddFiles;
   final VoidCallback onAddFolder;
+  final VoidCallback onLoadPlaylist;
   final VoidCallback onClear;
   const _Toolbar({
     required this.onAddFiles,
     required this.onAddFolder,
+    required this.onLoadPlaylist,
     required this.onClear,
   });
 
@@ -180,6 +212,12 @@ class _Toolbar extends StatelessWidget {
             label: 'Add folder',
             onTap: onAddFolder,
           ),
+          const SizedBox(width: Tokens.s8),
+          ToolButton(
+            icon: Icons.playlist_play_rounded,
+            label: 'Load playlist',
+            onTap: onLoadPlaylist,
+          ),
           const Spacer(),
           ToolButton(
             icon: Icons.clear_all_rounded,
@@ -187,6 +225,67 @@ class _Toolbar extends StatelessWidget {
             onTap: onClear,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Banner shown when the queue was expanded from a playlist file
+/// (`player.stream.playlistPath`), with cross-playlist navigation.
+class _PlaylistBanner extends StatelessWidget {
+  final String path;
+  final VoidCallback onPrevPlaylist;
+  final VoidCallback onNextPlaylist;
+  const _PlaylistBanner({
+    required this.path,
+    required this.onPrevPlaylist,
+    required this.onNextPlaylist,
+  });
+
+  String get _name {
+    final sep = path.contains('\\') ? '\\' : '/';
+    final cut = path.lastIndexOf(sep);
+    return cut < 0 ? path : path.substring(cut + 1);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Tokens.s16, 0, Tokens.s16, Tokens.s8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.s12,
+          vertical: Tokens.s8,
+        ),
+        decoration: ShapeDecoration(
+          color: Tokens.surface2,
+          shape: Tokens.squircle(Tokens.rSm),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.queue_music_rounded,
+                size: 16, color: Tokens.accent),
+            const SizedBox(width: Tokens.s8),
+            Expanded(
+              child: Text(
+                _name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Tokens.caption,
+              ),
+            ),
+            _IconTap(
+              icon: Icons.skip_previous_rounded,
+              tooltip: 'Previous playlist',
+              onTap: onPrevPlaylist,
+            ),
+            _IconTap(
+              icon: Icons.skip_next_rounded,
+              tooltip: 'Next playlist',
+              onTap: onNextPlaylist,
+            ),
+          ],
+        ),
       ),
     );
   }

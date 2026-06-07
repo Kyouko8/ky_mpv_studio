@@ -109,8 +109,43 @@ class AppSettings {
   Cache get cacheMode => _enumByName('cacheMode', Cache.values, Cache.auto);
   int get cacheSecs => _int('cacheSecs', 3600);
   bool get cacheOnDisk => _bool('cacheOnDisk', false);
+  bool get cachePauseInitial => _bool('cachePauseInitial', false);
   int get networkTimeoutSecs => _int('networkTimeoutSecs', 60);
   bool get tlsVerify => _bool('tlsVerify', true);
+
+  // ---- Build-time PlayerConfiguration knobs ---------------------------
+  // These are read ONCE when the Player is constructed (startAudioEngine),
+  // so the Settings UI records them here and they take effect on next
+  // launch — there is no runtime setter / stream to observe.
+  bool get resumePlayback => _bool('resumePlayback', true);
+  // Empty string = use mpv's default location.
+  String get watchLaterDir => _string('watchLaterDir', '');
+  bool get forceSeekable => _bool('forceSeekable', false);
+  HlsBitrate get hlsBitrate =>
+      _enumByName('hlsBitrate', HlsBitrate.values, HlsBitrate.max);
+  bool get normalizeDownmix => _bool('normalizeDownmix', false);
+  String get demuxerCacheDir => _string('demuxerCacheDir', '');
+
+  void recordResumePlayback(bool v) => _snap('resumePlayback', v);
+  void recordWatchLaterDir(String v) => _snap('watchLaterDir', v);
+  void recordForceSeekable(bool v) => _snap('forceSeekable', v);
+  void recordHlsBitrate(HlsBitrate v) => _snap('hlsBitrate', v.name);
+  void recordNormalizeDownmix(bool v) => _snap('normalizeDownmix', v);
+  void recordDemuxerCacheDir(String v) => _snap('demuxerCacheDir', v);
+
+  /// The build-time configuration assembled from the persisted knobs, passed
+  /// to the [Player] constructor in `startAudioEngine`.
+  PlayerConfiguration get playerConfiguration => PlayerConfiguration(
+        initialVolume: volume,
+        autoPlay: true,
+        logLevel: LogLevel.info,
+        resumePlayback: resumePlayback,
+        watchLaterDir: watchLaterDir.isEmpty ? null : watchLaterDir,
+        forceSeekable: forceSeekable,
+        hlsBitrate: hlsBitrate,
+        normalizeDownmix: normalizeDownmix,
+        demuxerCacheDir: demuxerCacheDir.isEmpty ? null : demuxerCacheDir,
+      );
 
   Cover get coverArtAuto => _enumByName('coverArtAuto', Cover.values, Cover.no);
 
@@ -130,6 +165,7 @@ class AppSettings {
         mode: cacheMode,
         secs: Duration(seconds: cacheSecs),
         onDisk: cacheOnDisk,
+        pauseInitial: cachePauseInitial,
       );
 
   SpectrumSettings get spectrumSettings => SpectrumSettings(
@@ -296,6 +332,7 @@ class AppSettings {
         _data['cacheMode'] = v.mode.name;
         _data['cacheSecs'] = v.secs.inSeconds;
         _data['cacheOnDisk'] = v.onDisk;
+        _data['cachePauseInitial'] = v.pauseInitial;
         _scheduleSave();
       }),
       s.networkTimeout.listen((v) => _snap('networkTimeoutSecs', v.inSeconds)),

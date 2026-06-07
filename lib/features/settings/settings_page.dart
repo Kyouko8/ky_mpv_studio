@@ -1,3 +1,4 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -42,6 +43,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   List<_Category> get _categories => const [
         _Category('Playback', Icons.play_arrow_rounded, _playback),
+        _Category('Resume', Icons.bookmark_outline_rounded, _resume),
         _Category('Audio output', Icons.speaker_rounded, _output),
         _Category('Audio engine', Icons.tune_rounded, _engine),
         _Category('Audio track', Icons.audiotrack_rounded, _track),
@@ -56,15 +58,19 @@ class _SettingsPageState extends State<SettingsPage> {
       ];
 
   static Widget _playback(BuildContext c) => _PlaybackGroup(PlayerScope.of(c));
+  static Widget _resume(BuildContext c) =>
+      _ResumeGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _output(BuildContext c) =>
       _OutputGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _engine(BuildContext c) => AudioEngineGroup(PlayerScope.of(c));
   static Widget _track(BuildContext c) => AudioTrackGroup(PlayerScope.of(c));
   static Widget _normalization(BuildContext c) =>
-      _NormalizationGroup(PlayerScope.of(c));
+      _NormalizationGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _cache(BuildContext c) => _CacheGroup(PlayerScope.of(c));
-  static Widget _demuxer(BuildContext c) => DemuxerGroup(PlayerScope.of(c));
-  static Widget _streaming(BuildContext c) => StreamingGroup(PlayerScope.of(c));
+  static Widget _demuxer(BuildContext c) =>
+      DemuxerGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _streaming(BuildContext c) =>
+      StreamingGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _session(BuildContext c) =>
       SessionGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _visualizer(BuildContext c) =>
@@ -266,6 +272,173 @@ class _PlaybackGroup extends StatelessWidget {
             onChanged: player.setVolumeGain,
           ),
         ),
+        Live<double>(
+          stream: player.stream.volumeGainMin,
+          initial: player.state.volumeGainMin,
+          builder: (context, v) => SliderRow(
+            label: 'Gain clamp — min',
+            value: v,
+            min: -96,
+            max: 0,
+            resetTo: -96,
+            format: (x) => '${x.toStringAsFixed(0)} dB',
+            onChanged: player.setVolumeGainMin,
+          ),
+        ),
+        Live<double>(
+          stream: player.stream.volumeGainMax,
+          initial: player.state.volumeGainMax,
+          builder: (context, v) => SliderRow(
+            label: 'Gain clamp — max',
+            value: v,
+            min: 0,
+            max: 24,
+            resetTo: 12,
+            format: (x) => '${x.toStringAsFixed(0)} dB',
+            onChanged: player.setVolumeGainMax,
+          ),
+        ),
+        // OS per-app mixer (mpv's ao-volume / ao-mute). Best-effort: the
+        // active audio output may not expose it, in which case the stream
+        // value is null and we show "unavailable".
+        StreamBuilder<double?>(
+          stream: player.stream.systemVolume,
+          initialData: player.state.systemVolume,
+          builder: (context, snap) {
+            final sv = snap.data;
+            if (sv == null) {
+              return const SettingTile(
+                title: 'System volume',
+                description: 'Not exposed by the active audio output',
+                trailing: ValueBadge('unavailable'),
+              );
+            }
+            return SliderRow(
+              label: 'System volume',
+              description: 'OS per-app mixer (distinct from soft volume)',
+              value: sv,
+              min: 0,
+              max: 100,
+              format: (x) => '${x.round()}%',
+              onChanged: player.setSystemVolume,
+            );
+          },
+        ),
+        StreamBuilder<bool?>(
+          stream: player.stream.systemMute,
+          initialData: player.state.systemMute,
+          builder: (context, snap) {
+            final sm = snap.data;
+            if (sm == null) {
+              return const SettingTile(
+                title: 'System mute',
+                description: 'Not exposed by the active audio output',
+                trailing: ValueBadge('unavailable'),
+              );
+            }
+            return SwitchRow(
+              label: 'System mute',
+              subtitle: 'OS per-app mixer mute',
+              value: sm,
+              onChanged: player.setSystemMute,
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+// ---- Resume (watch later) -------------------------------------------
+
+class _ResumeGroup extends StatefulWidget {
+  final Player player;
+  final AppSettings settings;
+  const _ResumeGroup(this.player, this.settings);
+
+  @override
+  State<_ResumeGroup> createState() => _ResumeGroupState();
+}
+
+class _ResumeGroupState extends State<_ResumeGroup> {
+  Player get player => widget.player;
+  AppSettings get settings => widget.settings;
+
+  late bool _resume = settings.resumePlayback;
+  late String _dir = settings.watchLaterDir;
+
+  Future<void> _pickDir() async {
+    final dir = await getDirectoryPath();
+    if (dir == null) return;
+    setState(() => _dir = dir);
+    settings.recordWatchLaterDir(dir);
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsGroup(
+          label: 'Resume playback (applied on next launch)',
+          children: [
+            SwitchRow(
+              label: 'Resume from last position',
+              subtitle: 'Restore position, speed, volume & track on reopen — '
+                  'ideal for audiobooks and podcasts',
+              value: _resume,
+              onChanged: (v) {
+                setState(() => _resume = v);
+                settings.recordResumePlayback(v);
+              },
+            ),
+            SettingTile(
+              title: 'Watch-later directory',
+              description: _dir.isEmpty
+                  ? 'mpv default (often not writable on mobile)'
+                  : _dir,
+              trailing: GestureDetector(
+                onTap: _pickDir,
+                child: const ValueBadge('Choose…', color: Tokens.accent),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Tokens.s16),
+        SettingsGroup(
+          label: 'Current file',
+          children: [
+            SettingTile(
+              title: 'Save resume point now',
+              description: 'Write a watch-later config for the current file',
+              trailing: GestureDetector(
+                onTap: () async {
+                  await player.writeResumeConfig();
+                  _toast('Resume point saved');
+                },
+                child: const ValueBadge('Save', color: Tokens.accent),
+              ),
+            ),
+            SettingTile(
+              title: 'Clear resume point',
+              description: 'Delete the saved position for the current file',
+              trailing: GestureDetector(
+                onTap: () async {
+                  await player.deleteResumeConfig();
+                  _toast('Resume point cleared');
+                },
+                child: const ValueBadge('Clear'),
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -347,6 +520,7 @@ class _OutputGroup extends StatelessWidget {
               Format.auto,
               Format.s16,
               Format.s32,
+              Format.s64,
               Format.float32,
               Format.float64,
             ];
@@ -359,6 +533,7 @@ class _OutputGroup extends StatelessWidget {
                 DropdownMenuItem(value: Format.auto, child: Text('Auto')),
                 DropdownMenuItem(value: Format.s16, child: Text('16-bit int')),
                 DropdownMenuItem(value: Format.s32, child: Text('32-bit int')),
+                DropdownMenuItem(value: Format.s64, child: Text('64-bit int')),
                 DropdownMenuItem(
                     value: Format.float32, child: Text('32-bit float')),
                 DropdownMenuItem(
@@ -446,6 +621,18 @@ class _OutputGroup extends StatelessWidget {
                 player.setAudioDelay(Duration(microseconds: (x * 1e6).round())),
           ),
         ),
+        // Report a "music" media role to the OS audio server (PulseAudio /
+        // PipeWire on Linux; audtrack / aaudio on Android) for correct routing.
+        Live<bool>(
+          stream: player.stream.audioMediaRole,
+          initial: player.state.audioMediaRole,
+          builder: (context, v) => SwitchRow(
+            label: 'Music media role',
+            subtitle: 'Tag the stream as "music" for the OS audio server',
+            value: v,
+            onChanged: player.setAudioMediaRole,
+          ),
+        ),
       ],
     );
   }
@@ -453,9 +640,19 @@ class _OutputGroup extends StatelessWidget {
 
 // ---- Normalization --------------------------------------------------
 
-class _NormalizationGroup extends StatelessWidget {
+class _NormalizationGroup extends StatefulWidget {
   final Player player;
-  const _NormalizationGroup(this.player);
+  final AppSettings settings;
+  const _NormalizationGroup(this.player, this.settings);
+
+  @override
+  State<_NormalizationGroup> createState() => _NormalizationGroupState();
+}
+
+class _NormalizationGroupState extends State<_NormalizationGroup> {
+  Player get player => widget.player;
+
+  late bool _normalizeDownmix = widget.settings.normalizeDownmix;
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +661,10 @@ class _NormalizationGroup extends StatelessWidget {
       initialData: player.state.replayGain,
       builder: (context, snap) {
         final rg = snap.data ?? const ReplayGainSettings();
-        return SettingsGroup(
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SettingsGroup(
           label: 'ReplayGain normalization',
           children: [
             _LabelledControl(
@@ -505,6 +705,24 @@ class _NormalizationGroup extends StatelessWidget {
               value: rg.clip,
               enabled: rg.mode != ReplayGain.no,
               onChanged: (v) => player.setReplayGain(rg.copyWith(clip: v)),
+            ),
+          ],
+            ),
+            const SizedBox(height: Tokens.s16),
+            SettingsGroup(
+              label: 'Downmix (applied on next launch)',
+              children: [
+                SwitchRow(
+                  label: 'Normalize downmix',
+                  subtitle: 'Loudness-normalize surround downmixed to fewer '
+                      'channels, avoiding clipping on 5.1 → stereo',
+                  value: _normalizeDownmix,
+                  onChanged: (v) {
+                    setState(() => _normalizeDownmix = v);
+                    widget.settings.recordNormalizeDownmix(v);
+                  },
+                ),
+              ],
             ),
           ],
         );
@@ -561,6 +779,13 @@ class _CacheGroup extends StatelessWidget {
               subtitle: 'Pause playback while the cache refills',
               value: cache.pause,
               onChanged: (v) => player.setCache(cache.copyWith(pause: v)),
+            ),
+            SwitchRow(
+              label: 'Pre-buffer on start',
+              subtitle: 'Buffer before playback starts — and after each seek',
+              value: cache.pauseInitial,
+              onChanged: (v) =>
+                  player.setCache(cache.copyWith(pauseInitial: v)),
             ),
             SliderRow(
               label: 'Buffer wait',

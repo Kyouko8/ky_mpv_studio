@@ -16,13 +16,11 @@ import 'app_settings.dart';
 Future<({Player player, ConsoleLog consoleLog})> startAudioEngine(
   AppSettings settings,
 ) async {
-  final player = Player(
-    configuration: PlayerConfiguration(
-      initialVolume: settings.volume,
-      autoPlay: true,
-      logLevel: LogLevel.info,
-    ),
-  );
+  // Build-time configuration is assembled from the persisted knobs (resume,
+  // watch-later dir, force-seekable, HLS bitrate, downmix normalization,
+  // demuxer cache dir). It is read once here — the Settings UI records changes
+  // that take effect on the next launch.
+  final player = Player(configuration: settings.playerConfiguration);
 
   // Start log capture immediately — before any other setup emits log lines —
   // so nothing is lost before the Console is first opened.

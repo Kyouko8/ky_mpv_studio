@@ -14,8 +14,13 @@ import '../features/stream/playback_reporter.dart';
 /// running [MpvStudio].
 Future<({Map<ServerKind, MediaServer> servers, FavoritesController favorites})>
     connectMediaServers(Player player) async {
-  // Resolve the real device name first so it shows in Now Playing.
-  setMediaDeviceName(await resolveDeviceName());
+  // Resolve the real device name (for Now Playing) and the stable per-install
+  // device id (so Jellyfin doesn't invalidate the saved session) before the
+  // servers build their credentials.
+  await Future.wait([
+    resolveDeviceName().then(setMediaDeviceName),
+    resolveDeviceId(),
+  ]);
 
   final jellyfin = JellyfinServer();
   final plex = PlexServer();
