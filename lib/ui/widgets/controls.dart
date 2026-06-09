@@ -211,6 +211,102 @@ class SwitchRow extends StatelessWidget {
   }
 }
 
+/// Title (+ description) with a full-width single-line text field beneath,
+/// in the same flat squircle language as the other controls. Seeds its
+/// editing buffer from [value]; reports edits through [onChanged]. The
+/// controller is reseeded only when [value] changes from outside (e.g. a
+/// reset) and the field isn't focused, so live typing is never clobbered.
+class TextRow extends StatefulWidget {
+  final String label;
+  final String? description;
+  final String value;
+  final String? hint;
+  final ValueChanged<String> onChanged;
+  final bool enabled;
+
+  const TextRow({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+    this.description,
+    this.hint,
+    this.enabled = true,
+  });
+
+  @override
+  State<TextRow> createState() => _TextRowState();
+}
+
+class _TextRowState extends State<TextRow> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.value);
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void didUpdateWidget(TextRow old) {
+    super.didUpdateWidget(old);
+    // Resync from an external change (reset, engine sync) only while the
+    // field is unfocused, so it never overwrites what the user is typing.
+    if (widget.value != _controller.text && !_focus.hasFocus) {
+      _controller.text = widget.value;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Same flat squircle field as every other control (AppDropdown, the URL
+    // bar): fixed [Tokens.controlH] height, surface2 fill, with the editable
+    // text vertically centred via a Row(Expanded(...)) — so text fields sit at
+    // the exact same height as dropdowns, segments and switches across the app.
+    final field = Container(
+      height: Tokens.controlH,
+      decoration: ShapeDecoration(
+        color: Tokens.surface2,
+        shape: Tokens.squircle(Tokens.rSm),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              focusNode: _focus,
+              enabled: widget.enabled,
+              onChanged: widget.onChanged,
+              style: Tokens.body.copyWith(
+                fontFamily: Tokens.mono,
+                color: widget.enabled ? Tokens.fg : Tokens.fgFaint,
+              ),
+              cursorColor: Tokens.accent,
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                hintText: widget.hint,
+                hintStyle: Tokens.caption,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    return SettingTile(
+      title: widget.label,
+      description: widget.description,
+      enabled: widget.enabled,
+      below: field,
+    );
+  }
+}
+
 /// Title (+ description) with a full-width [AppDropdown] beneath.
 class DropdownRow<T> extends StatelessWidget {
   final String label;

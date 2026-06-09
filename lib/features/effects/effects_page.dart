@@ -12,8 +12,10 @@ import '../../ui/widgets/grid_card.dart';
 import '../../ui/widgets/section_body.dart';
 import '../../ui/widgets/section_header.dart';
 import '../../ui/widgets/section_switcher.dart';
-import '../../generated/catalog.dart';
+import '../../generated/filter_catalog.dart';
+import 'widgets/advanced_filter_page.dart';
 import 'widgets/equalizer.dart';
+import 'widgets/filter_card.dart';
 import 'widgets/compressor_curve.dart';
 import 'widgets/response_curve.dart';
 import 'widgets/stereo_scope.dart';
@@ -390,6 +392,7 @@ class _EffectsPageState extends State<EffectsPage>
   @override
   Widget build(BuildContext context) {
     final featured = _featured();
+    final advanced = [for (final d in kFilterCatalog) if (d.advanced) d];
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
           Tokens.s20, Tokens.s8, Tokens.s20, Tokens.s32),
@@ -426,8 +429,36 @@ class _EffectsPageState extends State<EffectsPage>
             ),
           ),
           const SizedBox(height: Tokens.s24),
+          // Advanced: the required-param filters (chorus / pan / channelmap /
+          // aeval / arnndn). Each opens a dedicated page with curated presets,
+          // a custom field, and — for arnndn — a model-file picker, so they're
+          // only ever enabled with valid values (never broken in the chain).
+          const SectionHeader('Advanced'),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 168,
+              crossAxisSpacing: Tokens.s12,
+              mainAxisSpacing: Tokens.s12,
+              childAspectRatio: 1,
+            ),
+            itemCount: advanced.length,
+            itemBuilder: (context, i) {
+              final spec = advanced[i];
+              return GridCard(
+                icon: spec.icon,
+                title: spec.title,
+                active: spec.isEnabled(_fx),
+                onTap: () => Navigator.of(context).push(
+                  fadeSlidePageRoute(AdvancedFilterPage(spec: spec)),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: Tokens.s24),
           const SectionHeader('All effects'),
-          for (final cat in kCatalogCategories) _CatalogTile(category: cat),
+          for (final cat in kFilterCategories) _CatalogTile(category: cat),
         ],
       ),
     );
@@ -611,7 +642,7 @@ class _DetailCard extends StatelessWidget {
 /// A tile in the "All effects" index. Opens a full page listing every
 /// filter in [category] as a typed card.
 class _CatalogTile extends StatelessWidget {
-  final CatalogCategory category;
+  final FilterCategory category;
   const _CatalogTile({required this.category});
 
   @override
@@ -639,7 +670,10 @@ class _CatalogTile extends StatelessWidget {
                 Icon(category.icon, size: 18, color: Tokens.fgDim),
                 const SizedBox(width: Tokens.s12),
                 Expanded(child: Text(category.title, style: Tokens.body)),
-                Text('${category.count}', style: Tokens.numeric),
+                Text(
+                  '${kFilterCatalog.where((d) => d.category == category.slug && !d.advanced).length}',
+                  style: Tokens.numeric,
+                ),
                 const SizedBox(width: Tokens.s8),
                 const Icon(Icons.chevron_right_rounded,
                     size: 18, color: Tokens.fgFaint),
@@ -655,7 +689,7 @@ class _CatalogTile extends StatelessWidget {
 /// Full-page list of one catalog category's filter cards, pushed over the
 /// shell with a back affordance.
 class _CatalogCategoryScreen extends StatelessWidget {
-  final CatalogCategory category;
+  final FilterCategory category;
   const _CatalogCategoryScreen({required this.category});
 
   @override
@@ -670,7 +704,8 @@ class _CatalogCategoryScreen extends StatelessWidget {
               onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(
-              child: SectionBody(children: [category.builder(context)]),
+              child: SectionBody(
+                  children: [CategoryFiltersView(slug: category.slug)]),
             ),
           ],
         ),

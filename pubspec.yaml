@@ -1,7 +1,7 @@
 name: mpv_studio
 description: "MPV Studio"
 publish_to: 'none'
-version: 0.2.2
+version: 0.2.3
 
 environment:
   sdk: ^3.6.0
@@ -11,9 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
 
-  mpv_audio_kit: ^0.3.4
+  #mpv_audio_kit: ^0.3.4
   # Local dev: comment the line above and uncomment the next to use the in-repo package.
-  #mpv_audio_kit: {path: ../mpv_audio_kit}
+  mpv_audio_kit: {path: ../mpv_audio_kit}
   file_selector: ^1.0.3
   desktop_drop: ^0.7.1
   shared_preferences: ^2.5.4
@@ -34,6 +34,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/models/
 
 flutter_launcher_icons:
   android: true

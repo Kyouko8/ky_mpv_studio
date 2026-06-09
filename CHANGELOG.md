@@ -1,3 +1,17 @@
+## [0.2.3] - 9-06-2026
+
+### Added
+- A per-category Enable-all toggle, above each category's list (separate from it), that turns every filter in the category on or off at once.
+- Text inputs for the string-valued filter parameters.
+
+### Changed
+- Reorganized the Effects catalog: the required-param filters (`chorus`, `pan`, `channelmap`, `aeval`, `arnndn`) moved to their own dedicated pages.
+- Added new `aintegral` and `asetrate`.
+- Updated `mpv_audio_kit` to version `0.3.5` (libmpv-r9).
+
+### Removed
+- Dead filter `headphone`.
+
 ## [0.2.2] - 08-06-2026
 
 ### Changed
