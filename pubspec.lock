@@ -451,9 +451,10 @@ packages:
   mpv_audio_kit:
     dependency: "direct main"
     description:
-      path: "../mpv_audio_kit"
-      relative: true
-    source: path
+      name: mpv_audio_kit
+      sha256: c1de53c94c151614173ecc78ab37540cd121efd6fed794f47928da9631dc3544
+      url: "https://pub.dev"
+    source: hosted
     version: "0.3.5"
   path:
     dependency: transitive
