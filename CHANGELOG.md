@@ -1,3 +1,8 @@
+## [0.2.4] - 9-06-2026
+
+### Changed
+- Updated `mpv_audio_kit` to version `0.3.6`.
+
 ## [0.2.3] - 9-06-2026
 
 ### Added
@@ -12,7 +17,7 @@
 ### Removed
 - Dead filter `headphone`.
 
-## [0.2.2] - 08-06-2026
+## [0.2.2] - 8-06-2026
 
 ### Changed
 - Updated `mpv_audio_kit` to version `0.3.4`.
@@ -20,12 +25,12 @@
 ### Fixed
 - The app no longer hangs on quit: the player is now shut down gracefully when the app exits.
 
-## [0.2.1] - 07-06-2026
+## [0.2.1] - 7-06-2026
 
 ### Fixed
 - Minor UI fixes.
 
-## [0.2.0] - 07-06-2026
+## [0.2.0] - 7-06-2026
 
 ### Added
 - Resume playback (watch later): a Resume settings category to toggle resume-on-reopen, choose the watch-later directory, and save or clear the current file's resume point.
@@ -43,17 +48,17 @@
 ### Changed
 - Updated `mpv_audio_kit` to version `0.3.3`.
 
-## [0.1.2] - 05-06-2026
+## [0.1.2] - 5-06-2026
 
 ### Changed
 - Bumped `mpv_audio_kit` to version `0.3.2`.
 
-## [0.1.1] - 05-06-2026
+## [0.1.1] - 5-06-2026
 
 ### Fixed
 - Minor fix.
 
-## [0.1.0] - 05-06-2026
+## [0.1.0] - 5-06-2026
 
 ### Added
 - Initial release of MPV Studio, the standalone reference player built on `mpv_audio_kit`, for macOS, iOS, Android, Windows and Linux.
