@@ -27,6 +27,13 @@ class NowPlayingPage extends StatefulWidget {
 class _NowPlayingPageState extends State<NowPlayingPage> {
   double _meterHeight = 200;
 
+  // Stable identity for the waveform meter so crossing the mobile/desktop
+  // layout boundary REPARENTS its element (keeping the State and its waveform
+  // subscription alive) instead of disposing and recreating it. A recreate
+  // drops the stream's only listener, which restarts the native analysis and
+  // wipes a progressive (streaming) waveform.
+  final GlobalKey _waveformKey = GlobalKey();
+
   /// Below this surface width the controls stack into the mobile column.
   static const double _narrowBelow = 600;
 
@@ -50,6 +57,7 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           final cover =
               math.min(w * 0.5, h * 0.26).clamp(120.0, 200.0).toDouble();
           return _MobileLayout(
+            waveformKey: _waveformKey,
             meterHeight: meterH,
             coverSize: cover,
             onResize: (dy) => setState(
@@ -68,9 +76,9 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               children: [
                 SizedBox(
                   height: meterH,
-                  child: const ColoredBox(
+                  child: ColoredBox(
                     color: Tokens.surface,
-                    child: WaveformMeter(),
+                    child: WaveformMeter(key: _waveformKey),
                   ),
                 ),
                 const Expanded(child: _RowBottom()),
@@ -130,10 +138,12 @@ class _RowBottom extends StatelessWidget {
 /// viewport without overflowing — and the visualizer keeps a real, non-zero
 /// height instead of being squeezed out.
 class _MobileLayout extends StatelessWidget {
+  final Key waveformKey;
   final double meterHeight;
   final double coverSize;
   final ValueChanged<double> onResize;
   const _MobileLayout({
+    required this.waveformKey,
     required this.meterHeight,
     required this.coverSize,
     required this.onResize,
@@ -147,9 +157,9 @@ class _MobileLayout extends StatelessWidget {
           children: [
             SizedBox(
               height: meterHeight,
-              child: const ColoredBox(
+              child: ColoredBox(
                 color: Tokens.surface,
-                child: WaveformMeter(),
+                child: WaveformMeter(key: waveformKey),
               ),
             ),
             Expanded(
