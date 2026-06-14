@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
@@ -66,6 +67,13 @@ class _InfoSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _source(),
+                  // Seed the loudness section from the normalizer's cached
+                  // scan: `stream.loudness` re-emits its cached result only to
+                  // the FIRST broadcast listener, so when normalization is on
+                  // (the normalizer already holds that subscription) a sheet
+                  // opened mid-track would otherwise stay empty until the next
+                  // track change.
+                  _loudness(PlayerScope.normalizerOf(context).lastScan),
                   _output(),
                   _stream(),
                   _playback(),
@@ -150,6 +158,33 @@ class _InfoSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ── Loudness (offline EBU R128 scan of the whole track) ─────────────
+
+  Widget _loudness(LoudnessScan? initialScan) {
+    return Live<LoudnessScan?>(
+      stream: player.stream.loudness,
+      initial: initialScan,
+      builder: (context, scan) {
+        if (scan?.state != LoudnessScanState.ready) {
+          return const SizedBox.shrink();
+        }
+        final s = scan!;
+        return _section('Loudness (EBU R128)', _statGrid([
+          ('Integrated', '${s.integrated!.toStringAsFixed(1)} LUFS'),
+          ('Range', '${s.range!.toStringAsFixed(1)} LU'),
+          ('True peak', _peakDb(s.truePeak!)),
+          ('Sample peak', _peakDb(s.samplePeak!)),
+        ]));
+      },
+    );
+  }
+
+  String _peakDb(double linear) {
+    if (linear <= 0) return '—';
+    final db = 20 * math.log(linear) / math.ln10;
+    return '${db.toStringAsFixed(1)} dBFS';
   }
 
   // ── Output (device side) — stat grid ────────────────────────────────

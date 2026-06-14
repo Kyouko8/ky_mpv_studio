@@ -18,57 +18,68 @@ class EffectsCodec {
       v is Map ? v.cast<String, Object?>() : const {};
 
   static Map<String, Object?> encode(AudioEffects e) {
+    // 0.4.0: nullable slots — encode the defaults for never-configured ones
+    // so presets stay shape-stable.
+    final superequalizer = e.superequalizer ?? const SuperequalizerSettings();
+    final acompressor = e.acompressor ?? const AcompressorSettings();
+    final bass = e.bass ?? const BassSettings();
+    final treble = e.treble ?? const TrebleSettings();
+    final crossfeed = e.crossfeed ?? const CrossfeedSettings();
+    final crystalizer = e.crystalizer ?? const CrystalizerSettings();
+    final extrastereo = e.extrastereo ?? const ExtrastereoSettings();
+    final asubboost = e.asubboost ?? const AsubboostSettings();
+    final loudnorm = e.loudnorm ?? const LoudnormSettings();
     return {
       'eq': {
-        'enabled': e.superequalizer.enabled,
-        'params': e.superequalizer.params,
+        'enabled': superequalizer.enabled,
+        'params': superequalizer.params,
       },
       'comp': {
-        'enabled': e.acompressor.enabled,
-        'threshold': e.acompressor.threshold,
-        'ratio': e.acompressor.ratio,
-        'attack': e.acompressor.attack,
-        'release': e.acompressor.release,
-        'makeup': e.acompressor.makeup,
-        'knee': e.acompressor.knee,
+        'enabled': acompressor.enabled,
+        'threshold': acompressor.threshold,
+        'ratio': acompressor.ratio,
+        'attack': acompressor.attack,
+        'release': acompressor.release,
+        'makeup': acompressor.makeup,
+        'knee': acompressor.knee,
       },
       'bass': {
-        'enabled': e.bass.enabled,
-        'gain': e.bass.gain,
-        'frequency': e.bass.frequency,
+        'enabled': bass.enabled,
+        'gain': bass.gain,
+        'frequency': bass.frequency,
       },
       'treble': {
-        'enabled': e.treble.enabled,
-        'gain': e.treble.gain,
-        'frequency': e.treble.frequency,
+        'enabled': treble.enabled,
+        'gain': treble.gain,
+        'frequency': treble.frequency,
       },
       'crossfeed': {
-        'enabled': e.crossfeed.enabled,
-        'strength': e.crossfeed.strength,
-        'range': e.crossfeed.range,
+        'enabled': crossfeed.enabled,
+        'strength': crossfeed.strength,
+        'range': crossfeed.range,
       },
       'crystalizer': {
-        'enabled': e.crystalizer.enabled,
-        'i': e.crystalizer.i,
+        'enabled': crystalizer.enabled,
+        'i': crystalizer.i,
       },
       'stereo': {
-        'enabled': e.extrastereo.enabled,
-        'm': e.extrastereo.m,
+        'enabled': extrastereo.enabled,
+        'm': extrastereo.m,
       },
       'subboost': {
-        'enabled': e.asubboost.enabled,
-        'boost': e.asubboost.boost,
-        'cutoff': e.asubboost.cutoff,
-        'dry': e.asubboost.dry,
-        'wet': e.asubboost.wet,
-        'feedback': e.asubboost.feedback,
+        'enabled': asubboost.enabled,
+        'boost': asubboost.boost,
+        'cutoff': asubboost.cutoff,
+        'dry': asubboost.dry,
+        'wet': asubboost.wet,
+        'feedback': asubboost.feedback,
       },
       'loudnorm': {
-        'enabled': e.loudnorm.enabled,
-        'i': e.loudnorm.i,
-        'lra': e.loudnorm.lra,
-        'tp': e.loudnorm.tp,
-        'linear': e.loudnorm.linear,
+        'enabled': loudnorm.enabled,
+        'i': loudnorm.i,
+        'lra': loudnorm.lra,
+        'tp': loudnorm.tp,
+        'linear': loudnorm.linear,
       },
     };
   }

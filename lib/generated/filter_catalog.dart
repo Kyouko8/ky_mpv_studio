@@ -133,14 +133,16 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 100.0,
           def: 33.0,
-          get: (e) => e.acontrast.contrast,
-          set: (e, v) =>
-              e.copyWith(acontrast: e.acontrast.copyWith(contrast: v))),
+          get: (e) => (e.acontrast ?? const AcontrastSettings()).contrast,
+          set: (e, v) => e.copyWith(
+              acontrast: (e.acontrast ?? const AcontrastSettings())
+                  .copyWith(contrast: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.acontrast.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(acontrast: e.acontrast.copyWith(enabled: on)),
+    isEnabled: (e) => e.acontrast?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        acontrast:
+            (e.acontrast ?? const AcontrastSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'acrusher',
@@ -156,75 +158,94 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.acrusher.aa,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(aa: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).aa,
+          set: (e, v) => e.copyWith(
+              acrusher:
+                  (e.acrusher ?? const AcrusherSettings()).copyWith(aa: v))),
       DoubleParam('bits',
           min: 1.0,
           max: 64.0,
           def: 8.0,
-          get: (e) => e.acrusher.bits,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(bits: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).bits,
+          set: (e, v) => e.copyWith(
+              acrusher:
+                  (e.acrusher ?? const AcrusherSettings()).copyWith(bits: v))),
       DoubleParam('dc',
           min: 0.25,
           max: 4.0,
           def: 1.0,
-          get: (e) => e.acrusher.dc,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(dc: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).dc,
+          set: (e, v) => e.copyWith(
+              acrusher:
+                  (e.acrusher ?? const AcrusherSettings()).copyWith(dc: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.acrusher.level_in,
-          set: (e, v) =>
-              e.copyWith(acrusher: e.acrusher.copyWith(level_in: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.acrusher.level_out,
-          set: (e, v) =>
-              e.copyWith(acrusher: e.acrusher.copyWith(level_out: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(level_out: v))),
       BoolParam('lfo',
-          get: (e) => e.acrusher.lfo,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(lfo: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).lfo,
+          set: (e, v) => e.copyWith(
+              acrusher:
+                  (e.acrusher ?? const AcrusherSettings()).copyWith(lfo: v))),
       DoubleParam('lforange',
           min: 1.0,
           max: 250.0,
           def: 20.0,
-          get: (e) => e.acrusher.lforange,
-          set: (e, v) =>
-              e.copyWith(acrusher: e.acrusher.copyWith(lforange: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).lforange,
+          set: (e, v) => e.copyWith(
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(lforange: v))),
       DoubleParam('lforate',
           min: 0.01,
           max: 200.0,
           def: 0.3,
-          get: (e) => e.acrusher.lforate,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(lforate: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).lforate,
+          set: (e, v) => e.copyWith(
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(lforate: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.acrusher.mix,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(mix: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).mix,
+          set: (e, v) => e.copyWith(
+              acrusher:
+                  (e.acrusher ?? const AcrusherSettings()).copyWith(mix: v))),
       EnumParam('mode',
           options: [
             for (final o in AcrusherMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.acrusher.mode,
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).mode,
           set: (e, v) => e.copyWith(
-              acrusher: e.acrusher.copyWith(mode: v as AcrusherMode))),
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(mode: v as AcrusherMode))),
       DoubleParam('samples',
           min: 1.0,
           max: 250.0,
           def: 1.0,
-          get: (e) => e.acrusher.samples,
-          set: (e, v) => e.copyWith(acrusher: e.acrusher.copyWith(samples: v))),
+          get: (e) => (e.acrusher ?? const AcrusherSettings()).samples,
+          set: (e, v) => e.copyWith(
+              acrusher: (e.acrusher ?? const AcrusherSettings())
+                  .copyWith(samples: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.acrusher.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(acrusher: e.acrusher.copyWith(enabled: on)),
+    isEnabled: (e) => e.acrusher?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        acrusher:
+            (e.acrusher ?? const AcrusherSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adeclick',
@@ -240,84 +261,106 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 25.0,
           def: 2.0,
-          get: (e) => e.adeclick.a,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(a: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).a,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(a: v))),
       DoubleParam('arorder',
           min: 0.0,
           max: 25.0,
           def: 2.0,
-          get: (e) => e.adeclick.arorder,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(arorder: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).arorder,
+          set: (e, v) => e.copyWith(
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(arorder: v))),
       DoubleParam('b',
           min: 0.0,
           max: 10.0,
           def: 2.0,
-          get: (e) => e.adeclick.b,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(b: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).b,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(b: v))),
       DoubleParam('burst',
           min: 0.0,
           max: 10.0,
           def: 2.0,
-          get: (e) => e.adeclick.burst,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(burst: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).burst,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(burst: v))),
       EnumParam('m',
           options: [
             for (final o in AdeclickM.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adeclick.m,
-          set: (e, v) =>
-              e.copyWith(adeclick: e.adeclick.copyWith(m: v as AdeclickM))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).m,
+          set: (e, v) => e.copyWith(
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(m: v as AdeclickM))),
       EnumParam('method',
           options: [
             for (final o in AdeclickM.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adeclick.method,
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).method,
           set: (e, v) => e.copyWith(
-              adeclick: e.adeclick.copyWith(method: v as AdeclickM))),
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(method: v as AdeclickM))),
       DoubleParam('o',
           min: 50.0,
           max: 95.0,
           def: 75.0,
-          get: (e) => e.adeclick.o,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(o: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).o,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(o: v))),
       DoubleParam('overlap',
           min: 50.0,
           max: 95.0,
           def: 75.0,
-          get: (e) => e.adeclick.overlap,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(overlap: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).overlap,
+          set: (e, v) => e.copyWith(
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(overlap: v))),
       DoubleParam('t',
           min: 1.0,
           max: 100.0,
           def: 2.0,
-          get: (e) => e.adeclick.t,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(t: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).t,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(t: v))),
       DoubleParam('threshold',
           min: 1.0,
           max: 100.0,
           def: 2.0,
-          get: (e) => e.adeclick.threshold,
-          set: (e, v) =>
-              e.copyWith(adeclick: e.adeclick.copyWith(threshold: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(threshold: v))),
       DoubleParam('w',
           min: 10.0,
           max: 100.0,
           def: 55.0,
-          get: (e) => e.adeclick.w,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(w: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).w,
+          set: (e, v) => e.copyWith(
+              adeclick:
+                  (e.adeclick ?? const AdeclickSettings()).copyWith(w: v))),
       DoubleParam('window',
           min: 10.0,
           max: 100.0,
           def: 55.0,
-          get: (e) => e.adeclick.window,
-          set: (e, v) => e.copyWith(adeclick: e.adeclick.copyWith(window: v))),
+          get: (e) => (e.adeclick ?? const AdeclickSettings()).window,
+          set: (e, v) => e.copyWith(
+              adeclick: (e.adeclick ?? const AdeclickSettings())
+                  .copyWith(window: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adeclick.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(adeclick: e.adeclick.copyWith(enabled: on)),
+    isEnabled: (e) => e.adeclick?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adeclick:
+            (e.adeclick ?? const AdeclickSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adeclip',
@@ -333,82 +376,100 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 25.0,
           def: 8.0,
-          get: (e) => e.adeclip.a,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(a: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).a,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(a: v))),
       DoubleParam('arorder',
           min: 0.0,
           max: 25.0,
           def: 8.0,
-          get: (e) => e.adeclip.arorder,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(arorder: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).arorder,
+          set: (e, v) => e.copyWith(
+              adeclip:
+                  (e.adeclip ?? const AdeclipSettings()).copyWith(arorder: v))),
       IntParam('hsize',
           min: 100,
           max: 9999,
           def: 1000,
-          get: (e) => e.adeclip.hsize,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(hsize: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).hsize,
+          set: (e, v) => e.copyWith(
+              adeclip:
+                  (e.adeclip ?? const AdeclipSettings()).copyWith(hsize: v))),
       EnumParam('m',
           options: [
             for (final o in AdeclipM.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adeclip.m,
-          set: (e, v) =>
-              e.copyWith(adeclip: e.adeclip.copyWith(m: v as AdeclipM))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).m,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings())
+                  .copyWith(m: v as AdeclipM))),
       EnumParam('method',
           options: [
             for (final o in AdeclipM.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adeclip.method,
-          set: (e, v) =>
-              e.copyWith(adeclip: e.adeclip.copyWith(method: v as AdeclipM))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).method,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings())
+                  .copyWith(method: v as AdeclipM))),
       IntParam('n',
           min: 100,
           max: 9999,
           def: 1000,
-          get: (e) => e.adeclip.n,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(n: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).n,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(n: v))),
       DoubleParam('o',
           min: 50.0,
           max: 95.0,
           def: 75.0,
-          get: (e) => e.adeclip.o,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(o: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).o,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(o: v))),
       DoubleParam('overlap',
           min: 50.0,
           max: 95.0,
           def: 75.0,
-          get: (e) => e.adeclip.overlap,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(overlap: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).overlap,
+          set: (e, v) => e.copyWith(
+              adeclip:
+                  (e.adeclip ?? const AdeclipSettings()).copyWith(overlap: v))),
       DoubleParam('t',
           min: 1.0,
           max: 100.0,
           def: 10.0,
-          get: (e) => e.adeclip.t,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(t: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).t,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(t: v))),
       DoubleParam('threshold',
           min: 1.0,
           max: 100.0,
           def: 10.0,
-          get: (e) => e.adeclip.threshold,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(threshold: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings())
+                  .copyWith(threshold: v))),
       DoubleParam('w',
           min: 10.0,
           max: 100.0,
           def: 55.0,
-          get: (e) => e.adeclip.w,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(w: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).w,
+          set: (e, v) => e.copyWith(
+              adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(w: v))),
       DoubleParam('window',
           min: 10.0,
           max: 100.0,
           def: 55.0,
-          get: (e) => e.adeclip.window,
-          set: (e, v) => e.copyWith(adeclip: e.adeclip.copyWith(window: v))),
+          get: (e) => (e.adeclip ?? const AdeclipSettings()).window,
+          set: (e, v) => e.copyWith(
+              adeclip:
+                  (e.adeclip ?? const AdeclipSettings()).copyWith(window: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adeclip.enabled,
-    setEnabled: (e, on) => e.copyWith(adeclip: e.adeclip.copyWith(enabled: on)),
+    isEnabled: (e) => e.adeclip?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adeclip: (e.adeclip ?? const AdeclipSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adecorrelate',
@@ -424,21 +485,24 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: -1,
           max: 4294967295,
           def: -1,
-          get: (e) => e.adecorrelate.seed,
-          set: (e, v) =>
-              e.copyWith(adecorrelate: e.adecorrelate.copyWith(seed: v))),
+          get: (e) => (e.adecorrelate ?? const AdecorrelateSettings()).seed,
+          set: (e, v) => e.copyWith(
+              adecorrelate: (e.adecorrelate ?? const AdecorrelateSettings())
+                  .copyWith(seed: v))),
       IntParam('stages',
           min: 1,
           max: 16,
           def: 6,
-          get: (e) => e.adecorrelate.stages,
-          set: (e, v) =>
-              e.copyWith(adecorrelate: e.adecorrelate.copyWith(stages: v))),
+          get: (e) => (e.adecorrelate ?? const AdecorrelateSettings()).stages,
+          set: (e, v) => e.copyWith(
+              adecorrelate: (e.adecorrelate ?? const AdecorrelateSettings())
+                  .copyWith(stages: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adecorrelate.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(adecorrelate: e.adecorrelate.copyWith(enabled: on)),
+    isEnabled: (e) => e.adecorrelate?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adecorrelate: (e.adecorrelate ?? const AdecorrelateSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adelay',
@@ -451,16 +515,20 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [
       BoolParam('all',
-          get: (e) => e.adelay.all,
-          set: (e, v) => e.copyWith(adelay: e.adelay.copyWith(all: v))),
+          get: (e) => (e.adelay ?? const AdelaySettings()).all,
+          set: (e, v) => e.copyWith(
+              adelay: (e.adelay ?? const AdelaySettings()).copyWith(all: v))),
       StringParam('delays',
           required: false,
-          get: (e) => e.adelay.delays,
-          set: (e, v) => e.copyWith(adelay: e.adelay.copyWith(delays: v))),
+          get: (e) => (e.adelay ?? const AdelaySettings()).delays,
+          set: (e, v) => e.copyWith(
+              adelay:
+                  (e.adelay ?? const AdelaySettings()).copyWith(delays: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adelay.enabled,
-    setEnabled: (e, on) => e.copyWith(adelay: e.adelay.copyWith(enabled: on)),
+    isEnabled: (e) => e.adelay?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adelay: (e.adelay ?? const AdelaySettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adenorm',
@@ -476,20 +544,24 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: -451.0,
           max: -90.0,
           def: -351.0,
-          get: (e) => e.adenorm.level,
-          set: (e, v) => e.copyWith(adenorm: e.adenorm.copyWith(level: v))),
+          get: (e) => (e.adenorm ?? const AdenormSettings()).level,
+          set: (e, v) => e.copyWith(
+              adenorm:
+                  (e.adenorm ?? const AdenormSettings()).copyWith(level: v))),
       EnumParam('type',
           options: [
             for (final o in AdenormType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adenorm.type,
-          set: (e, v) =>
-              e.copyWith(adenorm: e.adenorm.copyWith(type: v as AdenormType))),
+          get: (e) => (e.adenorm ?? const AdenormSettings()).type,
+          set: (e, v) => e.copyWith(
+              adenorm: (e.adenorm ?? const AdenormSettings())
+                  .copyWith(type: v as AdenormType))),
     ],
     presets: [],
-    isEnabled: (e) => e.adenorm.enabled,
-    setEnabled: (e, on) => e.copyWith(adenorm: e.adenorm.copyWith(enabled: on)),
+    isEnabled: (e) => e.adenorm?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adenorm: (e.adenorm ?? const AdenormSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aderivative',
@@ -502,9 +574,10 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [],
     presets: [],
-    isEnabled: (e) => e.aderivative.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aderivative: e.aderivative.copyWith(enabled: on)),
+    isEnabled: (e) => e.aderivative?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aderivative: (e.aderivative ?? const AderivativeSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adrc',
@@ -520,26 +593,31 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 1.0,
           max: 1000.0,
           def: 50.0,
-          get: (e) => e.adrc.attack,
-          set: (e, v) => e.copyWith(adrc: e.adrc.copyWith(attack: v))),
+          get: (e) => (e.adrc ?? const AdrcSettings()).attack,
+          set: (e, v) => e.copyWith(
+              adrc: (e.adrc ?? const AdrcSettings()).copyWith(attack: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.adrc.channels,
-          set: (e, v) => e.copyWith(adrc: e.adrc.copyWith(channels: v))),
+          get: (e) => (e.adrc ?? const AdrcSettings()).channels,
+          set: (e, v) => e.copyWith(
+              adrc: (e.adrc ?? const AdrcSettings()).copyWith(channels: v))),
       DoubleParam('release',
           min: 5.0,
           max: 2000.0,
           def: 100.0,
-          get: (e) => e.adrc.release,
-          set: (e, v) => e.copyWith(adrc: e.adrc.copyWith(release: v))),
+          get: (e) => (e.adrc ?? const AdrcSettings()).release,
+          set: (e, v) => e.copyWith(
+              adrc: (e.adrc ?? const AdrcSettings()).copyWith(release: v))),
       StringParam('transfer',
           required: false,
-          get: (e) => e.adrc.transfer,
-          set: (e, v) => e.copyWith(adrc: e.adrc.copyWith(transfer: v))),
+          get: (e) => (e.adrc ?? const AdrcSettings()).transfer,
+          set: (e, v) => e.copyWith(
+              adrc: (e.adrc ?? const AdrcSettings()).copyWith(transfer: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adrc.enabled,
-    setEnabled: (e, on) => e.copyWith(adrc: e.adrc.copyWith(enabled: on)),
+    isEnabled: (e) => e.adrc?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adrc: (e.adrc ?? const AdrcSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adynamicequalizer',
@@ -555,122 +633,164 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.01,
           max: 2000.0,
           def: 20.0,
-          get: (e) => e.adynamicequalizer.attack,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).attack,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(attack: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(attack: v))),
       EnumParam('auto',
           options: [
             for (final o in AdynamicequalizerAuto.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adynamicequalizer.auto,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).auto,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer
-                  .copyWith(auto: v as AdynamicequalizerAuto))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(auto: v as AdynamicequalizerAuto))),
       DoubleParam('dfrequency',
           min: 2.0,
           max: 1000000.0,
           def: 1000.0,
-          get: (e) => e.adynamicequalizer.dfrequency,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .dfrequency,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(dfrequency: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(dfrequency: v))),
       EnumParam('dftype',
           options: [
             for (final o in AdynamicequalizerDftype.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adynamicequalizer.dftype,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).dftype,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer
-                  .copyWith(dftype: v as AdynamicequalizerDftype))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(dftype: v as AdynamicequalizerDftype))),
       DoubleParam('dqfactor',
           min: 0.001,
           max: 1000.0,
           def: 1.0,
-          get: (e) => e.adynamicequalizer.dqfactor,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .dqfactor,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(dqfactor: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(dqfactor: v))),
       DoubleParam('makeup',
           min: 0.0,
           max: 1000.0,
           def: 0.0,
-          get: (e) => e.adynamicequalizer.makeup,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).makeup,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(makeup: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(makeup: v))),
       EnumParam('mode',
           options: [
             for (final o in AdynamicequalizerMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adynamicequalizer.mode,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).mode,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer
-                  .copyWith(mode: v as AdynamicequalizerMode))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(mode: v as AdynamicequalizerMode))),
       EnumParam('precision',
           options: [
             for (final o in AdynamicequalizerPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adynamicequalizer.precision,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .precision,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer
-                  .copyWith(precision: v as AdynamicequalizerPrecision))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(precision: v as AdynamicequalizerPrecision))),
       DoubleParam('range',
           min: 1.0,
           max: 2000.0,
           def: 50.0,
-          get: (e) => e.adynamicequalizer.range,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).range,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(range: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(range: v))),
       DoubleParam('ratio',
           min: 0.0,
           max: 30.0,
           def: 1.0,
-          get: (e) => e.adynamicequalizer.ratio,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).ratio,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(ratio: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(ratio: v))),
       DoubleParam('release',
           min: 0.01,
           max: 2000.0,
           def: 200.0,
-          get: (e) => e.adynamicequalizer.release,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .release,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(release: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(release: v))),
       DoubleParam('tfrequency',
           min: 2.0,
           max: 1000000.0,
           def: 1000.0,
-          get: (e) => e.adynamicequalizer.tfrequency,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .tfrequency,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(tfrequency: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(tfrequency: v))),
       EnumParam('tftype',
           options: [
             for (final o in AdynamicequalizerTftype.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.adynamicequalizer.tftype,
+          get: (e) =>
+              (e.adynamicequalizer ?? const AdynamicequalizerSettings()).tftype,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer
-                  .copyWith(tftype: v as AdynamicequalizerTftype))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(tftype: v as AdynamicequalizerTftype))),
       DoubleParam('threshold',
           min: 0.0,
           max: 100.0,
           def: 0.0,
-          get: (e) => e.adynamicequalizer.threshold,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .threshold,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(threshold: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(threshold: v))),
       DoubleParam('tqfactor',
           min: 0.001,
           max: 1000.0,
           def: 1.0,
-          get: (e) => e.adynamicequalizer.tqfactor,
+          get: (e) => (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+              .tqfactor,
           set: (e, v) => e.copyWith(
-              adynamicequalizer: e.adynamicequalizer.copyWith(tqfactor: v))),
+              adynamicequalizer:
+                  (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                      .copyWith(tqfactor: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adynamicequalizer.enabled,
+    isEnabled: (e) => e.adynamicequalizer?.enabled ?? false,
     setEnabled: (e, on) => e.copyWith(
-        adynamicequalizer: e.adynamicequalizer.copyWith(enabled: on)),
+        adynamicequalizer:
+            (e.adynamicequalizer ?? const AdynamicequalizerSettings())
+                .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'adynamicsmooth',
@@ -686,21 +806,28 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 2.0,
           max: 1000000.0,
           def: 22050.0,
-          get: (e) => e.adynamicsmooth.basefreq,
+          get: (e) =>
+              (e.adynamicsmooth ?? const AdynamicsmoothSettings()).basefreq,
           set: (e, v) => e.copyWith(
-              adynamicsmooth: e.adynamicsmooth.copyWith(basefreq: v))),
+              adynamicsmooth:
+                  (e.adynamicsmooth ?? const AdynamicsmoothSettings())
+                      .copyWith(basefreq: v))),
       DoubleParam('sensitivity',
           min: 0.0,
           max: 1000000.0,
           def: 2.0,
-          get: (e) => e.adynamicsmooth.sensitivity,
+          get: (e) =>
+              (e.adynamicsmooth ?? const AdynamicsmoothSettings()).sensitivity,
           set: (e, v) => e.copyWith(
-              adynamicsmooth: e.adynamicsmooth.copyWith(sensitivity: v))),
+              adynamicsmooth:
+                  (e.adynamicsmooth ?? const AdynamicsmoothSettings())
+                      .copyWith(sensitivity: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.adynamicsmooth.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(adynamicsmooth: e.adynamicsmooth.copyWith(enabled: on)),
+    isEnabled: (e) => e.adynamicsmooth?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        adynamicsmooth: (e.adynamicsmooth ?? const AdynamicsmoothSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aecho',
@@ -714,28 +841,33 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('decays',
           required: false,
-          get: (e) => e.aecho.decays,
-          set: (e, v) => e.copyWith(aecho: e.aecho.copyWith(decays: v))),
+          get: (e) => (e.aecho ?? const AechoSettings()).decays,
+          set: (e, v) => e.copyWith(
+              aecho: (e.aecho ?? const AechoSettings()).copyWith(decays: v))),
       StringParam('delays',
           required: false,
-          get: (e) => e.aecho.delays,
-          set: (e, v) => e.copyWith(aecho: e.aecho.copyWith(delays: v))),
+          get: (e) => (e.aecho ?? const AechoSettings()).delays,
+          set: (e, v) => e.copyWith(
+              aecho: (e.aecho ?? const AechoSettings()).copyWith(delays: v))),
       DoubleParam('in_gain',
           min: 0.0,
           max: 1.0,
           def: 0.6,
-          get: (e) => e.aecho.in_gain,
-          set: (e, v) => e.copyWith(aecho: e.aecho.copyWith(in_gain: v))),
+          get: (e) => (e.aecho ?? const AechoSettings()).in_gain,
+          set: (e, v) => e.copyWith(
+              aecho: (e.aecho ?? const AechoSettings()).copyWith(in_gain: v))),
       DoubleParam('out_gain',
           min: 0.0,
           max: 1.0,
           def: 0.3,
-          get: (e) => e.aecho.out_gain,
-          set: (e, v) => e.copyWith(aecho: e.aecho.copyWith(out_gain: v))),
+          get: (e) => (e.aecho ?? const AechoSettings()).out_gain,
+          set: (e, v) => e.copyWith(
+              aecho: (e.aecho ?? const AechoSettings()).copyWith(out_gain: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aecho.enabled,
-    setEnabled: (e, on) => e.copyWith(aecho: e.aecho.copyWith(enabled: on)),
+    isEnabled: (e) => e.aecho?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aecho: (e.aecho ?? const AechoSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aemphasis',
@@ -751,37 +883,42 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.aemphasis.level_in,
-          set: (e, v) =>
-              e.copyWith(aemphasis: e.aemphasis.copyWith(level_in: v))),
+          get: (e) => (e.aemphasis ?? const AemphasisSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              aemphasis: (e.aemphasis ?? const AemphasisSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.aemphasis.level_out,
-          set: (e, v) =>
-              e.copyWith(aemphasis: e.aemphasis.copyWith(level_out: v))),
+          get: (e) => (e.aemphasis ?? const AemphasisSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              aemphasis: (e.aemphasis ?? const AemphasisSettings())
+                  .copyWith(level_out: v))),
       EnumParam('mode',
           options: [
             for (final o in AemphasisMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aemphasis.mode,
+          get: (e) => (e.aemphasis ?? const AemphasisSettings()).mode,
           set: (e, v) => e.copyWith(
-              aemphasis: e.aemphasis.copyWith(mode: v as AemphasisMode))),
+              aemphasis: (e.aemphasis ?? const AemphasisSettings())
+                  .copyWith(mode: v as AemphasisMode))),
       EnumParam('type',
           options: [
             for (final o in AemphasisType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aemphasis.type,
+          get: (e) => (e.aemphasis ?? const AemphasisSettings()).type,
           set: (e, v) => e.copyWith(
-              aemphasis: e.aemphasis.copyWith(type: v as AemphasisType))),
+              aemphasis: (e.aemphasis ?? const AemphasisSettings())
+                  .copyWith(type: v as AemphasisType))),
     ],
     presets: [],
-    isEnabled: (e) => e.aemphasis.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aemphasis: e.aemphasis.copyWith(enabled: on)),
+    isEnabled: (e) => e.aemphasis?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aemphasis:
+            (e.aemphasis ?? const AemphasisSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aeval',
@@ -795,17 +932,25 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('c',
           required: false,
-          get: (e) => e.aeval.c,
-          set: (e, v) => e.copyWith(aeval: e.aeval.copyWith(c: v))),
+          get: (e) =>
+              (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)')).c,
+          set: (e, v) => e.copyWith(
+              aeval: (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)'))
+                  .copyWith(c: v))),
       StringParam('channel_layout',
           required: false,
-          get: (e) => e.aeval.channel_layout,
-          set: (e, v) =>
-              e.copyWith(aeval: e.aeval.copyWith(channel_layout: v))),
+          get: (e) => (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)'))
+              .channel_layout,
+          set: (e, v) => e.copyWith(
+              aeval: (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)'))
+                  .copyWith(channel_layout: v))),
       StringParam('exprs',
           required: true,
-          get: (e) => e.aeval.exprs,
-          set: (e, v) => e.copyWith(aeval: e.aeval.copyWith(exprs: v))),
+          get: (e) =>
+              (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)')).exprs,
+          set: (e, v) => e.copyWith(
+              aeval: (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)'))
+                  .copyWith(exprs: v))),
     ],
     presets: [
       (name: 'Passthrough', values: {'exprs': 'val(0)|val(1)'}),
@@ -816,8 +961,10 @@ final List<FilterDescriptor> kFilterCatalog = [
       ),
       (name: 'Invert phase', values: {'exprs': '-val(0)|-val(1)'}),
     ],
-    isEnabled: (e) => e.aeval.enabled,
-    setEnabled: (e, on) => e.copyWith(aeval: e.aeval.copyWith(enabled: on)),
+    isEnabled: (e) => e.aeval?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aeval: (e.aeval ?? const AevalSettings(exprs: 'val(0)|val(1)'))
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aexciter',
@@ -833,54 +980,69 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.aexciter.amount,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(amount: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).amount,
+          set: (e, v) => e.copyWith(
+              aexciter: (e.aexciter ?? const AexciterSettings())
+                  .copyWith(amount: v))),
       DoubleParam('blend',
           min: -10.0,
           max: 10.0,
           def: 0.0,
-          get: (e) => e.aexciter.blend,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(blend: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).blend,
+          set: (e, v) => e.copyWith(
+              aexciter:
+                  (e.aexciter ?? const AexciterSettings()).copyWith(blend: v))),
       DoubleParam('ceil',
           min: 9999.0,
           max: 20000.0,
           def: 9999.0,
-          get: (e) => e.aexciter.ceil,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(ceil: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).ceil,
+          set: (e, v) => e.copyWith(
+              aexciter:
+                  (e.aexciter ?? const AexciterSettings()).copyWith(ceil: v))),
       DoubleParam('drive',
           min: 0.1,
           max: 10.0,
           def: 8.5,
-          get: (e) => e.aexciter.drive,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(drive: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).drive,
+          set: (e, v) => e.copyWith(
+              aexciter:
+                  (e.aexciter ?? const AexciterSettings()).copyWith(drive: v))),
       DoubleParam('freq',
           min: 2000.0,
           max: 12000.0,
           def: 7500.0,
-          get: (e) => e.aexciter.freq,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(freq: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).freq,
+          set: (e, v) => e.copyWith(
+              aexciter:
+                  (e.aexciter ?? const AexciterSettings()).copyWith(freq: v))),
       DoubleParam('level_in',
           min: 0.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.aexciter.level_in,
-          set: (e, v) =>
-              e.copyWith(aexciter: e.aexciter.copyWith(level_in: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              aexciter: (e.aexciter ?? const AexciterSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.aexciter.level_out,
-          set: (e, v) =>
-              e.copyWith(aexciter: e.aexciter.copyWith(level_out: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              aexciter: (e.aexciter ?? const AexciterSettings())
+                  .copyWith(level_out: v))),
       BoolParam('listen',
-          get: (e) => e.aexciter.listen,
-          set: (e, v) => e.copyWith(aexciter: e.aexciter.copyWith(listen: v))),
+          get: (e) => (e.aexciter ?? const AexciterSettings()).listen,
+          set: (e, v) => e.copyWith(
+              aexciter: (e.aexciter ?? const AexciterSettings())
+                  .copyWith(listen: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aexciter.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aexciter: e.aexciter.copyWith(enabled: on)),
+    isEnabled: (e) => e.aexciter?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aexciter:
+            (e.aexciter ?? const AexciterSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'afade',
@@ -897,49 +1059,56 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in AfadeCurve.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afade.c,
-          set: (e, v) =>
-              e.copyWith(afade: e.afade.copyWith(c: v as AfadeCurve))),
+          get: (e) => (e.afade ?? const AfadeSettings()).c,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings())
+                  .copyWith(c: v as AfadeCurve))),
       EnumParam('curve',
           options: [
             for (final o in AfadeCurve.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afade.curve,
-          set: (e, v) =>
-              e.copyWith(afade: e.afade.copyWith(curve: v as AfadeCurve))),
+          get: (e) => (e.afade ?? const AfadeSettings()).curve,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings())
+                  .copyWith(curve: v as AfadeCurve))),
       DoubleParam('silence',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.afade.silence,
-          set: (e, v) => e.copyWith(afade: e.afade.copyWith(silence: v))),
+          get: (e) => (e.afade ?? const AfadeSettings()).silence,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings()).copyWith(silence: v))),
       EnumParam('t',
           options: [
             for (final o in AfadeType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afade.t,
-          set: (e, v) =>
-              e.copyWith(afade: e.afade.copyWith(t: v as AfadeType))),
+          get: (e) => (e.afade ?? const AfadeSettings()).t,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings())
+                  .copyWith(t: v as AfadeType))),
       EnumParam('type',
           options: [
             for (final o in AfadeType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afade.type,
-          set: (e, v) =>
-              e.copyWith(afade: e.afade.copyWith(type: v as AfadeType))),
+          get: (e) => (e.afade ?? const AfadeSettings()).type,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings())
+                  .copyWith(type: v as AfadeType))),
       DoubleParam('unity',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.afade.unity,
-          set: (e, v) => e.copyWith(afade: e.afade.copyWith(unity: v))),
+          get: (e) => (e.afade ?? const AfadeSettings()).unity,
+          set: (e, v) => e.copyWith(
+              afade: (e.afade ?? const AfadeSettings()).copyWith(unity: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.afade.enabled,
-    setEnabled: (e, on) => e.copyWith(afade: e.afade.copyWith(enabled: on)),
+    isEnabled: (e) => e.afade?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        afade: (e.afade ?? const AfadeSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'afftdn',
@@ -955,179 +1124,213 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.afftdn.ad,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(ad: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).ad,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(ad: v))),
       DoubleParam('adaptivity',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.afftdn.adaptivity,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(adaptivity: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).adaptivity,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(adaptivity: v))),
       DoubleParam('band_multiplier',
           min: 0.2,
           max: 5.0,
           def: 1.25,
-          get: (e) => e.afftdn.band_multiplier,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(band_multiplier: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).band_multiplier,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(band_multiplier: v))),
       StringParam('band_noise',
           required: false,
-          get: (e) => e.afftdn.band_noise,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(band_noise: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).band_noise,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(band_noise: v))),
       DoubleParam('bm',
           min: 0.2,
           max: 5.0,
           def: 1.25,
-          get: (e) => e.afftdn.bm,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(bm: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).bm,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(bm: v))),
       StringParam('bn',
           required: false,
-          get: (e) => e.afftdn.bn,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(bn: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).bn,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(bn: v))),
       DoubleParam('floor_offset',
           min: -2.0,
           max: 2.0,
           def: 1.0,
-          get: (e) => e.afftdn.floor_offset,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(floor_offset: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).floor_offset,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(floor_offset: v))),
       DoubleParam('fo',
           min: -2.0,
           max: 2.0,
           def: 1.0,
-          get: (e) => e.afftdn.fo,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(fo: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).fo,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(fo: v))),
       IntParam('gain_smooth',
           min: 0,
           max: 50,
           def: 0,
-          get: (e) => e.afftdn.gain_smooth,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(gain_smooth: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).gain_smooth,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(gain_smooth: v))),
       IntParam('gs',
           min: 0,
           max: 50,
           def: 0,
-          get: (e) => e.afftdn.gs,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(gs: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).gs,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(gs: v))),
       DoubleParam('nf',
           min: -80.0,
           max: -20.0,
           def: -50.0,
-          get: (e) => e.afftdn.nf,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(nf: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).nf,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(nf: v))),
       EnumParam('nl',
           options: [
             for (final o in AfftdnLink.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.nl,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(nl: v as AfftdnLink))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).nl,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(nl: v as AfftdnLink))),
       DoubleParam('noise_floor',
           min: -80.0,
           max: -20.0,
           def: -50.0,
-          get: (e) => e.afftdn.noise_floor,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(noise_floor: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).noise_floor,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(noise_floor: v))),
       EnumParam('noise_link',
           options: [
             for (final o in AfftdnLink.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.noise_link,
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).noise_link,
           set: (e, v) => e.copyWith(
-              afftdn: e.afftdn.copyWith(noise_link: v as AfftdnLink))),
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(noise_link: v as AfftdnLink))),
       DoubleParam('noise_reduction',
           min: 0.01,
           max: 97.0,
           def: 12.0,
-          get: (e) => e.afftdn.noise_reduction,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(noise_reduction: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).noise_reduction,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(noise_reduction: v))),
       EnumParam('noise_type',
           options: [
             for (final o in AfftdnType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.noise_type,
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).noise_type,
           set: (e, v) => e.copyWith(
-              afftdn: e.afftdn.copyWith(noise_type: v as AfftdnType))),
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(noise_type: v as AfftdnType))),
       DoubleParam('nr',
           min: 0.01,
           max: 97.0,
           def: 12.0,
-          get: (e) => e.afftdn.nr,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(nr: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).nr,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(nr: v))),
       EnumParam('nt',
           options: [
             for (final o in AfftdnType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.nt,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(nt: v as AfftdnType))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).nt,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(nt: v as AfftdnType))),
       EnumParam('om',
           options: [
             for (final o in AfftdnMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.om,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(om: v as AfftdnMode))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).om,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(om: v as AfftdnMode))),
       EnumParam('output_mode',
           options: [
             for (final o in AfftdnMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.output_mode,
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).output_mode,
           set: (e, v) => e.copyWith(
-              afftdn: e.afftdn.copyWith(output_mode: v as AfftdnMode))),
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(output_mode: v as AfftdnMode))),
       DoubleParam('residual_floor',
           min: -80.0,
           max: -20.0,
           def: -38.0,
-          get: (e) => e.afftdn.residual_floor,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(residual_floor: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).residual_floor,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(residual_floor: v))),
       DoubleParam('rf',
           min: -80.0,
           max: -20.0,
           def: -38.0,
-          get: (e) => e.afftdn.rf,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(rf: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).rf,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(rf: v))),
       EnumParam('sample_noise',
           options: [
             for (final o in AfftdnSample.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.sample_noise,
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).sample_noise,
           set: (e, v) => e.copyWith(
-              afftdn: e.afftdn.copyWith(sample_noise: v as AfftdnSample))),
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(sample_noise: v as AfftdnSample))),
       EnumParam('sn',
           options: [
             for (final o in AfftdnSample.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftdn.sn,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(sn: v as AfftdnSample))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).sn,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(sn: v as AfftdnSample))),
       BoolParam('tn',
-          get: (e) => e.afftdn.tn,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(tn: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).tn,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(tn: v))),
       BoolParam('tr',
-          get: (e) => e.afftdn.tr,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(tr: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).tr,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(tr: v))),
       BoolParam('track_noise',
-          get: (e) => e.afftdn.track_noise,
-          set: (e, v) => e.copyWith(afftdn: e.afftdn.copyWith(track_noise: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).track_noise,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(track_noise: v))),
       BoolParam('track_residual',
-          get: (e) => e.afftdn.track_residual,
-          set: (e, v) =>
-              e.copyWith(afftdn: e.afftdn.copyWith(track_residual: v))),
+          get: (e) => (e.afftdn ?? const AfftdnSettings()).track_residual,
+          set: (e, v) => e.copyWith(
+              afftdn: (e.afftdn ?? const AfftdnSettings())
+                  .copyWith(track_residual: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.afftdn.enabled,
-    setEnabled: (e, on) => e.copyWith(afftdn: e.afftdn.copyWith(enabled: on)),
+    isEnabled: (e) => e.afftdn?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        afftdn: (e.afftdn ?? const AfftdnSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'afftfilt',
@@ -1141,38 +1344,47 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('imag',
           required: false,
-          get: (e) => e.afftfilt.imag,
-          set: (e, v) => e.copyWith(afftfilt: e.afftfilt.copyWith(imag: v))),
+          get: (e) => (e.afftfilt ?? const AfftfiltSettings()).imag,
+          set: (e, v) => e.copyWith(
+              afftfilt:
+                  (e.afftfilt ?? const AfftfiltSettings()).copyWith(imag: v))),
       DoubleParam('overlap',
           min: 0.0,
           max: 1.0,
           def: 0.75,
-          get: (e) => e.afftfilt.overlap,
-          set: (e, v) => e.copyWith(afftfilt: e.afftfilt.copyWith(overlap: v))),
+          get: (e) => (e.afftfilt ?? const AfftfiltSettings()).overlap,
+          set: (e, v) => e.copyWith(
+              afftfilt: (e.afftfilt ?? const AfftfiltSettings())
+                  .copyWith(overlap: v))),
       StringParam('real',
           required: false,
-          get: (e) => e.afftfilt.real,
-          set: (e, v) => e.copyWith(afftfilt: e.afftfilt.copyWith(real: v))),
+          get: (e) => (e.afftfilt ?? const AfftfiltSettings()).real,
+          set: (e, v) => e.copyWith(
+              afftfilt:
+                  (e.afftfilt ?? const AfftfiltSettings()).copyWith(real: v))),
       EnumParam('win_func',
           options: [
             for (final o in AfftfiltWinFunc.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afftfilt.win_func,
+          get: (e) => (e.afftfilt ?? const AfftfiltSettings()).win_func,
           set: (e, v) => e.copyWith(
-              afftfilt: e.afftfilt.copyWith(win_func: v as AfftfiltWinFunc))),
+              afftfilt: (e.afftfilt ?? const AfftfiltSettings())
+                  .copyWith(win_func: v as AfftfiltWinFunc))),
       IntParam('win_size',
           min: 16,
           max: 131072,
           def: 4096,
-          get: (e) => e.afftfilt.win_size,
-          set: (e, v) =>
-              e.copyWith(afftfilt: e.afftfilt.copyWith(win_size: v))),
+          get: (e) => (e.afftfilt ?? const AfftfiltSettings()).win_size,
+          set: (e, v) => e.copyWith(
+              afftfilt: (e.afftfilt ?? const AfftfiltSettings())
+                  .copyWith(win_size: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.afftfilt.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(afftfilt: e.afftfilt.copyWith(enabled: on)),
+    isEnabled: (e) => e.afftfilt?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        afftfilt:
+            (e.afftfilt ?? const AfftfiltSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aformat',
@@ -1186,35 +1398,43 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('channel_layouts',
           required: false,
-          get: (e) => e.aformat.channel_layouts ?? '',
-          set: (e, v) =>
-              e.copyWith(aformat: e.aformat.copyWith(channel_layouts: v))),
+          get: (e) =>
+              (e.aformat ?? const AformatSettings()).channel_layouts ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings())
+                  .copyWith(channel_layouts: v))),
       StringParam('cl',
           required: false,
-          get: (e) => e.aformat.cl ?? '',
-          set: (e, v) => e.copyWith(aformat: e.aformat.copyWith(cl: v))),
+          get: (e) => (e.aformat ?? const AformatSettings()).cl ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings()).copyWith(cl: v))),
       StringParam('f',
           required: false,
-          get: (e) => e.aformat.f ?? '',
-          set: (e, v) => e.copyWith(aformat: e.aformat.copyWith(f: v))),
+          get: (e) => (e.aformat ?? const AformatSettings()).f ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings()).copyWith(f: v))),
       StringParam('r',
           required: false,
-          get: (e) => e.aformat.r ?? '',
-          set: (e, v) => e.copyWith(aformat: e.aformat.copyWith(r: v))),
+          get: (e) => (e.aformat ?? const AformatSettings()).r ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings()).copyWith(r: v))),
       StringParam('sample_fmts',
           required: false,
-          get: (e) => e.aformat.sample_fmts ?? '',
-          set: (e, v) =>
-              e.copyWith(aformat: e.aformat.copyWith(sample_fmts: v))),
+          get: (e) => (e.aformat ?? const AformatSettings()).sample_fmts ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings())
+                  .copyWith(sample_fmts: v))),
       StringParam('sample_rates',
           required: false,
-          get: (e) => e.aformat.sample_rates ?? '',
-          set: (e, v) =>
-              e.copyWith(aformat: e.aformat.copyWith(sample_rates: v))),
+          get: (e) => (e.aformat ?? const AformatSettings()).sample_rates ?? '',
+          set: (e, v) => e.copyWith(
+              aformat: (e.aformat ?? const AformatSettings())
+                  .copyWith(sample_rates: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aformat.enabled,
-    setEnabled: (e, on) => e.copyWith(aformat: e.aformat.copyWith(enabled: on)),
+    isEnabled: (e) => e.aformat?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aformat: (e.aformat ?? const AformatSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'afreqshift',
@@ -1230,28 +1450,32 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.afreqshift.level,
-          set: (e, v) =>
-              e.copyWith(afreqshift: e.afreqshift.copyWith(level: v))),
+          get: (e) => (e.afreqshift ?? const AfreqshiftSettings()).level,
+          set: (e, v) => e.copyWith(
+              afreqshift: (e.afreqshift ?? const AfreqshiftSettings())
+                  .copyWith(level: v))),
       IntParam('order',
           min: 1,
           max: 16,
           def: 8,
-          get: (e) => e.afreqshift.order,
-          set: (e, v) =>
-              e.copyWith(afreqshift: e.afreqshift.copyWith(order: v))),
+          get: (e) => (e.afreqshift ?? const AfreqshiftSettings()).order,
+          set: (e, v) => e.copyWith(
+              afreqshift: (e.afreqshift ?? const AfreqshiftSettings())
+                  .copyWith(order: v))),
       DoubleParam('shift',
           min: -2147483647.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.afreqshift.shift,
-          set: (e, v) =>
-              e.copyWith(afreqshift: e.afreqshift.copyWith(shift: v))),
+          get: (e) => (e.afreqshift ?? const AfreqshiftSettings()).shift,
+          set: (e, v) => e.copyWith(
+              afreqshift: (e.afreqshift ?? const AfreqshiftSettings())
+                  .copyWith(shift: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.afreqshift.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(afreqshift: e.afreqshift.copyWith(enabled: on)),
+    isEnabled: (e) => e.afreqshift?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        afreqshift:
+            (e.afreqshift ?? const AfreqshiftSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'afwtdn',
@@ -1264,53 +1488,68 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [
       BoolParam('adaptive',
-          get: (e) => e.afwtdn.adaptive,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(adaptive: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).adaptive,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(adaptive: v))),
       IntParam('levels',
           min: 1,
           max: 12,
           def: 10,
-          get: (e) => e.afwtdn.levels,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(levels: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).levels,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(levels: v))),
       DoubleParam('percent',
           min: 0.0,
           max: 100.0,
           def: 85.0,
-          get: (e) => e.afwtdn.percent,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(percent: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).percent,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(percent: v))),
       BoolParam('profile',
-          get: (e) => e.afwtdn.profile,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(profile: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).profile,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(profile: v))),
       IntParam('samples',
           min: 512,
           max: 65536,
           def: 8192,
-          get: (e) => e.afwtdn.samples,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(samples: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).samples,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(samples: v))),
       DoubleParam('sigma',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.afwtdn.sigma,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(sigma: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).sigma,
+          set: (e, v) => e.copyWith(
+              afwtdn: (e.afwtdn ?? const AfwtdnSettings()).copyWith(sigma: v))),
       DoubleParam('softness',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.afwtdn.softness,
-          set: (e, v) => e.copyWith(afwtdn: e.afwtdn.copyWith(softness: v))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).softness,
+          set: (e, v) => e.copyWith(
+              afwtdn:
+                  (e.afwtdn ?? const AfwtdnSettings()).copyWith(softness: v))),
       EnumParam('wavet',
           options: [
             for (final o in AfwtdnWavet.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.afwtdn.wavet,
-          set: (e, v) =>
-              e.copyWith(afwtdn: e.afwtdn.copyWith(wavet: v as AfwtdnWavet))),
+          get: (e) => (e.afwtdn ?? const AfwtdnSettings()).wavet,
+          set: (e, v) => e.copyWith(
+              afwtdn: (e.afwtdn ?? const AfwtdnSettings())
+                  .copyWith(wavet: v as AfwtdnWavet))),
     ],
     presets: [],
-    isEnabled: (e) => e.afwtdn.enabled,
-    setEnabled: (e, on) => e.copyWith(afwtdn: e.afwtdn.copyWith(enabled: on)),
+    isEnabled: (e) => e.afwtdn?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        afwtdn: (e.afwtdn ?? const AfwtdnSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'agate',
@@ -1326,84 +1565,98 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.01,
           max: 9000.0,
           def: 20.0,
-          get: (e) => e.agate.attack,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(attack: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).attack,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(attack: v))),
       EnumParam('detection',
           options: [
             for (final o in AgateDetection.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.agate.detection,
+          get: (e) => (e.agate ?? const AgateSettings()).detection,
           set: (e, v) => e.copyWith(
-              agate: e.agate.copyWith(detection: v as AgateDetection))),
+              agate: (e.agate ?? const AgateSettings())
+                  .copyWith(detection: v as AgateDetection))),
       DoubleParam('knee',
           min: 1.0,
           max: 8.0,
           def: 2.828427125,
-          get: (e) => e.agate.knee,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(knee: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).knee,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(knee: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.agate.level_in,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(level_in: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(level_in: v))),
       DoubleParam('level_sc',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.agate.level_sc,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(level_sc: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).level_sc,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(level_sc: v))),
       EnumParam('link',
           options: [
             for (final o in AgateLink.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.agate.link,
-          set: (e, v) =>
-              e.copyWith(agate: e.agate.copyWith(link: v as AgateLink))),
+          get: (e) => (e.agate ?? const AgateSettings()).link,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings())
+                  .copyWith(link: v as AgateLink))),
       DoubleParam('makeup',
           min: 1.0,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.agate.makeup,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(makeup: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).makeup,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(makeup: v))),
       EnumParam('mode',
           options: [
             for (final o in AgateMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.agate.mode,
-          set: (e, v) =>
-              e.copyWith(agate: e.agate.copyWith(mode: v as AgateMode))),
+          get: (e) => (e.agate ?? const AgateSettings()).mode,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings())
+                  .copyWith(mode: v as AgateMode))),
       DoubleParam('range',
           min: 0.0,
           max: 1.0,
           def: 0.06125,
-          get: (e) => e.agate.range,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(range: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).range,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(range: v))),
       DoubleParam('ratio',
           min: 1.0,
           max: 9000.0,
           def: 2.0,
-          get: (e) => e.agate.ratio,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(ratio: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).ratio,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(ratio: v))),
       DoubleParam('release',
           min: 0.01,
           max: 9000.0,
           def: 250.0,
-          get: (e) => e.agate.release,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(release: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).release,
+          set: (e, v) => e.copyWith(
+              agate: (e.agate ?? const AgateSettings()).copyWith(release: v))),
       DoubleParam('threshold',
           min: 0.0,
           max: 1.0,
           def: 0.125,
-          get: (e) => e.agate.threshold,
-          set: (e, v) => e.copyWith(agate: e.agate.copyWith(threshold: v))),
+          get: (e) => (e.agate ?? const AgateSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              agate:
+                  (e.agate ?? const AgateSettings()).copyWith(threshold: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.agate.enabled,
-    setEnabled: (e, on) => e.copyWith(agate: e.agate.copyWith(enabled: on)),
+    isEnabled: (e) => e.agate?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        agate: (e.agate ?? const AgateSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aiir',
@@ -1419,118 +1672,141 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0,
           max: 1024,
           def: 0,
-          get: (e) => e.aiir.channel,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(channel: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).channel,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(channel: v))),
       DoubleParam('dry',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.aiir.dry,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(dry: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).dry,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(dry: v))),
       EnumParam('e',
           options: [
             for (final o in AiirPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.e,
-          set: (e, v) =>
-              e.copyWith(aiir: e.aiir.copyWith(e: v as AiirPrecision))),
+          get: (e) => (e.aiir ?? const AiirSettings()).e,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(e: v as AiirPrecision))),
       EnumParam('f',
           options: [
             for (final o in AiirFormat.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.f,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(f: v as AiirFormat))),
+          get: (e) => (e.aiir ?? const AiirSettings()).f,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(f: v as AiirFormat))),
       EnumParam('format',
           options: [
             for (final o in AiirFormat.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.format,
-          set: (e, v) =>
-              e.copyWith(aiir: e.aiir.copyWith(format: v as AiirFormat))),
+          get: (e) => (e.aiir ?? const AiirSettings()).format,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(format: v as AiirFormat))),
       StringParam('gains',
           required: false,
-          get: (e) => e.aiir.gains,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(gains: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).gains,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(gains: v))),
       StringParam('k',
           required: false,
-          get: (e) => e.aiir.k,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(k: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).k,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(k: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.aiir.mix,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(mix: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).mix,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.aiir.n,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(n: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).n,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.aiir.normalize,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(normalize: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(normalize: v))),
       StringParam('p',
           required: false,
-          get: (e) => e.aiir.p,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(p: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).p,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(p: v))),
       StringParam('poles',
           required: false,
-          get: (e) => e.aiir.poles,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(poles: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).poles,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in AiirPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.precision,
-          set: (e, v) =>
-              e.copyWith(aiir: e.aiir.copyWith(precision: v as AiirPrecision))),
+          get: (e) => (e.aiir ?? const AiirSettings()).precision,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(precision: v as AiirPrecision))),
       EnumParam('process',
           options: [
             for (final o in AiirProcess.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.process,
-          set: (e, v) =>
-              e.copyWith(aiir: e.aiir.copyWith(process: v as AiirProcess))),
+          get: (e) => (e.aiir ?? const AiirSettings()).process,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(process: v as AiirProcess))),
       EnumParam('r',
           options: [
             for (final o in AiirProcess.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aiir.r,
-          set: (e, v) =>
-              e.copyWith(aiir: e.aiir.copyWith(r: v as AiirProcess))),
+          get: (e) => (e.aiir ?? const AiirSettings()).r,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings())
+                  .copyWith(r: v as AiirProcess))),
       StringParam('rate',
           required: false,
-          get: (e) => e.aiir.rate,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(rate: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).rate,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(rate: v))),
       BoolParam('response',
-          get: (e) => e.aiir.response,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(response: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).response,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(response: v))),
       StringParam('size',
           required: false,
-          get: (e) => e.aiir.size,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(size: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).size,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(size: v))),
       DoubleParam('wet',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.aiir.wet,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(wet: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).wet,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(wet: v))),
       StringParam('z',
           required: false,
-          get: (e) => e.aiir.z,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(z: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).z,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(z: v))),
       StringParam('zeros',
           required: false,
-          get: (e) => e.aiir.zeros,
-          set: (e, v) => e.copyWith(aiir: e.aiir.copyWith(zeros: v))),
+          get: (e) => (e.aiir ?? const AiirSettings()).zeros,
+          set: (e, v) => e.copyWith(
+              aiir: (e.aiir ?? const AiirSettings()).copyWith(zeros: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aiir.enabled,
-    setEnabled: (e, on) => e.copyWith(aiir: e.aiir.copyWith(enabled: on)),
+    isEnabled: (e) => e.aiir?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aiir: (e.aiir ?? const AiirSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aintegral',
@@ -1543,9 +1819,10 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [],
     presets: [],
-    isEnabled: (e) => e.aintegral.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aintegral: e.aintegral.copyWith(enabled: on)),
+    isEnabled: (e) => e.aintegral?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aintegral:
+            (e.aintegral ?? const AintegralSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'alimiter',
@@ -1558,58 +1835,74 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [
       BoolParam('asc',
-          get: (e) => e.alimiter.asc,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(asc: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).asc,
+          set: (e, v) => e.copyWith(
+              alimiter:
+                  (e.alimiter ?? const AlimiterSettings()).copyWith(asc: v))),
       DoubleParam('asc_level',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.alimiter.asc_level,
-          set: (e, v) =>
-              e.copyWith(alimiter: e.alimiter.copyWith(asc_level: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).asc_level,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(asc_level: v))),
       DoubleParam('attack',
           min: 0.1,
           max: 80.0,
           def: 5.0,
-          get: (e) => e.alimiter.attack,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(attack: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).attack,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(attack: v))),
       BoolParam('latency',
-          get: (e) => e.alimiter.latency,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(latency: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).latency,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(latency: v))),
       BoolParam('level',
-          get: (e) => e.alimiter.level,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(level: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).level,
+          set: (e, v) => e.copyWith(
+              alimiter:
+                  (e.alimiter ?? const AlimiterSettings()).copyWith(level: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.alimiter.level_in,
-          set: (e, v) =>
-              e.copyWith(alimiter: e.alimiter.copyWith(level_in: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.alimiter.level_out,
-          set: (e, v) =>
-              e.copyWith(alimiter: e.alimiter.copyWith(level_out: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(level_out: v))),
       DoubleParam('limit',
           min: 0.0625,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.alimiter.limit,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(limit: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).limit,
+          set: (e, v) => e.copyWith(
+              alimiter:
+                  (e.alimiter ?? const AlimiterSettings()).copyWith(limit: v))),
       DoubleParam('release',
           min: 1.0,
           max: 8000.0,
           def: 50.0,
-          get: (e) => e.alimiter.release,
-          set: (e, v) => e.copyWith(alimiter: e.alimiter.copyWith(release: v))),
+          get: (e) => (e.alimiter ?? const AlimiterSettings()).release,
+          set: (e, v) => e.copyWith(
+              alimiter: (e.alimiter ?? const AlimiterSettings())
+                  .copyWith(release: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.alimiter.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(alimiter: e.alimiter.copyWith(enabled: on)),
+    isEnabled: (e) => e.alimiter?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        alimiter:
+            (e.alimiter ?? const AlimiterSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'allpass',
@@ -1626,116 +1919,140 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in AllpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.a,
+          get: (e) => (e.allpass ?? const AllpassSettings()).a,
           set: (e, v) => e.copyWith(
-              allpass: e.allpass.copyWith(a: v as AllpassTransformType))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(a: v as AllpassTransformType))),
       StringParam('c',
           required: false,
-          get: (e) => e.allpass.c,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(c: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).c,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.allpass.channels,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(channels: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).channels,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.allpass.f,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(f: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).f,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.allpass.frequency,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(frequency: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.allpass.m,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(m: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).m,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.allpass.mix,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(mix: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).mix,
+          set: (e, v) => e.copyWith(
+              allpass:
+                  (e.allpass ?? const AllpassSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.allpass.n,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(n: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).n,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.allpass.normalize,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(normalize: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(normalize: v))),
       IntParam('o',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.allpass.o,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(o: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).o,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(o: v))),
       IntParam('order',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.allpass.order,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(order: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).order,
+          set: (e, v) => e.copyWith(
+              allpass:
+                  (e.allpass ?? const AllpassSettings()).copyWith(order: v))),
       EnumParam('precision',
           options: [
             for (final o in AllpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.precision,
+          get: (e) => (e.allpass ?? const AllpassSettings()).precision,
           set: (e, v) => e.copyWith(
-              allpass: e.allpass.copyWith(precision: v as AllpassPrecision))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(precision: v as AllpassPrecision))),
       EnumParam('r',
           options: [
             for (final o in AllpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.r,
+          get: (e) => (e.allpass ?? const AllpassSettings()).r,
           set: (e, v) => e.copyWith(
-              allpass: e.allpass.copyWith(r: v as AllpassPrecision))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(r: v as AllpassPrecision))),
       EnumParam('t',
           options: [
             for (final o in AllpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.t,
+          get: (e) => (e.allpass ?? const AllpassSettings()).t,
           set: (e, v) => e.copyWith(
-              allpass: e.allpass.copyWith(t: v as AllpassWidthType))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(t: v as AllpassWidthType))),
       EnumParam('transform',
           options: [
             for (final o in AllpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.transform,
+          get: (e) => (e.allpass ?? const AllpassSettings()).transform,
           set: (e, v) => e.copyWith(
-              allpass:
-                  e.allpass.copyWith(transform: v as AllpassTransformType))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(transform: v as AllpassTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.allpass.w,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(w: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).w,
+          set: (e, v) => e.copyWith(
+              allpass: (e.allpass ?? const AllpassSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.allpass.width,
-          set: (e, v) => e.copyWith(allpass: e.allpass.copyWith(width: v))),
+          get: (e) => (e.allpass ?? const AllpassSettings()).width,
+          set: (e, v) => e.copyWith(
+              allpass:
+                  (e.allpass ?? const AllpassSettings()).copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in AllpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.allpass.width_type,
+          get: (e) => (e.allpass ?? const AllpassSettings()).width_type,
           set: (e, v) => e.copyWith(
-              allpass: e.allpass.copyWith(width_type: v as AllpassWidthType))),
+              allpass: (e.allpass ?? const AllpassSettings())
+                  .copyWith(width_type: v as AllpassWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.allpass.enabled,
-    setEnabled: (e, on) => e.copyWith(allpass: e.allpass.copyWith(enabled: on)),
+    isEnabled: (e) => e.allpass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        allpass: (e.allpass ?? const AllpassSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'anequalizer',
@@ -1749,44 +2066,50 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('colors',
           required: false,
-          get: (e) => e.anequalizer.colors,
-          set: (e, v) =>
-              e.copyWith(anequalizer: e.anequalizer.copyWith(colors: v))),
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).colors,
+          set: (e, v) => e.copyWith(
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(colors: v))),
       BoolParam('curves',
-          get: (e) => e.anequalizer.curves,
-          set: (e, v) =>
-              e.copyWith(anequalizer: e.anequalizer.copyWith(curves: v))),
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).curves,
+          set: (e, v) => e.copyWith(
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(curves: v))),
       EnumParam('fscale',
           options: [
             for (final o in AnequalizerFscale.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.anequalizer.fscale,
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).fscale,
           set: (e, v) => e.copyWith(
-              anequalizer:
-                  e.anequalizer.copyWith(fscale: v as AnequalizerFscale))),
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(fscale: v as AnequalizerFscale))),
       DoubleParam('mgain',
           min: -900.0,
           max: 900.0,
           def: 60.0,
-          get: (e) => e.anequalizer.mgain,
-          set: (e, v) =>
-              e.copyWith(anequalizer: e.anequalizer.copyWith(mgain: v))),
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).mgain,
+          set: (e, v) => e.copyWith(
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(mgain: v))),
       StringParam('params',
           required: false,
-          get: (e) => e.anequalizer.params,
-          set: (e, v) =>
-              e.copyWith(anequalizer: e.anequalizer.copyWith(params: v))),
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).params,
+          set: (e, v) => e.copyWith(
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(params: v))),
       StringParam('size',
           required: false,
-          get: (e) => e.anequalizer.size,
-          set: (e, v) =>
-              e.copyWith(anequalizer: e.anequalizer.copyWith(size: v))),
+          get: (e) => (e.anequalizer ?? const AnequalizerSettings()).size,
+          set: (e, v) => e.copyWith(
+              anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+                  .copyWith(size: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.anequalizer.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(anequalizer: e.anequalizer.copyWith(enabled: on)),
+    isEnabled: (e) => e.anequalizer?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        anequalizer: (e.anequalizer ?? const AnequalizerSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'anlmdn',
@@ -1802,46 +2125,55 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 1.0,
           max: 1000.0,
           def: 11.0,
-          get: (e) => e.anlmdn.m,
-          set: (e, v) => e.copyWith(anlmdn: e.anlmdn.copyWith(m: v))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).m,
+          set: (e, v) => e.copyWith(
+              anlmdn: (e.anlmdn ?? const AnlmdnSettings()).copyWith(m: v))),
       EnumParam('o',
           options: [
             for (final o in AnlmdnMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.anlmdn.o,
-          set: (e, v) =>
-              e.copyWith(anlmdn: e.anlmdn.copyWith(o: v as AnlmdnMode))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).o,
+          set: (e, v) => e.copyWith(
+              anlmdn: (e.anlmdn ?? const AnlmdnSettings())
+                  .copyWith(o: v as AnlmdnMode))),
       EnumParam('output',
           options: [
             for (final o in AnlmdnMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.anlmdn.output,
-          set: (e, v) =>
-              e.copyWith(anlmdn: e.anlmdn.copyWith(output: v as AnlmdnMode))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).output,
+          set: (e, v) => e.copyWith(
+              anlmdn: (e.anlmdn ?? const AnlmdnSettings())
+                  .copyWith(output: v as AnlmdnMode))),
       DoubleParam('s',
           min: 0.00001,
           max: 10000.0,
           def: 0.00001,
-          get: (e) => e.anlmdn.s,
-          set: (e, v) => e.copyWith(anlmdn: e.anlmdn.copyWith(s: v))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).s,
+          set: (e, v) => e.copyWith(
+              anlmdn: (e.anlmdn ?? const AnlmdnSettings()).copyWith(s: v))),
       DoubleParam('smooth',
           min: 1.0,
           max: 1000.0,
           def: 11.0,
-          get: (e) => e.anlmdn.smooth,
-          set: (e, v) => e.copyWith(anlmdn: e.anlmdn.copyWith(smooth: v))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).smooth,
+          set: (e, v) => e.copyWith(
+              anlmdn:
+                  (e.anlmdn ?? const AnlmdnSettings()).copyWith(smooth: v))),
       DoubleParam('strength',
           min: 0.00001,
           max: 10000.0,
           def: 0.00001,
-          get: (e) => e.anlmdn.strength,
-          set: (e, v) => e.copyWith(anlmdn: e.anlmdn.copyWith(strength: v))),
+          get: (e) => (e.anlmdn ?? const AnlmdnSettings()).strength,
+          set: (e, v) => e.copyWith(
+              anlmdn:
+                  (e.anlmdn ?? const AnlmdnSettings()).copyWith(strength: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.anlmdn.enabled,
-    setEnabled: (e, on) => e.copyWith(anlmdn: e.anlmdn.copyWith(enabled: on)),
+    isEnabled: (e) => e.anlmdn?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        anlmdn: (e.anlmdn ?? const AnlmdnSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'apad',
@@ -1857,12 +2189,14 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0,
           max: 2147483647,
           def: 4096,
-          get: (e) => e.apad.packet_size,
-          set: (e, v) => e.copyWith(apad: e.apad.copyWith(packet_size: v))),
+          get: (e) => (e.apad ?? const ApadSettings()).packet_size,
+          set: (e, v) => e.copyWith(
+              apad: (e.apad ?? const ApadSettings()).copyWith(packet_size: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.apad.enabled,
-    setEnabled: (e, on) => e.copyWith(apad: e.apad.copyWith(enabled: on)),
+    isEnabled: (e) => e.apad?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        apad: (e.apad ?? const ApadSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aphaser',
@@ -1878,44 +2212,56 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 0.99,
           def: 0.4,
-          get: (e) => e.aphaser.decay,
-          set: (e, v) => e.copyWith(aphaser: e.aphaser.copyWith(decay: v))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).decay,
+          set: (e, v) => e.copyWith(
+              aphaser:
+                  (e.aphaser ?? const AphaserSettings()).copyWith(decay: v))),
       DoubleParam('delay',
           min: 0.0,
           max: 5.0,
           def: 3.0,
-          get: (e) => e.aphaser.delay,
-          set: (e, v) => e.copyWith(aphaser: e.aphaser.copyWith(delay: v))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).delay,
+          set: (e, v) => e.copyWith(
+              aphaser:
+                  (e.aphaser ?? const AphaserSettings()).copyWith(delay: v))),
       DoubleParam('in_gain',
           min: 0.0,
           max: 1.0,
           def: 0.4,
-          get: (e) => e.aphaser.in_gain,
-          set: (e, v) => e.copyWith(aphaser: e.aphaser.copyWith(in_gain: v))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).in_gain,
+          set: (e, v) => e.copyWith(
+              aphaser:
+                  (e.aphaser ?? const AphaserSettings()).copyWith(in_gain: v))),
       DoubleParam('out_gain',
           min: 0.0,
           max: 1e9,
           def: 0.74,
-          get: (e) => e.aphaser.out_gain,
-          set: (e, v) => e.copyWith(aphaser: e.aphaser.copyWith(out_gain: v))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).out_gain,
+          set: (e, v) => e.copyWith(
+              aphaser: (e.aphaser ?? const AphaserSettings())
+                  .copyWith(out_gain: v))),
       DoubleParam('speed',
           min: 0.1,
           max: 2.0,
           def: 0.5,
-          get: (e) => e.aphaser.speed,
-          set: (e, v) => e.copyWith(aphaser: e.aphaser.copyWith(speed: v))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).speed,
+          set: (e, v) => e.copyWith(
+              aphaser:
+                  (e.aphaser ?? const AphaserSettings()).copyWith(speed: v))),
       EnumParam('type',
           options: [
             for (final o in AphaserType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.aphaser.type,
-          set: (e, v) =>
-              e.copyWith(aphaser: e.aphaser.copyWith(type: v as AphaserType))),
+          get: (e) => (e.aphaser ?? const AphaserSettings()).type,
+          set: (e, v) => e.copyWith(
+              aphaser: (e.aphaser ?? const AphaserSettings())
+                  .copyWith(type: v as AphaserType))),
     ],
     presets: [],
-    isEnabled: (e) => e.aphaser.enabled,
-    setEnabled: (e, on) => e.copyWith(aphaser: e.aphaser.copyWith(enabled: on)),
+    isEnabled: (e) => e.aphaser?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aphaser: (e.aphaser ?? const AphaserSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aphaseshift',
@@ -1931,28 +2277,32 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.aphaseshift.level,
-          set: (e, v) =>
-              e.copyWith(aphaseshift: e.aphaseshift.copyWith(level: v))),
+          get: (e) => (e.aphaseshift ?? const AphaseshiftSettings()).level,
+          set: (e, v) => e.copyWith(
+              aphaseshift: (e.aphaseshift ?? const AphaseshiftSettings())
+                  .copyWith(level: v))),
       IntParam('order',
           min: 1,
           max: 16,
           def: 8,
-          get: (e) => e.aphaseshift.order,
-          set: (e, v) =>
-              e.copyWith(aphaseshift: e.aphaseshift.copyWith(order: v))),
+          get: (e) => (e.aphaseshift ?? const AphaseshiftSettings()).order,
+          set: (e, v) => e.copyWith(
+              aphaseshift: (e.aphaseshift ?? const AphaseshiftSettings())
+                  .copyWith(order: v))),
       DoubleParam('shift',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.aphaseshift.shift,
-          set: (e, v) =>
-              e.copyWith(aphaseshift: e.aphaseshift.copyWith(shift: v))),
+          get: (e) => (e.aphaseshift ?? const AphaseshiftSettings()).shift,
+          set: (e, v) => e.copyWith(
+              aphaseshift: (e.aphaseshift ?? const AphaseshiftSettings())
+                  .copyWith(shift: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aphaseshift.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aphaseshift: e.aphaseshift.copyWith(enabled: on)),
+    isEnabled: (e) => e.aphaseshift?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aphaseshift: (e.aphaseshift ?? const AphaseshiftSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'apsyclip',
@@ -1968,47 +2318,58 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.apsyclip.adaptive,
-          set: (e, v) =>
-              e.copyWith(apsyclip: e.apsyclip.copyWith(adaptive: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).adaptive,
+          set: (e, v) => e.copyWith(
+              apsyclip: (e.apsyclip ?? const ApsyclipSettings())
+                  .copyWith(adaptive: v))),
       DoubleParam('clip',
           min: 0.015625,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.apsyclip.clip,
-          set: (e, v) => e.copyWith(apsyclip: e.apsyclip.copyWith(clip: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).clip,
+          set: (e, v) => e.copyWith(
+              apsyclip:
+                  (e.apsyclip ?? const ApsyclipSettings()).copyWith(clip: v))),
       BoolParam('diff',
-          get: (e) => e.apsyclip.diff,
-          set: (e, v) => e.copyWith(apsyclip: e.apsyclip.copyWith(diff: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).diff,
+          set: (e, v) => e.copyWith(
+              apsyclip:
+                  (e.apsyclip ?? const ApsyclipSettings()).copyWith(diff: v))),
       IntParam('iterations',
           min: 1,
           max: 20,
           def: 10,
-          get: (e) => e.apsyclip.iterations,
-          set: (e, v) =>
-              e.copyWith(apsyclip: e.apsyclip.copyWith(iterations: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).iterations,
+          set: (e, v) => e.copyWith(
+              apsyclip: (e.apsyclip ?? const ApsyclipSettings())
+                  .copyWith(iterations: v))),
       BoolParam('level',
-          get: (e) => e.apsyclip.level,
-          set: (e, v) => e.copyWith(apsyclip: e.apsyclip.copyWith(level: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).level,
+          set: (e, v) => e.copyWith(
+              apsyclip:
+                  (e.apsyclip ?? const ApsyclipSettings()).copyWith(level: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.apsyclip.level_in,
-          set: (e, v) =>
-              e.copyWith(apsyclip: e.apsyclip.copyWith(level_in: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              apsyclip: (e.apsyclip ?? const ApsyclipSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.apsyclip.level_out,
-          set: (e, v) =>
-              e.copyWith(apsyclip: e.apsyclip.copyWith(level_out: v))),
+          get: (e) => (e.apsyclip ?? const ApsyclipSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              apsyclip: (e.apsyclip ?? const ApsyclipSettings())
+                  .copyWith(level_out: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.apsyclip.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(apsyclip: e.apsyclip.copyWith(enabled: on)),
+    isEnabled: (e) => e.apsyclip?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        apsyclip:
+            (e.apsyclip ?? const ApsyclipSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'apulsator',
@@ -2024,82 +2385,98 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.apulsator.amount,
-          set: (e, v) =>
-              e.copyWith(apulsator: e.apulsator.copyWith(amount: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).amount,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(amount: v))),
       DoubleParam('bpm',
           min: 30.0,
           max: 300.0,
           def: 120.0,
-          get: (e) => e.apulsator.bpm,
-          set: (e, v) => e.copyWith(apulsator: e.apulsator.copyWith(bpm: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).bpm,
+          set: (e, v) => e.copyWith(
+              apulsator:
+                  (e.apulsator ?? const ApulsatorSettings()).copyWith(bpm: v))),
       DoubleParam('hz',
           min: 0.01,
           max: 100.0,
           def: 2.0,
-          get: (e) => e.apulsator.hz,
-          set: (e, v) => e.copyWith(apulsator: e.apulsator.copyWith(hz: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).hz,
+          set: (e, v) => e.copyWith(
+              apulsator:
+                  (e.apulsator ?? const ApulsatorSettings()).copyWith(hz: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.apulsator.level_in,
-          set: (e, v) =>
-              e.copyWith(apulsator: e.apulsator.copyWith(level_in: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.apulsator.level_out,
-          set: (e, v) =>
-              e.copyWith(apulsator: e.apulsator.copyWith(level_out: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(level_out: v))),
       EnumParam('mode',
           options: [
             for (final o in ApulsatorMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.apulsator.mode,
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).mode,
           set: (e, v) => e.copyWith(
-              apulsator: e.apulsator.copyWith(mode: v as ApulsatorMode))),
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(mode: v as ApulsatorMode))),
       IntParam('ms',
           min: 10,
           max: 2000,
           def: 500,
-          get: (e) => e.apulsator.ms,
-          set: (e, v) => e.copyWith(apulsator: e.apulsator.copyWith(ms: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).ms,
+          set: (e, v) => e.copyWith(
+              apulsator:
+                  (e.apulsator ?? const ApulsatorSettings()).copyWith(ms: v))),
       DoubleParam('offset_l',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.apulsator.offset_l,
-          set: (e, v) =>
-              e.copyWith(apulsator: e.apulsator.copyWith(offset_l: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).offset_l,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(offset_l: v))),
       DoubleParam('offset_r',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.apulsator.offset_r,
-          set: (e, v) =>
-              e.copyWith(apulsator: e.apulsator.copyWith(offset_r: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).offset_r,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(offset_r: v))),
       EnumParam('timing',
           options: [
             for (final o in ApulsatorTiming.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.apulsator.timing,
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).timing,
           set: (e, v) => e.copyWith(
-              apulsator: e.apulsator.copyWith(timing: v as ApulsatorTiming))),
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(timing: v as ApulsatorTiming))),
       DoubleParam('width',
           min: 0.0,
           max: 2.0,
           def: 1.0,
-          get: (e) => e.apulsator.width,
-          set: (e, v) => e.copyWith(apulsator: e.apulsator.copyWith(width: v))),
+          get: (e) => (e.apulsator ?? const ApulsatorSettings()).width,
+          set: (e, v) => e.copyWith(
+              apulsator: (e.apulsator ?? const ApulsatorSettings())
+                  .copyWith(width: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.apulsator.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(apulsator: e.apulsator.copyWith(enabled: on)),
+    isEnabled: (e) => e.apulsator?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        apulsator:
+            (e.apulsator ?? const ApulsatorSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'aresample',
@@ -2115,14 +2492,16 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0,
           max: 2147483647,
           def: 0,
-          get: (e) => e.aresample.sample_rate,
-          set: (e, v) =>
-              e.copyWith(aresample: e.aresample.copyWith(sample_rate: v))),
+          get: (e) => (e.aresample ?? const AresampleSettings()).sample_rate,
+          set: (e, v) => e.copyWith(
+              aresample: (e.aresample ?? const AresampleSettings())
+                  .copyWith(sample_rate: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.aresample.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(aresample: e.aresample.copyWith(enabled: on)),
+    isEnabled: (e) => e.aresample?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        aresample:
+            (e.aresample ?? const AresampleSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'arnndn',
@@ -2136,25 +2515,33 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('m',
           required: false,
-          get: (e) => e.arnndn.m,
-          set: (e, v) => e.copyWith(arnndn: e.arnndn.copyWith(m: v))),
+          get: (e) => (e.arnndn ?? const ArnndnSettings(model: '')).m,
+          set: (e, v) => e.copyWith(
+              arnndn: (e.arnndn ?? const ArnndnSettings(model: ''))
+                  .copyWith(m: v))),
       DoubleParam('mix',
           min: -1.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.arnndn.mix,
-          set: (e, v) => e.copyWith(arnndn: e.arnndn.copyWith(mix: v))),
+          get: (e) => (e.arnndn ?? const ArnndnSettings(model: '')).mix,
+          set: (e, v) => e.copyWith(
+              arnndn: (e.arnndn ?? const ArnndnSettings(model: ''))
+                  .copyWith(mix: v))),
       StringParam('model',
           required: true,
-          get: (e) => e.arnndn.model,
-          set: (e, v) => e.copyWith(arnndn: e.arnndn.copyWith(model: v))),
+          get: (e) => (e.arnndn ?? const ArnndnSettings(model: '')).model,
+          set: (e, v) => e.copyWith(
+              arnndn: (e.arnndn ?? const ArnndnSettings(model: ''))
+                  .copyWith(model: v))),
     ],
     presets: [
       (name: 'General', values: {'model': 'assets/models/general.rnnn'}),
       (name: 'Speech', values: {'model': 'assets/models/speech.rnnn'}),
     ],
-    isEnabled: (e) => e.arnndn.enabled,
-    setEnabled: (e, on) => e.copyWith(arnndn: e.arnndn.copyWith(enabled: on)),
+    isEnabled: (e) => e.arnndn?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        arnndn: (e.arnndn ?? const ArnndnSettings(model: ''))
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asetrate',
@@ -2167,9 +2554,10 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [],
     presets: [],
-    isEnabled: (e) => e.asetrate.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(asetrate: e.asetrate.copyWith(enabled: on)),
+    isEnabled: (e) => e.asetrate?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asetrate:
+            (e.asetrate ?? const AsetrateSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asoftclip',
@@ -2185,42 +2573,49 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.000001,
           max: 16.0,
           def: 1.0,
-          get: (e) => e.asoftclip.output,
-          set: (e, v) =>
-              e.copyWith(asoftclip: e.asoftclip.copyWith(output: v))),
+          get: (e) => (e.asoftclip ?? const AsoftclipSettings()).output,
+          set: (e, v) => e.copyWith(
+              asoftclip: (e.asoftclip ?? const AsoftclipSettings())
+                  .copyWith(output: v))),
       IntParam('oversample',
           min: 1,
           max: 64,
           def: 1,
-          get: (e) => e.asoftclip.oversample,
-          set: (e, v) =>
-              e.copyWith(asoftclip: e.asoftclip.copyWith(oversample: v))),
+          get: (e) => (e.asoftclip ?? const AsoftclipSettings()).oversample,
+          set: (e, v) => e.copyWith(
+              asoftclip: (e.asoftclip ?? const AsoftclipSettings())
+                  .copyWith(oversample: v))),
       DoubleParam('param',
           min: 0.01,
           max: 3.0,
           def: 1.0,
-          get: (e) => e.asoftclip.param,
-          set: (e, v) => e.copyWith(asoftclip: e.asoftclip.copyWith(param: v))),
+          get: (e) => (e.asoftclip ?? const AsoftclipSettings()).param,
+          set: (e, v) => e.copyWith(
+              asoftclip: (e.asoftclip ?? const AsoftclipSettings())
+                  .copyWith(param: v))),
       DoubleParam('threshold',
           min: 0.000001,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.asoftclip.threshold,
-          set: (e, v) =>
-              e.copyWith(asoftclip: e.asoftclip.copyWith(threshold: v))),
+          get: (e) => (e.asoftclip ?? const AsoftclipSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              asoftclip: (e.asoftclip ?? const AsoftclipSettings())
+                  .copyWith(threshold: v))),
       EnumParam('type',
           options: [
             for (final o in AsoftclipTypes.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.asoftclip.type,
+          get: (e) => (e.asoftclip ?? const AsoftclipSettings()).type,
           set: (e, v) => e.copyWith(
-              asoftclip: e.asoftclip.copyWith(type: v as AsoftclipTypes))),
+              asoftclip: (e.asoftclip ?? const AsoftclipSettings())
+                  .copyWith(type: v as AsoftclipTypes))),
     ],
     presets: [],
-    isEnabled: (e) => e.asoftclip.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(asoftclip: e.asoftclip.copyWith(enabled: on)),
+    isEnabled: (e) => e.asoftclip?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asoftclip:
+            (e.asoftclip ?? const AsoftclipSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asubcut',
@@ -2236,24 +2631,31 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 2.0,
           max: 200.0,
           def: 20.0,
-          get: (e) => e.asubcut.cutoff,
-          set: (e, v) => e.copyWith(asubcut: e.asubcut.copyWith(cutoff: v))),
+          get: (e) => (e.asubcut ?? const AsubcutSettings()).cutoff,
+          set: (e, v) => e.copyWith(
+              asubcut:
+                  (e.asubcut ?? const AsubcutSettings()).copyWith(cutoff: v))),
       DoubleParam('level',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.asubcut.level,
-          set: (e, v) => e.copyWith(asubcut: e.asubcut.copyWith(level: v))),
+          get: (e) => (e.asubcut ?? const AsubcutSettings()).level,
+          set: (e, v) => e.copyWith(
+              asubcut:
+                  (e.asubcut ?? const AsubcutSettings()).copyWith(level: v))),
       IntParam('order',
           min: 3,
           max: 20,
           def: 10,
-          get: (e) => e.asubcut.order,
-          set: (e, v) => e.copyWith(asubcut: e.asubcut.copyWith(order: v))),
+          get: (e) => (e.asubcut ?? const AsubcutSettings()).order,
+          set: (e, v) => e.copyWith(
+              asubcut:
+                  (e.asubcut ?? const AsubcutSettings()).copyWith(order: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.asubcut.enabled,
-    setEnabled: (e, on) => e.copyWith(asubcut: e.asubcut.copyWith(enabled: on)),
+    isEnabled: (e) => e.asubcut?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asubcut: (e.asubcut ?? const AsubcutSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asupercut',
@@ -2269,26 +2671,32 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 20000.0,
           max: 192000.0,
           def: 20000.0,
-          get: (e) => e.asupercut.cutoff,
-          set: (e, v) =>
-              e.copyWith(asupercut: e.asupercut.copyWith(cutoff: v))),
+          get: (e) => (e.asupercut ?? const AsupercutSettings()).cutoff,
+          set: (e, v) => e.copyWith(
+              asupercut: (e.asupercut ?? const AsupercutSettings())
+                  .copyWith(cutoff: v))),
       DoubleParam('level',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.asupercut.level,
-          set: (e, v) => e.copyWith(asupercut: e.asupercut.copyWith(level: v))),
+          get: (e) => (e.asupercut ?? const AsupercutSettings()).level,
+          set: (e, v) => e.copyWith(
+              asupercut: (e.asupercut ?? const AsupercutSettings())
+                  .copyWith(level: v))),
       IntParam('order',
           min: 3,
           max: 20,
           def: 10,
-          get: (e) => e.asupercut.order,
-          set: (e, v) => e.copyWith(asupercut: e.asupercut.copyWith(order: v))),
+          get: (e) => (e.asupercut ?? const AsupercutSettings()).order,
+          set: (e, v) => e.copyWith(
+              asupercut: (e.asupercut ?? const AsupercutSettings())
+                  .copyWith(order: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.asupercut.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(asupercut: e.asupercut.copyWith(enabled: on)),
+    isEnabled: (e) => e.asupercut?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asupercut:
+            (e.asupercut ?? const AsupercutSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asuperpass',
@@ -2304,35 +2712,40 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 2.0,
           max: 999999.0,
           def: 1000.0,
-          get: (e) => e.asuperpass.centerf,
-          set: (e, v) =>
-              e.copyWith(asuperpass: e.asuperpass.copyWith(centerf: v))),
+          get: (e) => (e.asuperpass ?? const AsuperpassSettings()).centerf,
+          set: (e, v) => e.copyWith(
+              asuperpass: (e.asuperpass ?? const AsuperpassSettings())
+                  .copyWith(centerf: v))),
       DoubleParam('level',
           min: 0.0,
           max: 2.0,
           def: 1.0,
-          get: (e) => e.asuperpass.level,
-          set: (e, v) =>
-              e.copyWith(asuperpass: e.asuperpass.copyWith(level: v))),
+          get: (e) => (e.asuperpass ?? const AsuperpassSettings()).level,
+          set: (e, v) => e.copyWith(
+              asuperpass: (e.asuperpass ?? const AsuperpassSettings())
+                  .copyWith(level: v))),
       IntParam('order',
           min: 4,
           max: 20,
           def: 4,
-          get: (e) => e.asuperpass.order,
-          set: (e, v) =>
-              e.copyWith(asuperpass: e.asuperpass.copyWith(order: v))),
+          get: (e) => (e.asuperpass ?? const AsuperpassSettings()).order,
+          set: (e, v) => e.copyWith(
+              asuperpass: (e.asuperpass ?? const AsuperpassSettings())
+                  .copyWith(order: v))),
       DoubleParam('qfactor',
           min: 0.01,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.asuperpass.qfactor,
-          set: (e, v) =>
-              e.copyWith(asuperpass: e.asuperpass.copyWith(qfactor: v))),
+          get: (e) => (e.asuperpass ?? const AsuperpassSettings()).qfactor,
+          set: (e, v) => e.copyWith(
+              asuperpass: (e.asuperpass ?? const AsuperpassSettings())
+                  .copyWith(qfactor: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.asuperpass.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(asuperpass: e.asuperpass.copyWith(enabled: on)),
+    isEnabled: (e) => e.asuperpass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asuperpass:
+            (e.asuperpass ?? const AsuperpassSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'asuperstop',
@@ -2348,35 +2761,40 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 2.0,
           max: 999999.0,
           def: 1000.0,
-          get: (e) => e.asuperstop.centerf,
-          set: (e, v) =>
-              e.copyWith(asuperstop: e.asuperstop.copyWith(centerf: v))),
+          get: (e) => (e.asuperstop ?? const AsuperstopSettings()).centerf,
+          set: (e, v) => e.copyWith(
+              asuperstop: (e.asuperstop ?? const AsuperstopSettings())
+                  .copyWith(centerf: v))),
       DoubleParam('level',
           min: 0.0,
           max: 2.0,
           def: 1.0,
-          get: (e) => e.asuperstop.level,
-          set: (e, v) =>
-              e.copyWith(asuperstop: e.asuperstop.copyWith(level: v))),
+          get: (e) => (e.asuperstop ?? const AsuperstopSettings()).level,
+          set: (e, v) => e.copyWith(
+              asuperstop: (e.asuperstop ?? const AsuperstopSettings())
+                  .copyWith(level: v))),
       IntParam('order',
           min: 4,
           max: 20,
           def: 4,
-          get: (e) => e.asuperstop.order,
-          set: (e, v) =>
-              e.copyWith(asuperstop: e.asuperstop.copyWith(order: v))),
+          get: (e) => (e.asuperstop ?? const AsuperstopSettings()).order,
+          set: (e, v) => e.copyWith(
+              asuperstop: (e.asuperstop ?? const AsuperstopSettings())
+                  .copyWith(order: v))),
       DoubleParam('qfactor',
           min: 0.01,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.asuperstop.qfactor,
-          set: (e, v) =>
-              e.copyWith(asuperstop: e.asuperstop.copyWith(qfactor: v))),
+          get: (e) => (e.asuperstop ?? const AsuperstopSettings()).qfactor,
+          set: (e, v) => e.copyWith(
+              asuperstop: (e.asuperstop ?? const AsuperstopSettings())
+                  .copyWith(qfactor: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.asuperstop.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(asuperstop: e.asuperstop.copyWith(enabled: on)),
+    isEnabled: (e) => e.asuperstop?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        asuperstop:
+            (e.asuperstop ?? const AsuperstopSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'atempo',
@@ -2392,12 +2810,14 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.5,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.atempo.tempo,
-          set: (e, v) => e.copyWith(atempo: e.atempo.copyWith(tempo: v))),
+          get: (e) => (e.atempo ?? const AtempoSettings()).tempo,
+          set: (e, v) => e.copyWith(
+              atempo: (e.atempo ?? const AtempoSettings()).copyWith(tempo: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.atempo.enabled,
-    setEnabled: (e, on) => e.copyWith(atempo: e.atempo.copyWith(enabled: on)),
+    isEnabled: (e) => e.atempo?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        atempo: (e.atempo ?? const AtempoSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'atilt',
@@ -2413,36 +2833,42 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 20.0,
           max: 192000.0,
           def: 10000.0,
-          get: (e) => e.atilt.freq,
-          set: (e, v) => e.copyWith(atilt: e.atilt.copyWith(freq: v))),
+          get: (e) => (e.atilt ?? const AtiltSettings()).freq,
+          set: (e, v) => e.copyWith(
+              atilt: (e.atilt ?? const AtiltSettings()).copyWith(freq: v))),
       DoubleParam('level',
           min: 0.0,
           max: 4.0,
           def: 1.0,
-          get: (e) => e.atilt.level,
-          set: (e, v) => e.copyWith(atilt: e.atilt.copyWith(level: v))),
+          get: (e) => (e.atilt ?? const AtiltSettings()).level,
+          set: (e, v) => e.copyWith(
+              atilt: (e.atilt ?? const AtiltSettings()).copyWith(level: v))),
       IntParam('order',
           min: 2,
           max: 30,
           def: 5,
-          get: (e) => e.atilt.order,
-          set: (e, v) => e.copyWith(atilt: e.atilt.copyWith(order: v))),
+          get: (e) => (e.atilt ?? const AtiltSettings()).order,
+          set: (e, v) => e.copyWith(
+              atilt: (e.atilt ?? const AtiltSettings()).copyWith(order: v))),
       DoubleParam('slope',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.atilt.slope,
-          set: (e, v) => e.copyWith(atilt: e.atilt.copyWith(slope: v))),
+          get: (e) => (e.atilt ?? const AtiltSettings()).slope,
+          set: (e, v) => e.copyWith(
+              atilt: (e.atilt ?? const AtiltSettings()).copyWith(slope: v))),
       DoubleParam('width',
           min: 100.0,
           max: 10000.0,
           def: 1000.0,
-          get: (e) => e.atilt.width,
-          set: (e, v) => e.copyWith(atilt: e.atilt.copyWith(width: v))),
+          get: (e) => (e.atilt ?? const AtiltSettings()).width,
+          set: (e, v) => e.copyWith(
+              atilt: (e.atilt ?? const AtiltSettings()).copyWith(width: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.atilt.enabled,
-    setEnabled: (e, on) => e.copyWith(atilt: e.atilt.copyWith(enabled: on)),
+    isEnabled: (e) => e.atilt?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        atilt: (e.atilt ?? const AtiltSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'bandpass',
@@ -2459,126 +2885,152 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in BandpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.a,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).a,
           set: (e, v) => e.copyWith(
-              bandpass: e.bandpass.copyWith(a: v as BandpassTransformType))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(a: v as BandpassTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.bandpass.b,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(b: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).b,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.bandpass.blocksize,
-          set: (e, v) =>
-              e.copyWith(bandpass: e.bandpass.copyWith(blocksize: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.bandpass.c,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(c: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).c,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.bandpass.channels,
-          set: (e, v) =>
-              e.copyWith(bandpass: e.bandpass.copyWith(channels: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).channels,
+          set: (e, v) => e.copyWith(
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(channels: v))),
       BoolParam('csg',
-          get: (e) => e.bandpass.csg,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(csg: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).csg,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(csg: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.bandpass.f,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(f: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).f,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.bandpass.frequency,
-          set: (e, v) =>
-              e.copyWith(bandpass: e.bandpass.copyWith(frequency: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.bandpass.m,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(m: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).m,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.bandpass.mix,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(mix: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).mix,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.bandpass.n,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(n: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).n,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.bandpass.normalize,
-          set: (e, v) =>
-              e.copyWith(bandpass: e.bandpass.copyWith(normalize: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(normalize: v))),
       EnumParam('precision',
           options: [
             for (final o in BandpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.precision,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).precision,
           set: (e, v) => e.copyWith(
-              bandpass:
-                  e.bandpass.copyWith(precision: v as BandpassPrecision))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(precision: v as BandpassPrecision))),
       EnumParam('r',
           options: [
             for (final o in BandpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.r,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).r,
           set: (e, v) => e.copyWith(
-              bandpass: e.bandpass.copyWith(r: v as BandpassPrecision))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(r: v as BandpassPrecision))),
       EnumParam('t',
           options: [
             for (final o in BandpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.t,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).t,
           set: (e, v) => e.copyWith(
-              bandpass: e.bandpass.copyWith(t: v as BandpassWidthType))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(t: v as BandpassWidthType))),
       EnumParam('transform',
           options: [
             for (final o in BandpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.transform,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).transform,
           set: (e, v) => e.copyWith(
-              bandpass:
-                  e.bandpass.copyWith(transform: v as BandpassTransformType))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(transform: v as BandpassTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.bandpass.w,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(w: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).w,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.bandpass.width,
-          set: (e, v) => e.copyWith(bandpass: e.bandpass.copyWith(width: v))),
+          get: (e) => (e.bandpass ?? const BandpassSettings()).width,
+          set: (e, v) => e.copyWith(
+              bandpass:
+                  (e.bandpass ?? const BandpassSettings()).copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in BandpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandpass.width_type,
+          get: (e) => (e.bandpass ?? const BandpassSettings()).width_type,
           set: (e, v) => e.copyWith(
-              bandpass:
-                  e.bandpass.copyWith(width_type: v as BandpassWidthType))),
+              bandpass: (e.bandpass ?? const BandpassSettings())
+                  .copyWith(width_type: v as BandpassWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.bandpass.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(bandpass: e.bandpass.copyWith(enabled: on)),
+    isEnabled: (e) => e.bandpass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        bandpass:
+            (e.bandpass ?? const BandpassSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'bandreject',
@@ -2595,125 +3047,147 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in BandrejectTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.a,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).a,
           set: (e, v) => e.copyWith(
-              bandreject:
-                  e.bandreject.copyWith(a: v as BandrejectTransformType))),
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(a: v as BandrejectTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.bandreject.b,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(b: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).b,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.bandreject.blocksize,
-          set: (e, v) =>
-              e.copyWith(bandreject: e.bandreject.copyWith(blocksize: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.bandreject.c,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(c: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).c,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.bandreject.channels,
-          set: (e, v) =>
-              e.copyWith(bandreject: e.bandreject.copyWith(channels: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).channels,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.bandreject.f,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(f: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).f,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.bandreject.frequency,
-          set: (e, v) =>
-              e.copyWith(bandreject: e.bandreject.copyWith(frequency: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.bandreject.m,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(m: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).m,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.bandreject.mix,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(mix: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).mix,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.bandreject.n,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(n: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).n,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.bandreject.normalize,
-          set: (e, v) =>
-              e.copyWith(bandreject: e.bandreject.copyWith(normalize: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(normalize: v))),
       EnumParam('precision',
           options: [
             for (final o in BandrejectPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.precision,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).precision,
           set: (e, v) => e.copyWith(
-              bandreject:
-                  e.bandreject.copyWith(precision: v as BandrejectPrecision))),
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(precision: v as BandrejectPrecision))),
       EnumParam('r',
           options: [
             for (final o in BandrejectPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.r,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).r,
           set: (e, v) => e.copyWith(
-              bandreject: e.bandreject.copyWith(r: v as BandrejectPrecision))),
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(r: v as BandrejectPrecision))),
       EnumParam('t',
           options: [
             for (final o in BandrejectWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.t,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).t,
           set: (e, v) => e.copyWith(
-              bandreject: e.bandreject.copyWith(t: v as BandrejectWidthType))),
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(t: v as BandrejectWidthType))),
       EnumParam('transform',
           options: [
             for (final o in BandrejectTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.transform,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).transform,
           set: (e, v) => e.copyWith(
-              bandreject: e.bandreject
+              bandreject: (e.bandreject ?? const BandrejectSettings())
                   .copyWith(transform: v as BandrejectTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.bandreject.w,
-          set: (e, v) => e.copyWith(bandreject: e.bandreject.copyWith(w: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).w,
+          set: (e, v) => e.copyWith(
+              bandreject:
+                  (e.bandreject ?? const BandrejectSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.bandreject.width,
-          set: (e, v) =>
-              e.copyWith(bandreject: e.bandreject.copyWith(width: v))),
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).width,
+          set: (e, v) => e.copyWith(
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in BandrejectWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.bandreject.width_type,
+          get: (e) => (e.bandreject ?? const BandrejectSettings()).width_type,
           set: (e, v) => e.copyWith(
-              bandreject:
-                  e.bandreject.copyWith(width_type: v as BandrejectWidthType))),
+              bandreject: (e.bandreject ?? const BandrejectSettings())
+                  .copyWith(width_type: v as BandrejectWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.bandreject.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(bandreject: e.bandreject.copyWith(enabled: on)),
+    isEnabled: (e) => e.bandreject?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        bandreject:
+            (e.bandreject ?? const BandrejectSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'biquad',
@@ -2730,111 +3204,133 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in BiquadTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.biquad.a,
+          get: (e) => (e.biquad ?? const BiquadSettings()).a,
           set: (e, v) => e.copyWith(
-              biquad: e.biquad.copyWith(a: v as BiquadTransformType))),
+              biquad: (e.biquad ?? const BiquadSettings())
+                  .copyWith(a: v as BiquadTransformType))),
       DoubleParam('a0',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 1.0,
-          get: (e) => e.biquad.a0,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(a0: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).a0,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(a0: v))),
       DoubleParam('a1',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.biquad.a1,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(a1: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).a1,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(a1: v))),
       DoubleParam('a2',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.biquad.a2,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(a2: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).a2,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(a2: v))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.biquad.b,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(b: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).b,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(b: v))),
       DoubleParam('b0',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.biquad.b0,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(b0: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).b0,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(b0: v))),
       DoubleParam('b1',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.biquad.b1,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(b1: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).b1,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(b1: v))),
       DoubleParam('b2',
           min: -2147483648.0,
           max: 2147483647.0,
           def: 0.0,
-          get: (e) => e.biquad.b2,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(b2: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).b2,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(b2: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.biquad.blocksize,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(blocksize: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              biquad:
+                  (e.biquad ?? const BiquadSettings()).copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.biquad.c,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(c: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).c,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.biquad.channels,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(channels: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).channels,
+          set: (e, v) => e.copyWith(
+              biquad:
+                  (e.biquad ?? const BiquadSettings()).copyWith(channels: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.biquad.m,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(m: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).m,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.biquad.mix,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(mix: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).mix,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.biquad.n,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(n: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).n,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.biquad.normalize,
-          set: (e, v) => e.copyWith(biquad: e.biquad.copyWith(normalize: v))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              biquad:
+                  (e.biquad ?? const BiquadSettings()).copyWith(normalize: v))),
       EnumParam('precision',
           options: [
             for (final o in BiquadPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.biquad.precision,
+          get: (e) => (e.biquad ?? const BiquadSettings()).precision,
           set: (e, v) => e.copyWith(
-              biquad: e.biquad.copyWith(precision: v as BiquadPrecision))),
+              biquad: (e.biquad ?? const BiquadSettings())
+                  .copyWith(precision: v as BiquadPrecision))),
       EnumParam('r',
           options: [
             for (final o in BiquadPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.biquad.r,
-          set: (e, v) =>
-              e.copyWith(biquad: e.biquad.copyWith(r: v as BiquadPrecision))),
+          get: (e) => (e.biquad ?? const BiquadSettings()).r,
+          set: (e, v) => e.copyWith(
+              biquad: (e.biquad ?? const BiquadSettings())
+                  .copyWith(r: v as BiquadPrecision))),
       EnumParam('transform',
           options: [
             for (final o in BiquadTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.biquad.transform,
+          get: (e) => (e.biquad ?? const BiquadSettings()).transform,
           set: (e, v) => e.copyWith(
-              biquad: e.biquad.copyWith(transform: v as BiquadTransformType))),
+              biquad: (e.biquad ?? const BiquadSettings())
+                  .copyWith(transform: v as BiquadTransformType))),
     ],
     presets: [],
-    isEnabled: (e) => e.biquad.enabled,
-    setEnabled: (e, on) => e.copyWith(biquad: e.biquad.copyWith(enabled: on)),
+    isEnabled: (e) => e.biquad?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        biquad: (e.biquad ?? const BiquadSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'channelmap',
@@ -2848,21 +3344,29 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('channel_layout',
           required: false,
-          get: (e) => e.channelmap.channel_layout ?? '',
-          set: (e, v) =>
-              e.copyWith(channelmap: e.channelmap.copyWith(channel_layout: v))),
+          get: (e) =>
+              (e.channelmap ?? const ChannelmapSettings(map: '0|1'))
+                  .channel_layout ??
+              '',
+          set: (e, v) => e.copyWith(
+              channelmap: (e.channelmap ?? const ChannelmapSettings(map: '0|1'))
+                  .copyWith(channel_layout: v))),
       StringParam('map',
           required: true,
-          get: (e) => e.channelmap.map,
-          set: (e, v) => e.copyWith(channelmap: e.channelmap.copyWith(map: v))),
+          get: (e) =>
+              (e.channelmap ?? const ChannelmapSettings(map: '0|1')).map,
+          set: (e, v) => e.copyWith(
+              channelmap: (e.channelmap ?? const ChannelmapSettings(map: '0|1'))
+                  .copyWith(map: v))),
     ],
     presets: [
       (name: 'Stereo (0|1)', values: {'map': '0|1'}),
       (name: 'Swap (1|0)', values: {'map': '1|0'}),
     ],
-    isEnabled: (e) => e.channelmap.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(channelmap: e.channelmap.copyWith(enabled: on)),
+    isEnabled: (e) => e.channelmap?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        channelmap: (e.channelmap ?? const ChannelmapSettings(map: '0|1'))
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'chorus',
@@ -2876,32 +3380,110 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('decays',
           required: true,
-          get: (e) => e.chorus.decays,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(decays: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .decays,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(decays: v))),
       StringParam('delays',
           required: true,
-          get: (e) => e.chorus.delays,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(delays: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .delays,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(delays: v))),
       StringParam('depths',
           required: true,
-          get: (e) => e.chorus.depths,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(depths: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .depths,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(depths: v))),
       DoubleParam('in_gain',
           min: 0.0,
           max: 1.0,
           def: 0.4,
-          get: (e) => e.chorus.in_gain,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(in_gain: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .in_gain,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(in_gain: v))),
       DoubleParam('out_gain',
           min: 0.0,
           max: 1.0,
           def: 0.4,
-          get: (e) => e.chorus.out_gain,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(out_gain: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .out_gain,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(out_gain: v))),
       StringParam('speeds',
           required: true,
-          get: (e) => e.chorus.speeds,
-          set: (e, v) => e.copyWith(chorus: e.chorus.copyWith(speeds: v))),
+          get: (e) => (e.chorus ??
+                  const ChorusSettings(
+                      delays: '55|60',
+                      decays: '0.4|0.32',
+                      speeds: '0.25|0.4',
+                      depths: '2|1.3'))
+              .speeds,
+          set: (e, v) => e.copyWith(
+              chorus: (e.chorus ??
+                      const ChorusSettings(
+                          delays: '55|60',
+                          decays: '0.4|0.32',
+                          speeds: '0.25|0.4',
+                          depths: '2|1.3'))
+                  .copyWith(speeds: v))),
     ],
     presets: [
       (
@@ -2932,8 +3514,15 @@ final List<FilterDescriptor> kFilterCatalog = [
         }
       ),
     ],
-    isEnabled: (e) => e.chorus.enabled,
-    setEnabled: (e, on) => e.copyWith(chorus: e.chorus.copyWith(enabled: on)),
+    isEnabled: (e) => e.chorus?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        chorus: (e.chorus ??
+                const ChorusSettings(
+                    delays: '55|60',
+                    decays: '0.4|0.32',
+                    speeds: '0.25|0.4',
+                    depths: '2|1.3'))
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'compand',
@@ -2947,38 +3536,51 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('attacks',
           required: false,
-          get: (e) => e.compand.attacks,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(attacks: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).attacks,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(attacks: v))),
       StringParam('decays',
           required: false,
-          get: (e) => e.compand.decays,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(decays: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).decays,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(decays: v))),
       DoubleParam('delay',
           min: 0.0,
           max: 20.0,
           def: 0.0,
-          get: (e) => e.compand.delay,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(delay: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).delay,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(delay: v))),
       DoubleParam('gain',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.compand.gain,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(gain: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).gain,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(gain: v))),
       StringParam('points',
           required: false,
-          get: (e) => e.compand.points,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(points: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).points,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(points: v))),
       DoubleParam('volume',
           min: -900.0,
           max: 0.0,
           def: 0.0,
-          get: (e) => e.compand.volume,
-          set: (e, v) => e.copyWith(compand: e.compand.copyWith(volume: v))),
+          get: (e) => (e.compand ?? const CompandSettings()).volume,
+          set: (e, v) => e.copyWith(
+              compand:
+                  (e.compand ?? const CompandSettings()).copyWith(volume: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.compand.enabled,
-    setEnabled: (e, on) => e.copyWith(compand: e.compand.copyWith(enabled: on)),
+    isEnabled: (e) => e.compand?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        compand: (e.compand ?? const CompandSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'compensationdelay',
@@ -2994,49 +3596,69 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0,
           max: 100,
           def: 0,
-          get: (e) => e.compensationdelay.cm,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).cm,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(cm: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(cm: v))),
       DoubleParam('dry',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.compensationdelay.dry,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).dry,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(dry: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(dry: v))),
       IntParam('m',
           min: 0,
           max: 100,
           def: 0,
-          get: (e) => e.compensationdelay.m,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).m,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(m: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(m: v))),
       IntParam('mm',
           min: 0,
           max: 10,
           def: 0,
-          get: (e) => e.compensationdelay.mm,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).mm,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(mm: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(mm: v))),
       IntParam('temp',
           min: -50,
           max: 50,
           def: 20,
-          get: (e) => e.compensationdelay.temp,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).temp,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(temp: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(temp: v))),
       DoubleParam('wet',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.compensationdelay.wet,
+          get: (e) =>
+              (e.compensationdelay ?? const CompensationdelaySettings()).wet,
           set: (e, v) => e.copyWith(
-              compensationdelay: e.compensationdelay.copyWith(wet: v))),
+              compensationdelay:
+                  (e.compensationdelay ?? const CompensationdelaySettings())
+                      .copyWith(wet: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.compensationdelay.enabled,
+    isEnabled: (e) => e.compensationdelay?.enabled ?? false,
     setEnabled: (e, on) => e.copyWith(
-        compensationdelay: e.compensationdelay.copyWith(enabled: on)),
+        compensationdelay:
+            (e.compensationdelay ?? const CompensationdelaySettings())
+                .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'dcshift',
@@ -3052,19 +3674,23 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dcshift.limitergain,
-          set: (e, v) =>
-              e.copyWith(dcshift: e.dcshift.copyWith(limitergain: v))),
+          get: (e) => (e.dcshift ?? const DcshiftSettings()).limitergain,
+          set: (e, v) => e.copyWith(
+              dcshift: (e.dcshift ?? const DcshiftSettings())
+                  .copyWith(limitergain: v))),
       DoubleParam('shift',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dcshift.shift,
-          set: (e, v) => e.copyWith(dcshift: e.dcshift.copyWith(shift: v))),
+          get: (e) => (e.dcshift ?? const DcshiftSettings()).shift,
+          set: (e, v) => e.copyWith(
+              dcshift:
+                  (e.dcshift ?? const DcshiftSettings()).copyWith(shift: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.dcshift.enabled,
-    setEnabled: (e, on) => e.copyWith(dcshift: e.dcshift.copyWith(enabled: on)),
+    isEnabled: (e) => e.dcshift?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        dcshift: (e.dcshift ?? const DcshiftSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'deesser',
@@ -3080,32 +3706,37 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.deesser.f,
-          set: (e, v) => e.copyWith(deesser: e.deesser.copyWith(f: v))),
+          get: (e) => (e.deesser ?? const DeesserSettings()).f,
+          set: (e, v) => e.copyWith(
+              deesser: (e.deesser ?? const DeesserSettings()).copyWith(f: v))),
       DoubleParam('i',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.deesser.i,
-          set: (e, v) => e.copyWith(deesser: e.deesser.copyWith(i: v))),
+          get: (e) => (e.deesser ?? const DeesserSettings()).i,
+          set: (e, v) => e.copyWith(
+              deesser: (e.deesser ?? const DeesserSettings()).copyWith(i: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.deesser.m,
-          set: (e, v) => e.copyWith(deesser: e.deesser.copyWith(m: v))),
+          get: (e) => (e.deesser ?? const DeesserSettings()).m,
+          set: (e, v) => e.copyWith(
+              deesser: (e.deesser ?? const DeesserSettings()).copyWith(m: v))),
       EnumParam('s',
           options: [
             for (final o in DeesserMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.deesser.s,
-          set: (e, v) =>
-              e.copyWith(deesser: e.deesser.copyWith(s: v as DeesserMode))),
+          get: (e) => (e.deesser ?? const DeesserSettings()).s,
+          set: (e, v) => e.copyWith(
+              deesser: (e.deesser ?? const DeesserSettings())
+                  .copyWith(s: v as DeesserMode))),
     ],
     presets: [],
-    isEnabled: (e) => e.deesser.enabled,
-    setEnabled: (e, on) => e.copyWith(deesser: e.deesser.copyWith(enabled: on)),
+    isEnabled: (e) => e.deesser?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        deesser: (e.deesser ?? const DeesserSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'dialoguenhance',
@@ -3121,28 +3752,38 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 3.0,
           def: 1.0,
-          get: (e) => e.dialoguenhance.enhance,
+          get: (e) =>
+              (e.dialoguenhance ?? const DialoguenhanceSettings()).enhance,
           set: (e, v) => e.copyWith(
-              dialoguenhance: e.dialoguenhance.copyWith(enhance: v))),
+              dialoguenhance:
+                  (e.dialoguenhance ?? const DialoguenhanceSettings())
+                      .copyWith(enhance: v))),
       DoubleParam('original',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.dialoguenhance.original,
+          get: (e) =>
+              (e.dialoguenhance ?? const DialoguenhanceSettings()).original,
           set: (e, v) => e.copyWith(
-              dialoguenhance: e.dialoguenhance.copyWith(original: v))),
+              dialoguenhance:
+                  (e.dialoguenhance ?? const DialoguenhanceSettings())
+                      .copyWith(original: v))),
       DoubleParam('voice',
           min: 2.0,
           max: 32.0,
           def: 2.0,
-          get: (e) => e.dialoguenhance.voice,
-          set: (e, v) =>
-              e.copyWith(dialoguenhance: e.dialoguenhance.copyWith(voice: v))),
+          get: (e) =>
+              (e.dialoguenhance ?? const DialoguenhanceSettings()).voice,
+          set: (e, v) => e.copyWith(
+              dialoguenhance:
+                  (e.dialoguenhance ?? const DialoguenhanceSettings())
+                      .copyWith(voice: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.dialoguenhance.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(dialoguenhance: e.dialoguenhance.copyWith(enabled: on)),
+    isEnabled: (e) => e.dialoguenhance?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        dialoguenhance: (e.dialoguenhance ?? const DialoguenhanceSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'drmeter',
@@ -3158,12 +3799,15 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.01,
           max: 10.0,
           def: 3.0,
-          get: (e) => e.drmeter.length,
-          set: (e, v) => e.copyWith(drmeter: e.drmeter.copyWith(length: v))),
+          get: (e) => (e.drmeter ?? const DrmeterSettings()).length,
+          set: (e, v) => e.copyWith(
+              drmeter:
+                  (e.drmeter ?? const DrmeterSettings()).copyWith(length: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.drmeter.enabled,
-    setEnabled: (e, on) => e.copyWith(drmeter: e.drmeter.copyWith(enabled: on)),
+    isEnabled: (e) => e.drmeter?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        drmeter: (e.drmeter ?? const DrmeterSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'dynaudnorm',
@@ -3176,153 +3820,193 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [
       BoolParam('altboundary',
-          get: (e) => e.dynaudnorm.altboundary,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(altboundary: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).altboundary,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(altboundary: v))),
       BoolParam('b',
-          get: (e) => e.dynaudnorm.b,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(b: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).b,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(b: v))),
       BoolParam('c',
-          get: (e) => e.dynaudnorm.c,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(c: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).c,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.dynaudnorm.channels,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(channels: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).channels,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(channels: v))),
       DoubleParam('compress',
           min: 0.0,
           max: 30.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.compress,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(compress: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).compress,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(compress: v))),
       BoolParam('correctdc',
-          get: (e) => e.dynaudnorm.correctdc,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(correctdc: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).correctdc,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(correctdc: v))),
       BoolParam('coupling',
-          get: (e) => e.dynaudnorm.coupling,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(coupling: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).coupling,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(coupling: v))),
       StringParam('curve',
           required: false,
-          get: (e) => e.dynaudnorm.curve,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(curve: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).curve,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(curve: v))),
       IntParam('f',
           min: 10,
           max: 8000,
           def: 500,
-          get: (e) => e.dynaudnorm.f,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(f: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).f,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(f: v))),
       IntParam('framelen',
           min: 10,
           max: 8000,
           def: 500,
-          get: (e) => e.dynaudnorm.framelen,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(framelen: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).framelen,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(framelen: v))),
       IntParam('g',
           min: 3,
           max: 301,
           def: 31,
-          get: (e) => e.dynaudnorm.g,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(g: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).g,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(g: v))),
       IntParam('gausssize',
           min: 3,
           max: 301,
           def: 31,
-          get: (e) => e.dynaudnorm.gausssize,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(gausssize: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).gausssize,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(gausssize: v))),
       StringParam('h',
           required: false,
-          get: (e) => e.dynaudnorm.h,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(h: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).h,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(h: v))),
       DoubleParam('m',
           min: 1.0,
           max: 100.0,
           def: 10.0,
-          get: (e) => e.dynaudnorm.m,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(m: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).m,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(m: v))),
       DoubleParam('maxgain',
           min: 1.0,
           max: 100.0,
           def: 10.0,
-          get: (e) => e.dynaudnorm.maxgain,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(maxgain: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).maxgain,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(maxgain: v))),
       BoolParam('n',
-          get: (e) => e.dynaudnorm.n,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(n: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).n,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(n: v))),
       DoubleParam('o',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.o,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(o: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).o,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(o: v))),
       DoubleParam('overlap',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.overlap,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(overlap: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).overlap,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(overlap: v))),
       DoubleParam('p',
           min: 0.0,
           max: 1.0,
           def: 0.95,
-          get: (e) => e.dynaudnorm.p,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(p: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).p,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(p: v))),
       DoubleParam('peak',
           min: 0.0,
           max: 1.0,
           def: 0.95,
-          get: (e) => e.dynaudnorm.peak,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(peak: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).peak,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(peak: v))),
       DoubleParam('r',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.r,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(r: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).r,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(r: v))),
       DoubleParam('s',
           min: 0.0,
           max: 30.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.s,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(s: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).s,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(s: v))),
       DoubleParam('t',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.t,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(t: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).t,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(t: v))),
       DoubleParam('targetrms',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.targetrms,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(targetrms: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).targetrms,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(targetrms: v))),
       DoubleParam('threshold',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.dynaudnorm.threshold,
-          set: (e, v) =>
-              e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(threshold: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              dynaudnorm: (e.dynaudnorm ?? const DynaudnormSettings())
+                  .copyWith(threshold: v))),
       StringParam('v',
           required: false,
-          get: (e) => e.dynaudnorm.v,
-          set: (e, v) => e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(v: v))),
+          get: (e) => (e.dynaudnorm ?? const DynaudnormSettings()).v,
+          set: (e, v) => e.copyWith(
+              dynaudnorm:
+                  (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(v: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.dynaudnorm.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(dynaudnorm: e.dynaudnorm.copyWith(enabled: on)),
+    isEnabled: (e) => e.dynaudnorm?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        dynaudnorm:
+            (e.dynaudnorm ?? const DynaudnormSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'earwax',
@@ -3335,8 +4019,9 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [],
     presets: [],
-    isEnabled: (e) => e.earwax.enabled,
-    setEnabled: (e, on) => e.copyWith(earwax: e.earwax.copyWith(enabled: on)),
+    isEnabled: (e) => e.earwax?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        earwax: (e.earwax ?? const EarwaxSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'ebur128',
@@ -3349,64 +4034,82 @@ final List<FilterDescriptor> kFilterCatalog = [
     fileParam: null,
     params: [
       BoolParam('dualmono',
-          get: (e) => e.ebur128.dualmono,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(dualmono: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).dualmono,
+          set: (e, v) => e.copyWith(
+              ebur128: (e.ebur128 ?? const Ebur128Settings())
+                  .copyWith(dualmono: v))),
       EnumParam('framelog',
           options: [
             for (final o in Ebur128Level.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.ebur128.framelog,
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).framelog,
           set: (e, v) => e.copyWith(
-              ebur128: e.ebur128.copyWith(framelog: v as Ebur128Level))),
+              ebur128: (e.ebur128 ?? const Ebur128Settings())
+                  .copyWith(framelog: v as Ebur128Level))),
       EnumParam('gauge',
           options: [
             for (final o in Ebur128Gaugetype.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.ebur128.gauge,
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).gauge,
           set: (e, v) => e.copyWith(
-              ebur128: e.ebur128.copyWith(gauge: v as Ebur128Gaugetype))),
+              ebur128: (e.ebur128 ?? const Ebur128Settings())
+                  .copyWith(gauge: v as Ebur128Gaugetype))),
       BoolParam('metadata',
-          get: (e) => e.ebur128.metadata,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(metadata: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).metadata,
+          set: (e, v) => e.copyWith(
+              ebur128: (e.ebur128 ?? const Ebur128Settings())
+                  .copyWith(metadata: v))),
       IntParam('meter',
           min: 9,
           max: 18,
           def: 9,
-          get: (e) => e.ebur128.meter,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(meter: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).meter,
+          set: (e, v) => e.copyWith(
+              ebur128:
+                  (e.ebur128 ?? const Ebur128Settings()).copyWith(meter: v))),
       DoubleParam('panlaw',
           min: -10.0,
           max: 0.0,
           def: -3.01029995663978,
-          get: (e) => e.ebur128.panlaw,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(panlaw: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).panlaw,
+          set: (e, v) => e.copyWith(
+              ebur128:
+                  (e.ebur128 ?? const Ebur128Settings()).copyWith(panlaw: v))),
       EnumParam('scale',
           options: [
             for (final o in Ebur128Scaletype.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.ebur128.scale,
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).scale,
           set: (e, v) => e.copyWith(
-              ebur128: e.ebur128.copyWith(scale: v as Ebur128Scaletype))),
+              ebur128: (e.ebur128 ?? const Ebur128Settings())
+                  .copyWith(scale: v as Ebur128Scaletype))),
       StringParam('size',
           required: false,
-          get: (e) => e.ebur128.size,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(size: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).size,
+          set: (e, v) => e.copyWith(
+              ebur128:
+                  (e.ebur128 ?? const Ebur128Settings()).copyWith(size: v))),
       IntParam('target',
           min: -23,
           max: 0,
           def: -23,
-          get: (e) => e.ebur128.target,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(target: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).target,
+          set: (e, v) => e.copyWith(
+              ebur128:
+                  (e.ebur128 ?? const Ebur128Settings()).copyWith(target: v))),
       BoolParam('video',
-          get: (e) => e.ebur128.video,
-          set: (e, v) => e.copyWith(ebur128: e.ebur128.copyWith(video: v))),
+          get: (e) => (e.ebur128 ?? const Ebur128Settings()).video,
+          set: (e, v) => e.copyWith(
+              ebur128:
+                  (e.ebur128 ?? const Ebur128Settings()).copyWith(video: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.ebur128.enabled,
-    setEnabled: (e, on) => e.copyWith(ebur128: e.ebur128.copyWith(enabled: on)),
+    isEnabled: (e) => e.ebur128?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        ebur128: (e.ebur128 ?? const Ebur128Settings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'equalizer',
@@ -3423,135 +4126,163 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in EqualizerTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.a,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).a,
           set: (e, v) => e.copyWith(
-              equalizer: e.equalizer.copyWith(a: v as EqualizerTransformType))),
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(a: v as EqualizerTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.equalizer.b,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(b: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).b,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.equalizer.blocksize,
-          set: (e, v) =>
-              e.copyWith(equalizer: e.equalizer.copyWith(blocksize: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.equalizer.c,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(c: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).c,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.equalizer.channels,
-          set: (e, v) =>
-              e.copyWith(equalizer: e.equalizer.copyWith(channels: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).channels,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 0.0,
-          get: (e) => e.equalizer.f,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(f: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).f,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 0.0,
-          get: (e) => e.equalizer.frequency,
-          set: (e, v) =>
-              e.copyWith(equalizer: e.equalizer.copyWith(frequency: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('g',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.equalizer.g,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(g: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).g,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(g: v))),
       DoubleParam('gain',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.equalizer.gain,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(gain: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).gain,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(gain: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.equalizer.m,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(m: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).m,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.equalizer.mix,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(mix: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).mix,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.equalizer.n,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(n: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).n,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.equalizer.normalize,
-          set: (e, v) =>
-              e.copyWith(equalizer: e.equalizer.copyWith(normalize: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(normalize: v))),
       EnumParam('precision',
           options: [
             for (final o in EqualizerPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.precision,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).precision,
           set: (e, v) => e.copyWith(
-              equalizer:
-                  e.equalizer.copyWith(precision: v as EqualizerPrecision))),
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(precision: v as EqualizerPrecision))),
       EnumParam('r',
           options: [
             for (final o in EqualizerPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.r,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).r,
           set: (e, v) => e.copyWith(
-              equalizer: e.equalizer.copyWith(r: v as EqualizerPrecision))),
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(r: v as EqualizerPrecision))),
       EnumParam('t',
           options: [
             for (final o in EqualizerWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.t,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).t,
           set: (e, v) => e.copyWith(
-              equalizer: e.equalizer.copyWith(t: v as EqualizerWidthType))),
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(t: v as EqualizerWidthType))),
       EnumParam('transform',
           options: [
             for (final o in EqualizerTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.transform,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).transform,
           set: (e, v) => e.copyWith(
-              equalizer: e.equalizer
+              equalizer: (e.equalizer ?? const EqualizerSettings())
                   .copyWith(transform: v as EqualizerTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 1.0,
-          get: (e) => e.equalizer.w,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(w: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).w,
+          set: (e, v) => e.copyWith(
+              equalizer:
+                  (e.equalizer ?? const EqualizerSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 1.0,
-          get: (e) => e.equalizer.width,
-          set: (e, v) => e.copyWith(equalizer: e.equalizer.copyWith(width: v))),
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).width,
+          set: (e, v) => e.copyWith(
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in EqualizerWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.equalizer.width_type,
+          get: (e) => (e.equalizer ?? const EqualizerSettings()).width_type,
           set: (e, v) => e.copyWith(
-              equalizer:
-                  e.equalizer.copyWith(width_type: v as EqualizerWidthType))),
+              equalizer: (e.equalizer ?? const EqualizerSettings())
+                  .copyWith(width_type: v as EqualizerWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.equalizer.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(equalizer: e.equalizer.copyWith(enabled: on)),
+    isEnabled: (e) => e.equalizer?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        equalizer:
+            (e.equalizer ?? const EqualizerSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'firequalizer',
@@ -3567,83 +4298,98 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1e10,
           def: 5.0,
-          get: (e) => e.firequalizer.accuracy,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(accuracy: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).accuracy,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(accuracy: v))),
       DoubleParam('delay',
           min: 0.0,
           max: 1e10,
           def: 0.01,
-          get: (e) => e.firequalizer.delay,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(delay: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).delay,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(delay: v))),
       StringParam('dumpfile',
           required: false,
-          get: (e) => e.firequalizer.dumpfile,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(dumpfile: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).dumpfile,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(dumpfile: v))),
       EnumParam('dumpscale',
           options: [
             for (final o in FirequalizerScale.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.firequalizer.dumpscale,
+          get: (e) =>
+              (e.firequalizer ?? const FirequalizerSettings()).dumpscale,
           set: (e, v) => e.copyWith(
-              firequalizer:
-                  e.firequalizer.copyWith(dumpscale: v as FirequalizerScale))),
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(dumpscale: v as FirequalizerScale))),
       BoolParam('fft2',
-          get: (e) => e.firequalizer.fft2,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(fft2: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).fft2,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(fft2: v))),
       BoolParam('fixed',
-          get: (e) => e.firequalizer.fixed,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(fixed: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).fixed,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(fixed: v))),
       StringParam('gain',
           required: false,
-          get: (e) => e.firequalizer.gain,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(gain: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).gain,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(gain: v))),
       StringParam('gain_entry',
           required: false,
-          get: (e) => e.firequalizer.gain_entry,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(gain_entry: v))),
+          get: (e) =>
+              (e.firequalizer ?? const FirequalizerSettings()).gain_entry,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(gain_entry: v))),
       BoolParam('min_phase',
-          get: (e) => e.firequalizer.min_phase,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(min_phase: v))),
+          get: (e) =>
+              (e.firequalizer ?? const FirequalizerSettings()).min_phase,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(min_phase: v))),
       BoolParam('multi',
-          get: (e) => e.firequalizer.multi,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(multi: v))),
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).multi,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(multi: v))),
       EnumParam('scale',
           options: [
             for (final o in FirequalizerScale.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.firequalizer.scale,
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).scale,
           set: (e, v) => e.copyWith(
-              firequalizer:
-                  e.firequalizer.copyWith(scale: v as FirequalizerScale))),
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(scale: v as FirequalizerScale))),
       EnumParam('wfunc',
           options: [
             for (final o in FirequalizerWfunc.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.firequalizer.wfunc,
+          get: (e) => (e.firequalizer ?? const FirequalizerSettings()).wfunc,
           set: (e, v) => e.copyWith(
-              firequalizer:
-                  e.firequalizer.copyWith(wfunc: v as FirequalizerWfunc))),
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(wfunc: v as FirequalizerWfunc))),
       BoolParam('zero_phase',
-          get: (e) => e.firequalizer.zero_phase,
-          set: (e, v) =>
-              e.copyWith(firequalizer: e.firequalizer.copyWith(zero_phase: v))),
+          get: (e) =>
+              (e.firequalizer ?? const FirequalizerSettings()).zero_phase,
+          set: (e, v) => e.copyWith(
+              firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+                  .copyWith(zero_phase: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.firequalizer.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(firequalizer: e.firequalizer.copyWith(enabled: on)),
+    isEnabled: (e) => e.firequalizer?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        firequalizer: (e.firequalizer ?? const FirequalizerSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'flanger',
@@ -3659,58 +4405,73 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 30.0,
           def: 0.0,
-          get: (e) => e.flanger.delay,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(delay: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).delay,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(delay: v))),
       DoubleParam('depth',
           min: 0.0,
           max: 10.0,
           def: 2.0,
-          get: (e) => e.flanger.depth,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(depth: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).depth,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(depth: v))),
       EnumParam('interp',
           options: [
             for (final o in FlangerItype.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.flanger.interp,
+          get: (e) => (e.flanger ?? const FlangerSettings()).interp,
           set: (e, v) => e.copyWith(
-              flanger: e.flanger.copyWith(interp: v as FlangerItype))),
+              flanger: (e.flanger ?? const FlangerSettings())
+                  .copyWith(interp: v as FlangerItype))),
       DoubleParam('phase',
           min: 0.0,
           max: 100.0,
           def: 25.0,
-          get: (e) => e.flanger.phase,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(phase: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).phase,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(phase: v))),
       DoubleParam('regen',
           min: -95.0,
           max: 95.0,
           def: 0.0,
-          get: (e) => e.flanger.regen,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(regen: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).regen,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(regen: v))),
       EnumParam('shape',
           options: [
             for (final o in FlangerType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.flanger.shape,
-          set: (e, v) =>
-              e.copyWith(flanger: e.flanger.copyWith(shape: v as FlangerType))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).shape,
+          set: (e, v) => e.copyWith(
+              flanger: (e.flanger ?? const FlangerSettings())
+                  .copyWith(shape: v as FlangerType))),
       DoubleParam('speed',
           min: 0.1,
           max: 10.0,
           def: 0.5,
-          get: (e) => e.flanger.speed,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(speed: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).speed,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(speed: v))),
       DoubleParam('width',
           min: 0.0,
           max: 100.0,
           def: 71.0,
-          get: (e) => e.flanger.width,
-          set: (e, v) => e.copyWith(flanger: e.flanger.copyWith(width: v))),
+          get: (e) => (e.flanger ?? const FlangerSettings()).width,
+          set: (e, v) => e.copyWith(
+              flanger:
+                  (e.flanger ?? const FlangerSettings()).copyWith(width: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.flanger.enabled,
-    setEnabled: (e, on) => e.copyWith(flanger: e.flanger.copyWith(enabled: on)),
+    isEnabled: (e) => e.flanger?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        flanger: (e.flanger ?? const FlangerSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'haas',
@@ -3726,77 +4487,94 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: -1.0,
           max: 1.0,
           def: -1.0,
-          get: (e) => e.haas.left_balance,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(left_balance: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).left_balance,
+          set: (e, v) => e.copyWith(
+              haas:
+                  (e.haas ?? const HaasSettings()).copyWith(left_balance: v))),
       DoubleParam('left_delay',
           min: 0.0,
           max: 40.0,
           def: 2.05,
-          get: (e) => e.haas.left_delay,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(left_delay: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).left_delay,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(left_delay: v))),
       DoubleParam('left_gain',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.haas.left_gain,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(left_gain: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).left_gain,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(left_gain: v))),
       BoolParam('left_phase',
-          get: (e) => e.haas.left_phase,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(left_phase: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).left_phase,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(left_phase: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.haas.level_in,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(level_in: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.haas.level_out,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(level_out: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(level_out: v))),
       BoolParam('middle_phase',
-          get: (e) => e.haas.middle_phase,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(middle_phase: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).middle_phase,
+          set: (e, v) => e.copyWith(
+              haas:
+                  (e.haas ?? const HaasSettings()).copyWith(middle_phase: v))),
       EnumParam('middle_source',
           options: [
             for (final o in HaasSource.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.haas.middle_source,
+          get: (e) => (e.haas ?? const HaasSettings()).middle_source,
           set: (e, v) => e.copyWith(
-              haas: e.haas.copyWith(middle_source: v as HaasSource))),
+              haas: (e.haas ?? const HaasSettings())
+                  .copyWith(middle_source: v as HaasSource))),
       DoubleParam('right_balance',
           min: -1.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.haas.right_balance,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(right_balance: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).right_balance,
+          set: (e, v) => e.copyWith(
+              haas:
+                  (e.haas ?? const HaasSettings()).copyWith(right_balance: v))),
       DoubleParam('right_delay',
           min: 0.0,
           max: 40.0,
           def: 2.12,
-          get: (e) => e.haas.right_delay,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(right_delay: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).right_delay,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(right_delay: v))),
       DoubleParam('right_gain',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.haas.right_gain,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(right_gain: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).right_gain,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(right_gain: v))),
       BoolParam('right_phase',
-          get: (e) => e.haas.right_phase,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(right_phase: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).right_phase,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(right_phase: v))),
       DoubleParam('side_gain',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.haas.side_gain,
-          set: (e, v) => e.copyWith(haas: e.haas.copyWith(side_gain: v))),
+          get: (e) => (e.haas ?? const HaasSettings()).side_gain,
+          set: (e, v) => e.copyWith(
+              haas: (e.haas ?? const HaasSettings()).copyWith(side_gain: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.haas.enabled,
-    setEnabled: (e, on) => e.copyWith(haas: e.haas.copyWith(enabled: on)),
+    isEnabled: (e) => e.haas?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        haas: (e.haas ?? const HaasSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'hdcd',
@@ -3813,37 +4591,45 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in HdcdAnalyzeMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.hdcd.analyze_mode,
+          get: (e) => (e.hdcd ?? const HdcdSettings()).analyze_mode,
           set: (e, v) => e.copyWith(
-              hdcd: e.hdcd.copyWith(analyze_mode: v as HdcdAnalyzeMode))),
+              hdcd: (e.hdcd ?? const HdcdSettings())
+                  .copyWith(analyze_mode: v as HdcdAnalyzeMode))),
       EnumParam('bits_per_sample',
           options: [
             for (final o in HdcdBitsPerSample.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.hdcd.bits_per_sample,
+          get: (e) => (e.hdcd ?? const HdcdSettings()).bits_per_sample,
           set: (e, v) => e.copyWith(
-              hdcd: e.hdcd.copyWith(bits_per_sample: v as HdcdBitsPerSample))),
+              hdcd: (e.hdcd ?? const HdcdSettings())
+                  .copyWith(bits_per_sample: v as HdcdBitsPerSample))),
       IntParam('cdt_ms',
           min: 100,
           max: 60000,
           def: 2000,
-          get: (e) => e.hdcd.cdt_ms,
-          set: (e, v) => e.copyWith(hdcd: e.hdcd.copyWith(cdt_ms: v))),
+          get: (e) => (e.hdcd ?? const HdcdSettings()).cdt_ms,
+          set: (e, v) => e.copyWith(
+              hdcd: (e.hdcd ?? const HdcdSettings()).copyWith(cdt_ms: v))),
       BoolParam('disable_autoconvert',
-          get: (e) => e.hdcd.disable_autoconvert,
-          set: (e, v) =>
-              e.copyWith(hdcd: e.hdcd.copyWith(disable_autoconvert: v))),
+          get: (e) => (e.hdcd ?? const HdcdSettings()).disable_autoconvert,
+          set: (e, v) => e.copyWith(
+              hdcd: (e.hdcd ?? const HdcdSettings())
+                  .copyWith(disable_autoconvert: v))),
       BoolParam('force_pe',
-          get: (e) => e.hdcd.force_pe,
-          set: (e, v) => e.copyWith(hdcd: e.hdcd.copyWith(force_pe: v))),
+          get: (e) => (e.hdcd ?? const HdcdSettings()).force_pe,
+          set: (e, v) => e.copyWith(
+              hdcd: (e.hdcd ?? const HdcdSettings()).copyWith(force_pe: v))),
       BoolParam('process_stereo',
-          get: (e) => e.hdcd.process_stereo,
-          set: (e, v) => e.copyWith(hdcd: e.hdcd.copyWith(process_stereo: v))),
+          get: (e) => (e.hdcd ?? const HdcdSettings()).process_stereo,
+          set: (e, v) => e.copyWith(
+              hdcd: (e.hdcd ?? const HdcdSettings())
+                  .copyWith(process_stereo: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.hdcd.enabled,
-    setEnabled: (e, on) => e.copyWith(hdcd: e.hdcd.copyWith(enabled: on)),
+    isEnabled: (e) => e.hdcd?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        hdcd: (e.hdcd ?? const HdcdSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'highpass',
@@ -3860,135 +4646,163 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in HighpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.a,
+          get: (e) => (e.highpass ?? const HighpassSettings()).a,
           set: (e, v) => e.copyWith(
-              highpass: e.highpass.copyWith(a: v as HighpassTransformType))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(a: v as HighpassTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.highpass.b,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(b: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).b,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.highpass.blocksize,
-          set: (e, v) =>
-              e.copyWith(highpass: e.highpass.copyWith(blocksize: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.highpass.c,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(c: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).c,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.highpass.channels,
-          set: (e, v) =>
-              e.copyWith(highpass: e.highpass.copyWith(channels: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).channels,
+          set: (e, v) => e.copyWith(
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.highpass.f,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(f: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).f,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.highpass.frequency,
-          set: (e, v) =>
-              e.copyWith(highpass: e.highpass.copyWith(frequency: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.highpass.m,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(m: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).m,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.highpass.mix,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(mix: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).mix,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.highpass.n,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(n: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).n,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.highpass.normalize,
-          set: (e, v) =>
-              e.copyWith(highpass: e.highpass.copyWith(normalize: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(normalize: v))),
       IntParam('p',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.highpass.p,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(p: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).p,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(p: v))),
       IntParam('poles',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.highpass.poles,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(poles: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).poles,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in HighpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.precision,
+          get: (e) => (e.highpass ?? const HighpassSettings()).precision,
           set: (e, v) => e.copyWith(
-              highpass:
-                  e.highpass.copyWith(precision: v as HighpassPrecision))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(precision: v as HighpassPrecision))),
       EnumParam('r',
           options: [
             for (final o in HighpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.r,
+          get: (e) => (e.highpass ?? const HighpassSettings()).r,
           set: (e, v) => e.copyWith(
-              highpass: e.highpass.copyWith(r: v as HighpassPrecision))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(r: v as HighpassPrecision))),
       EnumParam('t',
           options: [
             for (final o in HighpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.t,
+          get: (e) => (e.highpass ?? const HighpassSettings()).t,
           set: (e, v) => e.copyWith(
-              highpass: e.highpass.copyWith(t: v as HighpassWidthType))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(t: v as HighpassWidthType))),
       EnumParam('transform',
           options: [
             for (final o in HighpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.transform,
+          get: (e) => (e.highpass ?? const HighpassSettings()).transform,
           set: (e, v) => e.copyWith(
-              highpass:
-                  e.highpass.copyWith(transform: v as HighpassTransformType))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(transform: v as HighpassTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.highpass.w,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(w: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).w,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.highpass.width,
-          set: (e, v) => e.copyWith(highpass: e.highpass.copyWith(width: v))),
+          get: (e) => (e.highpass ?? const HighpassSettings()).width,
+          set: (e, v) => e.copyWith(
+              highpass:
+                  (e.highpass ?? const HighpassSettings()).copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in HighpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highpass.width_type,
+          get: (e) => (e.highpass ?? const HighpassSettings()).width_type,
           set: (e, v) => e.copyWith(
-              highpass:
-                  e.highpass.copyWith(width_type: v as HighpassWidthType))),
+              highpass: (e.highpass ?? const HighpassSettings())
+                  .copyWith(width_type: v as HighpassWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.highpass.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(highpass: e.highpass.copyWith(enabled: on)),
+    isEnabled: (e) => e.highpass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        highpass:
+            (e.highpass ?? const HighpassSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'highshelf',
@@ -4005,147 +4819,179 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in HighshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.a,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).a,
           set: (e, v) => e.copyWith(
-              highshelf: e.highshelf.copyWith(a: v as HighshelfTransformType))),
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(a: v as HighshelfTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.highshelf.b,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(b: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).b,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.highshelf.blocksize,
-          set: (e, v) =>
-              e.copyWith(highshelf: e.highshelf.copyWith(blocksize: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.highshelf.c,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(c: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).c,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.highshelf.channels,
-          set: (e, v) =>
-              e.copyWith(highshelf: e.highshelf.copyWith(channels: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).channels,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.highshelf.f,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(f: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).f,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.highshelf.frequency,
-          set: (e, v) =>
-              e.copyWith(highshelf: e.highshelf.copyWith(frequency: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('g',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.highshelf.g,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(g: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).g,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(g: v))),
       DoubleParam('gain',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.highshelf.gain,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(gain: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).gain,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(gain: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.highshelf.m,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(m: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).m,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.highshelf.mix,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(mix: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).mix,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.highshelf.n,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(n: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).n,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.highshelf.normalize,
-          set: (e, v) =>
-              e.copyWith(highshelf: e.highshelf.copyWith(normalize: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(normalize: v))),
       IntParam('p',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.highshelf.p,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(p: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).p,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(p: v))),
       IntParam('poles',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.highshelf.poles,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(poles: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).poles,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in HighshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.precision,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).precision,
           set: (e, v) => e.copyWith(
-              highshelf:
-                  e.highshelf.copyWith(precision: v as HighshelfPrecision))),
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(precision: v as HighshelfPrecision))),
       EnumParam('r',
           options: [
             for (final o in HighshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.r,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).r,
           set: (e, v) => e.copyWith(
-              highshelf: e.highshelf.copyWith(r: v as HighshelfPrecision))),
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(r: v as HighshelfPrecision))),
       EnumParam('t',
           options: [
             for (final o in HighshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.t,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).t,
           set: (e, v) => e.copyWith(
-              highshelf: e.highshelf.copyWith(t: v as HighshelfWidthType))),
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(t: v as HighshelfWidthType))),
       EnumParam('transform',
           options: [
             for (final o in HighshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.transform,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).transform,
           set: (e, v) => e.copyWith(
-              highshelf: e.highshelf
+              highshelf: (e.highshelf ?? const HighshelfSettings())
                   .copyWith(transform: v as HighshelfTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.highshelf.w,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(w: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).w,
+          set: (e, v) => e.copyWith(
+              highshelf:
+                  (e.highshelf ?? const HighshelfSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.highshelf.width,
-          set: (e, v) => e.copyWith(highshelf: e.highshelf.copyWith(width: v))),
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).width,
+          set: (e, v) => e.copyWith(
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in HighshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.highshelf.width_type,
+          get: (e) => (e.highshelf ?? const HighshelfSettings()).width_type,
           set: (e, v) => e.copyWith(
-              highshelf:
-                  e.highshelf.copyWith(width_type: v as HighshelfWidthType))),
+              highshelf: (e.highshelf ?? const HighshelfSettings())
+                  .copyWith(width_type: v as HighshelfWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.highshelf.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(highshelf: e.highshelf.copyWith(enabled: on)),
+    isEnabled: (e) => e.highshelf?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        highshelf:
+            (e.highshelf ?? const HighshelfSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'lowpass',
@@ -4162,128 +5008,155 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in LowpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.a,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).a,
           set: (e, v) => e.copyWith(
-              lowpass: e.lowpass.copyWith(a: v as LowpassTransformType))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(a: v as LowpassTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.lowpass.b,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(b: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).b,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.lowpass.blocksize,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(blocksize: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.lowpass.c,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(c: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).c,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.lowpass.channels,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(channels: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).channels,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 500.0,
-          get: (e) => e.lowpass.f,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(f: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).f,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 500.0,
-          get: (e) => e.lowpass.frequency,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(frequency: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.lowpass.m,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(m: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).m,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.lowpass.mix,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(mix: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).mix,
+          set: (e, v) => e.copyWith(
+              lowpass:
+                  (e.lowpass ?? const LowpassSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.lowpass.n,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(n: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).n,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.lowpass.normalize,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(normalize: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(normalize: v))),
       IntParam('p',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.lowpass.p,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(p: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).p,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(p: v))),
       IntParam('poles',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.lowpass.poles,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(poles: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).poles,
+          set: (e, v) => e.copyWith(
+              lowpass:
+                  (e.lowpass ?? const LowpassSettings()).copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in LowpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.precision,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).precision,
           set: (e, v) => e.copyWith(
-              lowpass: e.lowpass.copyWith(precision: v as LowpassPrecision))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(precision: v as LowpassPrecision))),
       EnumParam('r',
           options: [
             for (final o in LowpassPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.r,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).r,
           set: (e, v) => e.copyWith(
-              lowpass: e.lowpass.copyWith(r: v as LowpassPrecision))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(r: v as LowpassPrecision))),
       EnumParam('t',
           options: [
             for (final o in LowpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.t,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).t,
           set: (e, v) => e.copyWith(
-              lowpass: e.lowpass.copyWith(t: v as LowpassWidthType))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(t: v as LowpassWidthType))),
       EnumParam('transform',
           options: [
             for (final o in LowpassTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.transform,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).transform,
           set: (e, v) => e.copyWith(
-              lowpass:
-                  e.lowpass.copyWith(transform: v as LowpassTransformType))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(transform: v as LowpassTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.lowpass.w,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(w: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).w,
+          set: (e, v) => e.copyWith(
+              lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.707,
-          get: (e) => e.lowpass.width,
-          set: (e, v) => e.copyWith(lowpass: e.lowpass.copyWith(width: v))),
+          get: (e) => (e.lowpass ?? const LowpassSettings()).width,
+          set: (e, v) => e.copyWith(
+              lowpass:
+                  (e.lowpass ?? const LowpassSettings()).copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in LowpassWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowpass.width_type,
+          get: (e) => (e.lowpass ?? const LowpassSettings()).width_type,
           set: (e, v) => e.copyWith(
-              lowpass: e.lowpass.copyWith(width_type: v as LowpassWidthType))),
+              lowpass: (e.lowpass ?? const LowpassSettings())
+                  .copyWith(width_type: v as LowpassWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.lowpass.enabled,
-    setEnabled: (e, on) => e.copyWith(lowpass: e.lowpass.copyWith(enabled: on)),
+    isEnabled: (e) => e.lowpass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        lowpass: (e.lowpass ?? const LowpassSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'lowshelf',
@@ -4300,147 +5173,179 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in LowshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.a,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).a,
           set: (e, v) => e.copyWith(
-              lowshelf: e.lowshelf.copyWith(a: v as LowshelfTransformType))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(a: v as LowshelfTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.lowshelf.b,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(b: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).b,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.lowshelf.blocksize,
-          set: (e, v) =>
-              e.copyWith(lowshelf: e.lowshelf.copyWith(blocksize: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.lowshelf.c,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(c: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).c,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.lowshelf.channels,
-          set: (e, v) =>
-              e.copyWith(lowshelf: e.lowshelf.copyWith(channels: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).channels,
+          set: (e, v) => e.copyWith(
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 100.0,
-          get: (e) => e.lowshelf.f,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(f: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).f,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 100.0,
-          get: (e) => e.lowshelf.frequency,
-          set: (e, v) =>
-              e.copyWith(lowshelf: e.lowshelf.copyWith(frequency: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('g',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.lowshelf.g,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(g: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).g,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(g: v))),
       DoubleParam('gain',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.lowshelf.gain,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(gain: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).gain,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(gain: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.lowshelf.m,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(m: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).m,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.lowshelf.mix,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(mix: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).mix,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.lowshelf.n,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(n: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).n,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.lowshelf.normalize,
-          set: (e, v) =>
-              e.copyWith(lowshelf: e.lowshelf.copyWith(normalize: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(normalize: v))),
       IntParam('p',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.lowshelf.p,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(p: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).p,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(p: v))),
       IntParam('poles',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.lowshelf.poles,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(poles: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).poles,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in LowshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.precision,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).precision,
           set: (e, v) => e.copyWith(
-              lowshelf:
-                  e.lowshelf.copyWith(precision: v as LowshelfPrecision))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(precision: v as LowshelfPrecision))),
       EnumParam('r',
           options: [
             for (final o in LowshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.r,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).r,
           set: (e, v) => e.copyWith(
-              lowshelf: e.lowshelf.copyWith(r: v as LowshelfPrecision))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(r: v as LowshelfPrecision))),
       EnumParam('t',
           options: [
             for (final o in LowshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.t,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).t,
           set: (e, v) => e.copyWith(
-              lowshelf: e.lowshelf.copyWith(t: v as LowshelfWidthType))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(t: v as LowshelfWidthType))),
       EnumParam('transform',
           options: [
             for (final o in LowshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.transform,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).transform,
           set: (e, v) => e.copyWith(
-              lowshelf:
-                  e.lowshelf.copyWith(transform: v as LowshelfTransformType))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(transform: v as LowshelfTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.lowshelf.w,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(w: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).w,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.lowshelf.width,
-          set: (e, v) => e.copyWith(lowshelf: e.lowshelf.copyWith(width: v))),
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).width,
+          set: (e, v) => e.copyWith(
+              lowshelf:
+                  (e.lowshelf ?? const LowshelfSettings()).copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in LowshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.lowshelf.width_type,
+          get: (e) => (e.lowshelf ?? const LowshelfSettings()).width_type,
           set: (e, v) => e.copyWith(
-              lowshelf:
-                  e.lowshelf.copyWith(width_type: v as LowshelfWidthType))),
+              lowshelf: (e.lowshelf ?? const LowshelfSettings())
+                  .copyWith(width_type: v as LowshelfWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.lowshelf.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(lowshelf: e.lowshelf.copyWith(enabled: on)),
+    isEnabled: (e) => e.lowshelf?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        lowshelf:
+            (e.lowshelf ?? const LowshelfSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'mcompand',
@@ -4454,13 +5359,16 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('args',
           required: false,
-          get: (e) => e.mcompand.args,
-          set: (e, v) => e.copyWith(mcompand: e.mcompand.copyWith(args: v))),
+          get: (e) => (e.mcompand ?? const McompandSettings()).args,
+          set: (e, v) => e.copyWith(
+              mcompand:
+                  (e.mcompand ?? const McompandSettings()).copyWith(args: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.mcompand.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(mcompand: e.mcompand.copyWith(enabled: on)),
+    isEnabled: (e) => e.mcompand?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        mcompand:
+            (e.mcompand ?? const McompandSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'pan',
@@ -4474,8 +5382,11 @@ final List<FilterDescriptor> kFilterCatalog = [
     params: [
       StringParam('args',
           required: true,
-          get: (e) => e.pan.args,
-          set: (e, v) => e.copyWith(pan: e.pan.copyWith(args: v))),
+          get: (e) =>
+              (e.pan ?? const PanSettings(args: 'stereo|c0=c0|c1=c1')).args,
+          set: (e, v) => e.copyWith(
+              pan: (e.pan ?? const PanSettings(args: 'stereo|c0=c0|c1=c1'))
+                  .copyWith(args: v))),
     ],
     presets: [
       (name: 'Passthrough (stereo)', values: {'args': 'stereo|c0=c0|c1=c1'}),
@@ -4489,8 +5400,10 @@ final List<FilterDescriptor> kFilterCatalog = [
         values: {'args': 'stereo|c0=c0-c1|c1=c1-c0'}
       ),
     ],
-    isEnabled: (e) => e.pan.enabled,
-    setEnabled: (e, on) => e.copyWith(pan: e.pan.copyWith(enabled: on)),
+    isEnabled: (e) => e.pan?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        pan: (e.pan ?? const PanSettings(args: 'stereo|c0=c0|c1=c1'))
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'rubberband',
@@ -4507,90 +5420,95 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in RubberbandChannels.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.channels,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).channels,
           set: (e, v) => e.copyWith(
-              rubberband:
-                  e.rubberband.copyWith(channels: v as RubberbandChannels))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(channels: v as RubberbandChannels))),
       EnumParam('detector',
           options: [
             for (final o in RubberbandDetector.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.detector,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).detector,
           set: (e, v) => e.copyWith(
-              rubberband:
-                  e.rubberband.copyWith(detector: v as RubberbandDetector))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(detector: v as RubberbandDetector))),
       EnumParam('formant',
           options: [
             for (final o in RubberbandFormant.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.formant,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).formant,
           set: (e, v) => e.copyWith(
-              rubberband:
-                  e.rubberband.copyWith(formant: v as RubberbandFormant))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(formant: v as RubberbandFormant))),
       EnumParam('phase',
           options: [
             for (final o in RubberbandPhase.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.phase,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).phase,
           set: (e, v) => e.copyWith(
-              rubberband: e.rubberband.copyWith(phase: v as RubberbandPhase))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(phase: v as RubberbandPhase))),
       DoubleParam('pitch',
           min: 0.01,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.rubberband.pitch,
-          set: (e, v) =>
-              e.copyWith(rubberband: e.rubberband.copyWith(pitch: v))),
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).pitch,
+          set: (e, v) => e.copyWith(
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(pitch: v))),
       EnumParam('pitchq',
           options: [
             for (final o in RubberbandPitch.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.pitchq,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).pitchq,
           set: (e, v) => e.copyWith(
-              rubberband: e.rubberband.copyWith(pitchq: v as RubberbandPitch))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(pitchq: v as RubberbandPitch))),
       EnumParam('smoothing',
           options: [
             for (final o in RubberbandSmoothing.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.smoothing,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).smoothing,
           set: (e, v) => e.copyWith(
-              rubberband:
-                  e.rubberband.copyWith(smoothing: v as RubberbandSmoothing))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(smoothing: v as RubberbandSmoothing))),
       DoubleParam('tempo',
           min: 0.01,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.rubberband.tempo,
-          set: (e, v) =>
-              e.copyWith(rubberband: e.rubberband.copyWith(tempo: v))),
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).tempo,
+          set: (e, v) => e.copyWith(
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(tempo: v))),
       EnumParam('transients',
           options: [
             for (final o in RubberbandTransients.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.transients,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).transients,
           set: (e, v) => e.copyWith(
-              rubberband: e.rubberband
+              rubberband: (e.rubberband ?? const RubberbandSettings())
                   .copyWith(transients: v as RubberbandTransients))),
       EnumParam('window',
           options: [
             for (final o in RubberbandWindow.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.rubberband.window,
+          get: (e) => (e.rubberband ?? const RubberbandSettings()).window,
           set: (e, v) => e.copyWith(
-              rubberband:
-                  e.rubberband.copyWith(window: v as RubberbandWindow))),
+              rubberband: (e.rubberband ?? const RubberbandSettings())
+                  .copyWith(window: v as RubberbandWindow))),
     ],
     presets: [],
-    isEnabled: (e) => e.rubberband.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(rubberband: e.rubberband.copyWith(enabled: on)),
+    isEnabled: (e) => e.rubberband?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        rubberband:
+            (e.rubberband ?? const RubberbandSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'silenceremove',
@@ -4607,56 +5525,65 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in SilenceremoveDetection.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.silenceremove.detection,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).detection,
           set: (e, v) => e.copyWith(
-              silenceremove: e.silenceremove
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
                   .copyWith(detection: v as SilenceremoveDetection))),
       EnumParam('start_mode',
           options: [
             for (final o in SilenceremoveMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.silenceremove.start_mode,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).start_mode,
           set: (e, v) => e.copyWith(
-              silenceremove: e.silenceremove
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
                   .copyWith(start_mode: v as SilenceremoveMode))),
       IntParam('start_periods',
           min: 0,
           max: 9000,
           def: 0,
-          get: (e) => e.silenceremove.start_periods,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).start_periods,
           set: (e, v) => e.copyWith(
-              silenceremove: e.silenceremove.copyWith(start_periods: v))),
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
+                  .copyWith(start_periods: v))),
       EnumParam('stop_mode',
           options: [
             for (final o in SilenceremoveMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.silenceremove.stop_mode,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).stop_mode,
           set: (e, v) => e.copyWith(
-              silenceremove:
-                  e.silenceremove.copyWith(stop_mode: v as SilenceremoveMode))),
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
+                  .copyWith(stop_mode: v as SilenceremoveMode))),
       IntParam('stop_periods',
           min: -9000,
           max: 9000,
           def: 0,
-          get: (e) => e.silenceremove.stop_periods,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).stop_periods,
           set: (e, v) => e.copyWith(
-              silenceremove: e.silenceremove.copyWith(stop_periods: v))),
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
+                  .copyWith(stop_periods: v))),
       EnumParam('timestamp',
           options: [
             for (final o in SilenceremoveTimestamp.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.silenceremove.timestamp,
+          get: (e) =>
+              (e.silenceremove ?? const SilenceremoveSettings()).timestamp,
           set: (e, v) => e.copyWith(
-              silenceremove: e.silenceremove
+              silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
                   .copyWith(timestamp: v as SilenceremoveTimestamp))),
     ],
     presets: [],
-    isEnabled: (e) => e.silenceremove.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(silenceremove: e.silenceremove.copyWith(enabled: on)),
+    isEnabled: (e) => e.silenceremove?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        silenceremove: (e.silenceremove ?? const SilenceremoveSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'speechnorm',
@@ -4672,120 +5599,152 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 1.0,
           max: 50.0,
           def: 2.0,
-          get: (e) => e.speechnorm.c,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(c: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).c,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.speechnorm.channels,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(channels: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).channels,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(channels: v))),
       DoubleParam('compression',
           min: 1.0,
           max: 50.0,
           def: 2.0,
-          get: (e) => e.speechnorm.compression,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(compression: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).compression,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(compression: v))),
       DoubleParam('e',
           min: 1.0,
           max: 50.0,
           def: 2.0,
-          get: (e) => e.speechnorm.e,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(e: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).e,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(e: v))),
       DoubleParam('expansion',
           min: 1.0,
           max: 50.0,
           def: 2.0,
-          get: (e) => e.speechnorm.expansion,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(expansion: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).expansion,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(expansion: v))),
       DoubleParam('f',
           min: 0.0,
           max: 1.0,
           def: 0.001,
-          get: (e) => e.speechnorm.f,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(f: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).f,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(f: v))),
       DoubleParam('fall',
           min: 0.0,
           max: 1.0,
           def: 0.001,
-          get: (e) => e.speechnorm.fall,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(fall: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).fall,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(fall: v))),
       StringParam('h',
           required: false,
-          get: (e) => e.speechnorm.h,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(h: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).h,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(h: v))),
       BoolParam('i',
-          get: (e) => e.speechnorm.i,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(i: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).i,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(i: v))),
       BoolParam('invert',
-          get: (e) => e.speechnorm.invert,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(invert: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).invert,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(invert: v))),
       BoolParam('l',
-          get: (e) => e.speechnorm.l,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(l: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).l,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(l: v))),
       BoolParam('link',
-          get: (e) => e.speechnorm.link,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(link: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).link,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(link: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.speechnorm.m,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(m: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).m,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(m: v))),
       DoubleParam('p',
           min: 0.0,
           max: 1.0,
           def: 0.95,
-          get: (e) => e.speechnorm.p,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(p: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).p,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(p: v))),
       DoubleParam('peak',
           min: 0.0,
           max: 1.0,
           def: 0.95,
-          get: (e) => e.speechnorm.peak,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(peak: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).peak,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(peak: v))),
       DoubleParam('r',
           min: 0.0,
           max: 1.0,
           def: 0.001,
-          get: (e) => e.speechnorm.r,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(r: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).r,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(r: v))),
       DoubleParam('raise',
           min: 0.0,
           max: 1.0,
           def: 0.001,
-          get: (e) => e.speechnorm.raise,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(raise: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).raise,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(raise: v))),
       DoubleParam('rms',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.speechnorm.rms,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(rms: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).rms,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(rms: v))),
       DoubleParam('t',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.speechnorm.t,
-          set: (e, v) => e.copyWith(speechnorm: e.speechnorm.copyWith(t: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).t,
+          set: (e, v) => e.copyWith(
+              speechnorm:
+                  (e.speechnorm ?? const SpeechnormSettings()).copyWith(t: v))),
       DoubleParam('threshold',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.speechnorm.threshold,
-          set: (e, v) =>
-              e.copyWith(speechnorm: e.speechnorm.copyWith(threshold: v))),
+          get: (e) => (e.speechnorm ?? const SpeechnormSettings()).threshold,
+          set: (e, v) => e.copyWith(
+              speechnorm: (e.speechnorm ?? const SpeechnormSettings())
+                  .copyWith(threshold: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.speechnorm.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(speechnorm: e.speechnorm.copyWith(enabled: on)),
+    isEnabled: (e) => e.speechnorm?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        speechnorm:
+            (e.speechnorm ?? const SpeechnormSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'stereotools',
@@ -4801,137 +5760,157 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.stereotools.balance_in,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(balance_in: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).balance_in,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(balance_in: v))),
       DoubleParam('balance_out',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.stereotools.balance_out,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(balance_out: v))),
+          get: (e) =>
+              (e.stereotools ?? const StereotoolsSettings()).balance_out,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(balance_out: v))),
       DoubleParam('base',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.stereotools.base,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(base: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).base,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(base: v))),
       EnumParam('bmode_in',
           options: [
             for (final o in StereotoolsBmode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.stereotools.bmode_in,
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).bmode_in,
           set: (e, v) => e.copyWith(
-              stereotools:
-                  e.stereotools.copyWith(bmode_in: v as StereotoolsBmode))),
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(bmode_in: v as StereotoolsBmode))),
       EnumParam('bmode_out',
           options: [
             for (final o in StereotoolsBmode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.stereotools.bmode_out,
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).bmode_out,
           set: (e, v) => e.copyWith(
-              stereotools:
-                  e.stereotools.copyWith(bmode_out: v as StereotoolsBmode))),
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(bmode_out: v as StereotoolsBmode))),
       DoubleParam('delay',
           min: -20.0,
           max: 20.0,
           def: 0.0,
-          get: (e) => e.stereotools.delay,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(delay: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).delay,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(delay: v))),
       DoubleParam('level_in',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.stereotools.level_in,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(level_in: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.stereotools.level_out,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(level_out: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(level_out: v))),
       DoubleParam('mlev',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.stereotools.mlev,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(mlev: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).mlev,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(mlev: v))),
       EnumParam('mode',
           options: [
             for (final o in StereotoolsMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.stereotools.mode,
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).mode,
           set: (e, v) => e.copyWith(
-              stereotools: e.stereotools.copyWith(mode: v as StereotoolsMode))),
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(mode: v as StereotoolsMode))),
       DoubleParam('mpan',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.stereotools.mpan,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(mpan: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).mpan,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(mpan: v))),
       BoolParam('mutel',
-          get: (e) => e.stereotools.mutel,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(mutel: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).mutel,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(mutel: v))),
       BoolParam('muter',
-          get: (e) => e.stereotools.muter,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(muter: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).muter,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(muter: v))),
       DoubleParam('phase',
           min: 0.0,
           max: 360.0,
           def: 0.0,
-          get: (e) => e.stereotools.phase,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(phase: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).phase,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(phase: v))),
       BoolParam('phasel',
-          get: (e) => e.stereotools.phasel,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(phasel: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).phasel,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(phasel: v))),
       BoolParam('phaser',
-          get: (e) => e.stereotools.phaser,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(phaser: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).phaser,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(phaser: v))),
       DoubleParam('sbal',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.stereotools.sbal,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(sbal: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).sbal,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(sbal: v))),
       DoubleParam('sclevel',
           min: 1.0,
           max: 100.0,
           def: 1.0,
-          get: (e) => e.stereotools.sclevel,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(sclevel: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).sclevel,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(sclevel: v))),
       DoubleParam('slev',
           min: 0.015625,
           max: 64.0,
           def: 1.0,
-          get: (e) => e.stereotools.slev,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(slev: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).slev,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(slev: v))),
       BoolParam('softclip',
-          get: (e) => e.stereotools.softclip,
-          set: (e, v) =>
-              e.copyWith(stereotools: e.stereotools.copyWith(softclip: v))),
+          get: (e) => (e.stereotools ?? const StereotoolsSettings()).softclip,
+          set: (e, v) => e.copyWith(
+              stereotools: (e.stereotools ?? const StereotoolsSettings())
+                  .copyWith(softclip: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.stereotools.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(stereotools: e.stereotools.copyWith(enabled: on)),
+    isEnabled: (e) => e.stereotools?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        stereotools: (e.stereotools ?? const StereotoolsSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'stereowiden',
@@ -4947,35 +5926,40 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 0.8,
           def: 0.3,
-          get: (e) => e.stereowiden.crossfeed,
-          set: (e, v) =>
-              e.copyWith(stereowiden: e.stereowiden.copyWith(crossfeed: v))),
+          get: (e) => (e.stereowiden ?? const StereowidenSettings()).crossfeed,
+          set: (e, v) => e.copyWith(
+              stereowiden: (e.stereowiden ?? const StereowidenSettings())
+                  .copyWith(crossfeed: v))),
       DoubleParam('delay',
           min: 1.0,
           max: 100.0,
           def: 20.0,
-          get: (e) => e.stereowiden.delay,
-          set: (e, v) =>
-              e.copyWith(stereowiden: e.stereowiden.copyWith(delay: v))),
+          get: (e) => (e.stereowiden ?? const StereowidenSettings()).delay,
+          set: (e, v) => e.copyWith(
+              stereowiden: (e.stereowiden ?? const StereowidenSettings())
+                  .copyWith(delay: v))),
       DoubleParam('drymix',
           min: 0.0,
           max: 1.0,
           def: 0.8,
-          get: (e) => e.stereowiden.drymix,
-          set: (e, v) =>
-              e.copyWith(stereowiden: e.stereowiden.copyWith(drymix: v))),
+          get: (e) => (e.stereowiden ?? const StereowidenSettings()).drymix,
+          set: (e, v) => e.copyWith(
+              stereowiden: (e.stereowiden ?? const StereowidenSettings())
+                  .copyWith(drymix: v))),
       DoubleParam('feedback',
           min: 0.0,
           max: 0.9,
           def: 0.3,
-          get: (e) => e.stereowiden.feedback,
-          set: (e, v) =>
-              e.copyWith(stereowiden: e.stereowiden.copyWith(feedback: v))),
+          get: (e) => (e.stereowiden ?? const StereowidenSettings()).feedback,
+          set: (e, v) => e.copyWith(
+              stereowiden: (e.stereowiden ?? const StereowidenSettings())
+                  .copyWith(feedback: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.stereowiden.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(stereowiden: e.stereowiden.copyWith(enabled: on)),
+    isEnabled: (e) => e.stereowiden?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        stereowiden: (e.stereowiden ?? const StereowidenSettings())
+            .copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'surround',
@@ -4991,308 +5975,403 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: -1.0,
           max: 15.0,
           def: -1.0,
-          get: (e) => e.surround.allx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(allx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).allx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(allx: v))),
       DoubleParam('ally',
           min: -1.0,
           max: 15.0,
           def: -1.0,
-          get: (e) => e.surround.ally,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(ally: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).ally,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(ally: v))),
       DoubleParam('angle',
           min: 0.0,
           max: 360.0,
           def: 90.0,
-          get: (e) => e.surround.angle,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(angle: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).angle,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(angle: v))),
       DoubleParam('bc_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.bc_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bc_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bc_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bc_in: v))),
       DoubleParam('bc_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.bc_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bc_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bc_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(bc_out: v))),
       DoubleParam('bcx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.bcx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bcx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bcx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bcx: v))),
       DoubleParam('bcy',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.bcy,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bcy: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bcy,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bcy: v))),
       DoubleParam('bl_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.bl_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bl_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bl_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bl_in: v))),
       DoubleParam('bl_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.bl_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bl_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bl_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(bl_out: v))),
       DoubleParam('blx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.blx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(blx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).blx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(blx: v))),
       DoubleParam('bly',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.bly,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bly: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bly,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bly: v))),
       DoubleParam('br_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.br_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(br_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).br_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(br_in: v))),
       DoubleParam('br_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.br_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(br_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).br_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(br_out: v))),
       DoubleParam('brx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.brx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(brx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).brx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(brx: v))),
       DoubleParam('bry',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.bry,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(bry: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).bry,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(bry: v))),
       StringParam('chl_in',
           required: false,
-          get: (e) => e.surround.chl_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(chl_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).chl_in,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(chl_in: v))),
       StringParam('chl_out',
           required: false,
-          get: (e) => e.surround.chl_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(chl_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).chl_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(chl_out: v))),
       DoubleParam('fc_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fc_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fc_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fc_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fc_in: v))),
       DoubleParam('fc_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fc_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fc_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fc_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(fc_out: v))),
       DoubleParam('fcx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.fcx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fcx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fcx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fcx: v))),
       DoubleParam('fcy',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.fcy,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fcy: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fcy,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fcy: v))),
       DoubleParam('fl_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fl_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fl_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fl_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fl_in: v))),
       DoubleParam('fl_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fl_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fl_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fl_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(fl_out: v))),
       DoubleParam('flx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.flx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(flx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).flx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(flx: v))),
       DoubleParam('fly',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.fly,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fly: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fly,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fly: v))),
       DoubleParam('focus',
           min: -1.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.surround.focus,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(focus: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).focus,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(focus: v))),
       DoubleParam('fr_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fr_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fr_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fr_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fr_in: v))),
       DoubleParam('fr_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.fr_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fr_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fr_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(fr_out: v))),
       DoubleParam('frx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.frx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(frx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).frx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(frx: v))),
       DoubleParam('fry',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.fry,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(fry: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).fry,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(fry: v))),
       DoubleParam('level_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.level_in,
-          set: (e, v) =>
-              e.copyWith(surround: e.surround.copyWith(level_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).level_in,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(level_in: v))),
       DoubleParam('level_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.level_out,
-          set: (e, v) =>
-              e.copyWith(surround: e.surround.copyWith(level_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).level_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(level_out: v))),
       BoolParam('lfe',
-          get: (e) => e.surround.lfe,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(lfe: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(lfe: v))),
       IntParam('lfe_high',
           min: 0,
           max: 512,
           def: 256,
-          get: (e) => e.surround.lfe_high,
-          set: (e, v) =>
-              e.copyWith(surround: e.surround.copyWith(lfe_high: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe_high,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(lfe_high: v))),
       DoubleParam('lfe_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.lfe_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(lfe_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe_in,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(lfe_in: v))),
       IntParam('lfe_low',
           min: 0,
           max: 256,
           def: 128,
-          get: (e) => e.surround.lfe_low,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(lfe_low: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe_low,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(lfe_low: v))),
       EnumParam('lfe_mode',
           options: [
             for (final o in SurroundLfeMode.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.surround.lfe_mode,
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe_mode,
           set: (e, v) => e.copyWith(
-              surround: e.surround.copyWith(lfe_mode: v as SurroundLfeMode))),
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(lfe_mode: v as SurroundLfeMode))),
       DoubleParam('lfe_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.lfe_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(lfe_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).lfe_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(lfe_out: v))),
       DoubleParam('overlap',
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.surround.overlap,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(overlap: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).overlap,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(overlap: v))),
       DoubleParam('sl_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.sl_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sl_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sl_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(sl_in: v))),
       DoubleParam('sl_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.sl_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sl_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sl_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(sl_out: v))),
       DoubleParam('slx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.slx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(slx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).slx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(slx: v))),
       DoubleParam('sly',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.sly,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sly: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sly,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(sly: v))),
       DoubleParam('smooth',
           min: 0.0,
           max: 1.0,
           def: 0.0,
-          get: (e) => e.surround.smooth,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(smooth: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).smooth,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(smooth: v))),
       DoubleParam('sr_in',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.sr_in,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sr_in: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sr_in,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(sr_in: v))),
       DoubleParam('sr_out',
           min: 0.0,
           max: 10.0,
           def: 1.0,
-          get: (e) => e.surround.sr_out,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sr_out: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sr_out,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(sr_out: v))),
       DoubleParam('srx',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.srx,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(srx: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).srx,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(srx: v))),
       DoubleParam('sry',
           min: 0.06,
           max: 15.0,
           def: 0.5,
-          get: (e) => e.surround.sry,
-          set: (e, v) => e.copyWith(surround: e.surround.copyWith(sry: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).sry,
+          set: (e, v) => e.copyWith(
+              surround:
+                  (e.surround ?? const SurroundSettings()).copyWith(sry: v))),
       EnumParam('win_func',
           options: [
             for (final o in SurroundWinFunc.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.surround.win_func,
+          get: (e) => (e.surround ?? const SurroundSettings()).win_func,
           set: (e, v) => e.copyWith(
-              surround: e.surround.copyWith(win_func: v as SurroundWinFunc))),
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(win_func: v as SurroundWinFunc))),
       IntParam('win_size',
           min: 1024,
           max: 65536,
           def: 4096,
-          get: (e) => e.surround.win_size,
-          set: (e, v) =>
-              e.copyWith(surround: e.surround.copyWith(win_size: v))),
+          get: (e) => (e.surround ?? const SurroundSettings()).win_size,
+          set: (e, v) => e.copyWith(
+              surround: (e.surround ?? const SurroundSettings())
+                  .copyWith(win_size: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.surround.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(surround: e.surround.copyWith(enabled: on)),
+    isEnabled: (e) => e.surround?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        surround:
+            (e.surround ?? const SurroundSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'tiltshelf',
@@ -5309,147 +6388,179 @@ final List<FilterDescriptor> kFilterCatalog = [
             for (final o in TiltshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.a,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).a,
           set: (e, v) => e.copyWith(
-              tiltshelf: e.tiltshelf.copyWith(a: v as TiltshelfTransformType))),
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(a: v as TiltshelfTransformType))),
       IntParam('b',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.tiltshelf.b,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(b: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).b,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(b: v))),
       IntParam('blocksize',
           min: 0,
           max: 32768,
           def: 0,
-          get: (e) => e.tiltshelf.blocksize,
-          set: (e, v) =>
-              e.copyWith(tiltshelf: e.tiltshelf.copyWith(blocksize: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).blocksize,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(blocksize: v))),
       StringParam('c',
           required: false,
-          get: (e) => e.tiltshelf.c,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(c: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).c,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(c: v))),
       StringParam('channels',
           required: false,
-          get: (e) => e.tiltshelf.channels,
-          set: (e, v) =>
-              e.copyWith(tiltshelf: e.tiltshelf.copyWith(channels: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).channels,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(channels: v))),
       DoubleParam('f',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.tiltshelf.f,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(f: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).f,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(f: v))),
       DoubleParam('frequency',
           min: 0.0,
           max: 999999.0,
           def: 3000.0,
-          get: (e) => e.tiltshelf.frequency,
-          set: (e, v) =>
-              e.copyWith(tiltshelf: e.tiltshelf.copyWith(frequency: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).frequency,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(frequency: v))),
       DoubleParam('g',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.tiltshelf.g,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(g: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).g,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(g: v))),
       DoubleParam('gain',
           min: -900.0,
           max: 900.0,
           def: 0.0,
-          get: (e) => e.tiltshelf.gain,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(gain: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).gain,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(gain: v))),
       DoubleParam('m',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.tiltshelf.m,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(m: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).m,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(m: v))),
       DoubleParam('mix',
           min: 0.0,
           max: 1.0,
           def: 1.0,
-          get: (e) => e.tiltshelf.mix,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(mix: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).mix,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(mix: v))),
       BoolParam('n',
-          get: (e) => e.tiltshelf.n,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(n: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).n,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(n: v))),
       BoolParam('normalize',
-          get: (e) => e.tiltshelf.normalize,
-          set: (e, v) =>
-              e.copyWith(tiltshelf: e.tiltshelf.copyWith(normalize: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).normalize,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(normalize: v))),
       IntParam('p',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.tiltshelf.p,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(p: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).p,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(p: v))),
       IntParam('poles',
           min: 1,
           max: 2,
           def: 2,
-          get: (e) => e.tiltshelf.poles,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(poles: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).poles,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(poles: v))),
       EnumParam('precision',
           options: [
             for (final o in TiltshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.precision,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).precision,
           set: (e, v) => e.copyWith(
-              tiltshelf:
-                  e.tiltshelf.copyWith(precision: v as TiltshelfPrecision))),
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(precision: v as TiltshelfPrecision))),
       EnumParam('r',
           options: [
             for (final o in TiltshelfPrecision.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.r,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).r,
           set: (e, v) => e.copyWith(
-              tiltshelf: e.tiltshelf.copyWith(r: v as TiltshelfPrecision))),
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(r: v as TiltshelfPrecision))),
       EnumParam('t',
           options: [
             for (final o in TiltshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.t,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).t,
           set: (e, v) => e.copyWith(
-              tiltshelf: e.tiltshelf.copyWith(t: v as TiltshelfWidthType))),
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(t: v as TiltshelfWidthType))),
       EnumParam('transform',
           options: [
             for (final o in TiltshelfTransformType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.transform,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).transform,
           set: (e, v) => e.copyWith(
-              tiltshelf: e.tiltshelf
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
                   .copyWith(transform: v as TiltshelfTransformType))),
       DoubleParam('w',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.tiltshelf.w,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(w: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).w,
+          set: (e, v) => e.copyWith(
+              tiltshelf:
+                  (e.tiltshelf ?? const TiltshelfSettings()).copyWith(w: v))),
       DoubleParam('width',
           min: 0.0,
           max: 99999.0,
           def: 0.5,
-          get: (e) => e.tiltshelf.width,
-          set: (e, v) => e.copyWith(tiltshelf: e.tiltshelf.copyWith(width: v))),
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).width,
+          set: (e, v) => e.copyWith(
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(width: v))),
       EnumParam('width_type',
           options: [
             for (final o in TiltshelfWidthType.values)
               (label: o.mpvValue, value: o as Object)
           ],
-          get: (e) => e.tiltshelf.width_type,
+          get: (e) => (e.tiltshelf ?? const TiltshelfSettings()).width_type,
           set: (e, v) => e.copyWith(
-              tiltshelf:
-                  e.tiltshelf.copyWith(width_type: v as TiltshelfWidthType))),
+              tiltshelf: (e.tiltshelf ?? const TiltshelfSettings())
+                  .copyWith(width_type: v as TiltshelfWidthType))),
     ],
     presets: [],
-    isEnabled: (e) => e.tiltshelf.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(tiltshelf: e.tiltshelf.copyWith(enabled: on)),
+    isEnabled: (e) => e.tiltshelf?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        tiltshelf:
+            (e.tiltshelf ?? const TiltshelfSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'tremolo',
@@ -5465,18 +6576,21 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.0,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.tremolo.d,
-          set: (e, v) => e.copyWith(tremolo: e.tremolo.copyWith(d: v))),
+          get: (e) => (e.tremolo ?? const TremoloSettings()).d,
+          set: (e, v) => e.copyWith(
+              tremolo: (e.tremolo ?? const TremoloSettings()).copyWith(d: v))),
       DoubleParam('f',
           min: 0.1,
           max: 20000.0,
           def: 5.0,
-          get: (e) => e.tremolo.f,
-          set: (e, v) => e.copyWith(tremolo: e.tremolo.copyWith(f: v))),
+          get: (e) => (e.tremolo ?? const TremoloSettings()).f,
+          set: (e, v) => e.copyWith(
+              tremolo: (e.tremolo ?? const TremoloSettings()).copyWith(f: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.tremolo.enabled,
-    setEnabled: (e, on) => e.copyWith(tremolo: e.tremolo.copyWith(enabled: on)),
+    isEnabled: (e) => e.tremolo?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        tremolo: (e.tremolo ?? const TremoloSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'vibrato',
@@ -5492,18 +6606,21 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 0.00,
           max: 1.0,
           def: 0.5,
-          get: (e) => e.vibrato.d,
-          set: (e, v) => e.copyWith(vibrato: e.vibrato.copyWith(d: v))),
+          get: (e) => (e.vibrato ?? const VibratoSettings()).d,
+          set: (e, v) => e.copyWith(
+              vibrato: (e.vibrato ?? const VibratoSettings()).copyWith(d: v))),
       DoubleParam('f',
           min: 0.1,
           max: 20000.0,
           def: 5.0,
-          get: (e) => e.vibrato.f,
-          set: (e, v) => e.copyWith(vibrato: e.vibrato.copyWith(f: v))),
+          get: (e) => (e.vibrato ?? const VibratoSettings()).f,
+          set: (e, v) => e.copyWith(
+              vibrato: (e.vibrato ?? const VibratoSettings()).copyWith(f: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.vibrato.enabled,
-    setEnabled: (e, on) => e.copyWith(vibrato: e.vibrato.copyWith(enabled: on)),
+    isEnabled: (e) => e.vibrato?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        vibrato: (e.vibrato ?? const VibratoSettings()).copyWith(enabled: on)),
   ),
   FilterDescriptor(
     name: 'virtualbass',
@@ -5519,21 +6636,24 @@ final List<FilterDescriptor> kFilterCatalog = [
           min: 100.0,
           max: 500.0,
           def: 250.0,
-          get: (e) => e.virtualbass.cutoff,
-          set: (e, v) =>
-              e.copyWith(virtualbass: e.virtualbass.copyWith(cutoff: v))),
+          get: (e) => (e.virtualbass ?? const VirtualbassSettings()).cutoff,
+          set: (e, v) => e.copyWith(
+              virtualbass: (e.virtualbass ?? const VirtualbassSettings())
+                  .copyWith(cutoff: v))),
       DoubleParam('strength',
           min: 0.5,
           max: 3.0,
           def: 3.0,
-          get: (e) => e.virtualbass.strength,
-          set: (e, v) =>
-              e.copyWith(virtualbass: e.virtualbass.copyWith(strength: v))),
+          get: (e) => (e.virtualbass ?? const VirtualbassSettings()).strength,
+          set: (e, v) => e.copyWith(
+              virtualbass: (e.virtualbass ?? const VirtualbassSettings())
+                  .copyWith(strength: v))),
     ],
     presets: [],
-    isEnabled: (e) => e.virtualbass.enabled,
-    setEnabled: (e, on) =>
-        e.copyWith(virtualbass: e.virtualbass.copyWith(enabled: on)),
+    isEnabled: (e) => e.virtualbass?.enabled ?? false,
+    setEnabled: (e, on) => e.copyWith(
+        virtualbass: (e.virtualbass ?? const VirtualbassSettings())
+            .copyWith(enabled: on)),
   ),
 ];
 

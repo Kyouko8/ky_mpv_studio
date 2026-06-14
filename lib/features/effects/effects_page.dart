@@ -124,15 +124,17 @@ class _EffectsPageState extends State<EffectsPage>
   // and the detail editor (graphic, controls, toggle, reset) need.
 
   List<_Featured> _featured() {
-    final eq = _fx.superequalizer;
-    final comp = _fx.acompressor;
-    final bass = _fx.bass;
-    final treble = _fx.treble;
-    final cf = _fx.crossfeed;
-    final cr = _fx.crystalizer;
-    final st = _fx.extrastereo;
-    final sb = _fx.asubboost;
-    final ln = _fx.loudnorm;
+    // 0.4.0: bundle slots are nullable ("never configured") — seed each
+    // with its defaults so the cards always have concrete values to show.
+    final eq = _fx.superequalizer ?? const SuperequalizerSettings();
+    final comp = _fx.acompressor ?? const AcompressorSettings();
+    final bass = _fx.bass ?? const BassSettings();
+    final treble = _fx.treble ?? const TrebleSettings();
+    final cf = _fx.crossfeed ?? const CrossfeedSettings();
+    final cr = _fx.crystalizer ?? const CrystalizerSettings();
+    final st = _fx.extrastereo ?? const ExtrastereoSettings();
+    final sb = _fx.asubboost ?? const AsubboostSettings();
+    final ln = _fx.loudnorm ?? const LoudnormSettings();
 
     return [
       // ---- 18-band graphic EQ -----------------------------------------

@@ -124,6 +124,12 @@ class AppSettings {
   HlsBitrate get hlsBitrate =>
       _enumByName('hlsBitrate', HlsBitrate.values, HlsBitrate.max);
   bool get normalizeDownmix => _bool('normalizeDownmix', false);
+
+  /// EBU R128 volume normalization (offline loudness scan → volume-gain).
+  bool get loudnessNormalization => _bool('loudnessNormalization', false);
+
+  /// Normalization target, LUFS. -18 = ReplayGain 2.0 reference.
+  double get loudnessTargetLufs => _double('loudnessTargetLufs', -18);
   String get demuxerCacheDir => _string('demuxerCacheDir', '');
 
   void recordResumePlayback(bool v) => _snap('resumePlayback', v);
@@ -131,6 +137,10 @@ class AppSettings {
   void recordForceSeekable(bool v) => _snap('forceSeekable', v);
   void recordHlsBitrate(HlsBitrate v) => _snap('hlsBitrate', v.name);
   void recordNormalizeDownmix(bool v) => _snap('normalizeDownmix', v);
+
+  void recordLoudnessNormalization(bool v) => _snap('loudnessNormalization', v);
+
+  void recordLoudnessTargetLufs(double v) => _snap('loudnessTargetLufs', v);
   void recordDemuxerCacheDir(String v) => _snap('demuxerCacheDir', v);
 
   /// The build-time configuration assembled from the persisted knobs, passed
@@ -311,7 +321,14 @@ class AppSettings {
       s.mute.listen((v) => _snap('mute', v)),
       s.rate.listen((v) => _snap('rate', v)),
       s.pitch.listen((v) => _snap('pitch', v)),
-      s.volumeGain.listen((v) => _snap('volumeGain', v)),
+      // Skip persisting volume-gain while loudness normalization owns the
+      // stage: the LoudnessNormalizer drives `volume-gain` per track, so
+      // persisting it here would overwrite the user's MANUAL gain slider and
+      // re-seed a stale normalizer value on the next launch (before the scan
+      // re-runs). When normalization is off, the slider owns the value again.
+      s.volumeGain.listen((v) {
+        if (!loudnessNormalization) _snap('volumeGain', v);
+      }),
       s.pitchCorrection.listen((v) => _snap('pitchCorrection', v)),
       s.loop.listen((v) => _snap('loop', v.name)),
       s.shuffle.listen((v) => _snap('shuffle', v)),

@@ -6,6 +6,7 @@ import '../features/stream/media_server.dart';
 import '../features/stream/plex_transcode_session_manager.dart';
 import 'app_settings.dart';
 import 'audio_engine.dart';
+import 'loudness_normalizer.dart';
 import 'media_servers.dart';
 
 /// The running MPV Studio: every long-lived service the player app needs,
@@ -36,12 +37,17 @@ class MpvStudio {
   /// empty on first open.
   final ConsoleLog consoleLog;
 
+  /// EBU R128 volume normalization, fed by the engine's offline loudness
+  /// scan. The Settings toggle and the Now Playing badge observe this.
+  final LoudnessNormalizer normalizer;
+
   const MpvStudio._({
     required this.player,
     required this.settings,
     required this.servers,
     required this.favorites,
     required this.consoleLog,
+    required this.normalizer,
   });
 
   /// Powers the app on. Restores persisted settings, starts the audio engine
@@ -59,18 +65,24 @@ class MpvStudio {
 
     final media = await connectMediaServers(engine.player);
 
+    // Volume normalization rides the engine's offline loudness scan; the
+    // subscription itself arms the scan, so an off toggle costs nothing.
+    final normalizer = LoudnessNormalizer(engine.player, settings)..restore();
+
     return MpvStudio._(
       player: engine.player,
       settings: settings,
       servers: media.servers,
       favorites: media.favorites,
       consoleLog: engine.consoleLog,
+      normalizer: normalizer,
     );
   }
 
   /// Powers the app off — released on process exit. Stops persistence and the
   /// log buffer, then tears down the audio engine last.
   Future<void> shutdown() async {
+    normalizer.dispose();
     await settings.dispose();
     await consoleLog.dispose();
     await player.dispose();

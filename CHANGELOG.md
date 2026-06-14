@@ -1,3 +1,15 @@
+## [0.2.5] - 14-06-2026
+
+### Added
+- Loudness normalization (EBU R128) in the Normalization settings: a "Normalize volume" toggle and a target-LUFS slider that measure each track on load and steer it to the target loudness, works on any track, ReplayGain tags or not.
+- A Loudness (EBU R128) section on the Now Playing info sheet: integrated loudness, loudness range, true peak and sample peak.
+
+### Changed
+- Updated `mpv_audio_kit` to version `0.4.0`.
+
+### Fixed
+- Play and pause state reported to a media server (Jellyfin or Plex) no longer flickers while seeking or buffering.
+
 ## [0.2.4] - 9-06-2026
 
 ### Changed
@@ -34,16 +46,16 @@
 
 ### Added
 - Resume playback (watch later): a Resume settings category to toggle resume-on-reopen, choose the watch-later directory, and save or clear the current file's resume point.
-- Playback volume surface: decoder-gain clamps (min/max) and the OS per-app mixer (system volume / mute), shown as "unavailable" when the audio backend doesn't expose them.
-- Streaming settings: force-seekable and HLS variant selection (off / min / max).
+- Playback volume surface: decoder-gain clamps (min and max) and the OS per-app mixer (system volume and mute), shown as "unavailable" when the audio backend doesn't expose them.
+- Streaming settings: force-seekable and HLS variant selection (off, min, max).
 - Normalization: loudness-normalize surround content downmixed to fewer channels.
-- Demuxer settings: an on-disk cache directory picker and a live network cache-state readout (buffered ranges, raw input rate, EOF/BOF-cached, underrun).
-- "Music" media role toggle in Audio output settings (Linux PulseAudio / PipeWire routing).
+- Demuxer settings: an on-disk cache directory picker and a live network cache-state readout (buffered ranges, raw input rate, EOF and BOF-cached, underrun).
+- "Music" media role toggle in Audio output settings (Linux PulseAudio and PipeWire routing).
 - 64-bit integer (s64) sample format in the format picker.
 - Cache pre-buffer-on-start toggle.
-- Queue: load a playlist file or URL (.m3u / .m3u8 / .pls / .cue), and a source-playlist banner with cross-playlist navigation.
-- Audio track: load or remove an external audio file as a selectable track, plus per-track source / filename / codec-profile details.
-- Now Playing: long-press previous/next to force past the queue ends, an undo-last-seek control, and sample-accurate scrubbing on the waveform.
+- Queue: load a playlist file or URL (.m3u, .m3u8, .pls, .cue), and a source-playlist banner with cross-playlist navigation.
+- Audio track: load or remove an external audio file as a selectable track, plus per-track source, filename, codec-profile details.
+- Now Playing: long-press previous or next to force past the queue ends, an undo-last-seek control, and sample-accurate scrubbing on the waveform.
 
 ### Changed
 - Updated `mpv_audio_kit` to version `0.3.3`.

@@ -35,7 +35,13 @@ class PlaybackReporter {
   /// Begin listening. Safe to call once at app start.
   void start() {
     _subs.add(_player.stream.playlist.listen((_) => _onPlaylist()));
+    // Actual-output axis: only to detect that real playback has begun.
     _subs.add(_player.stream.playing.listen(_onPlaying));
+    // Intent axis (stable across seeks/buffering): drives the server
+    // pause/resume report. Binding pause to `playing` would emit a spurious
+    // paused→resumed pair to Jellyfin/Plex on every scrub, since `playing`
+    // toggles transiently false→true while mpv reinitializes after a seek.
+    _subs.add(_player.stream.playWhenReady.listen(_onIntent));
     _subs.add(_player.stream.completed.listen((done) {
       if (done) _reportStop();
     }));
@@ -103,14 +109,18 @@ class PlaybackReporter {
 
   void _onPlaying(bool playing) {
     if (_itemId == null) return;
-    if (!_started) {
-      _maybeStart();
-      return;
-    }
-    // Already started: reflect the pause/resume immediately so the server's
-    // Now Playing shows the right state, and keep the progress timer in sync.
-    _reportProgress(paused: !playing);
-    if (playing) {
+    // First real output → start the session. Pause/resume reporting is driven
+    // by the intent axis in [_onIntent], not here.
+    if (!_started && playing) _maybeStart();
+  }
+
+  void _onIntent(bool playWhenReady) {
+    if (_itemId == null || !_started) return;
+    // Reflect the user's intent on the server's Now Playing, and keep the
+    // progress timer in sync — stable across the seek/buffer transients of
+    // the actual-output axis.
+    _reportProgress(paused: !playWhenReady);
+    if (playWhenReady) {
       _restartTimer();
     } else {
       _progressTimer?.cancel();

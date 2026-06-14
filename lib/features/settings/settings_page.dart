@@ -674,9 +674,58 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
       initialData: player.state.replayGain,
       builder: (context, snap) {
         final rg = snap.data ?? const ReplayGainSettings();
+        final normalizer = PlayerScope.normalizerOf(context);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Scan-based normalization first: it works on ANY track (no
+            // tags needed) — the engine measures each file on load.
+            ListenableBuilder(
+              listenable: normalizer,
+              builder: (context, _) {
+                final scan = normalizer.lastScan;
+                final status = !normalizer.enabled
+                    ? 'Off'
+                    : switch (scan?.state) {
+                        LoudnessScanState.ready =>
+                          'Track: ${scan!.integrated!.toStringAsFixed(1)} '
+                              'LUFS → gain '
+                              '${normalizer.appliedGainDb >= 0 ? '+' : ''}'
+                              '${normalizer.appliedGainDb.toStringAsFixed(1)} dB',
+                        LoudnessScanState.unavailable =>
+                          'Live stream — cannot pre-measure, unity gain',
+                        LoudnessScanState.failed => 'Scan failed, unity gain',
+                        _ => 'Measuring…',
+                      };
+                return SettingsGroup(
+                  label: 'Loudness normalization (EBU R128)',
+                  children: [
+                    SwitchRow(
+                      label: 'Normalize volume',
+                      subtitle: 'Measure each track on load and steer it to '
+                          'the target loudness — works without ReplayGain '
+                          'tags. $status',
+                      value: normalizer.enabled,
+                      onChanged: normalizer.setEnabled,
+                    ),
+                    SliderRow(
+                      label: 'Target',
+                      description:
+                          'Integrated loudness target. -18 LUFS is the '
+                          'ReplayGain 2.0 reference; streaming services sit '
+                          'around -14',
+                      value: normalizer.targetLufs,
+                      min: -24,
+                      max: -10,
+                      resetTo: -18,
+                      format: (x) => '${x.toStringAsFixed(0)} LUFS',
+                      enabled: normalizer.enabled,
+                      onChanged: normalizer.setTargetLufs,
+                    ),
+                  ],
+                );
+              },
+            ),
             SettingsGroup(
               label: 'ReplayGain normalization',
               children: [

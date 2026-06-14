@@ -5,6 +5,7 @@ import '../features/console/console_log.dart';
 import '../features/stream/favorites_controller.dart';
 import '../features/stream/media_server.dart';
 import 'app_settings.dart';
+import 'loudness_normalizer.dart';
 import 'mpv_studio.dart';
 
 /// Exposes the running [MpvStudio] — the single [Player] and the app's
@@ -32,6 +33,10 @@ class PlayerScope extends InheritedWidget {
 
   static AppSettings settingsOf(BuildContext context) =>
       _scope(context).settings;
+
+  /// The EBU R128 volume normalizer (offline-scan driven).
+  static LoudnessNormalizer normalizerOf(BuildContext context) =>
+      _scope(context).normalizer;
 
   /// The connected server of the given [kind].
   static MediaServer serverOf(BuildContext context, ServerKind kind) =>
