@@ -331,7 +331,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
               Text('Connect to Samba',
                   style: Tokens.heading, textAlign: TextAlign.center),
               const SizedBox(height: Tokens.s4),
-              Text('SMB2/3 server — host, share, and credentials',
+              Text('Enter the host, share, and credentials',
                   style: Tokens.caption, textAlign: TextAlign.center),
               const SizedBox(height: Tokens.s20),
               _Field(

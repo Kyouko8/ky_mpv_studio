@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -114,6 +116,15 @@ class _WaveformMeterState extends State<WaveformMeter>
         _dur = d;
       });
     });
+    // PLAYBACK_RESTART (mpv's canonical discontinuity event — a seek OR a new
+    // track): the position has just jumped to an authoritative value. Re-sync
+    // the interpolated playhead to it so it never keeps running from the
+    // previous track's (or pre-seek) position and then snaps back to align.
+    listen(_player.stream.seekCompleted, (_) {
+      _anchor = _player.state.position;
+      _sw.reset();
+      if (mounted) setState(() {});
+    });
     listen(_player.stream.rate, (r) {
       if (mounted) setState(() => _rate = r);
     });
@@ -147,6 +158,7 @@ class _WaveformMeterState extends State<WaveformMeter>
 
   @override
   void dispose() {
+    _stopFlick();
     _ticker.dispose();
     super.dispose();
   }
@@ -323,16 +335,74 @@ class _WaveformMeterState extends State<WaveformMeter>
     setState(() => _viewStart = v.clamp(0, _maxStart));
   }
 
+  // Trackpad pan inertia. macOS delivers a trackpad swipe as a pan-zoom GESTURE
+  // (no OS scroll momentum), so a flick is simulated on release: a friction
+  // decay whose distance scales with the zoom, like the live pan.
+  Timer? _flick;
+  double _flickVel = 0; // view-direction px/sec at the last pan update
+  Duration? _lastPanTs;
+
+  void _stopFlick() {
+    _flick?.cancel();
+    _flick = null;
+  }
+
   /// Mouse wheel / trackpad scroll pans the view horizontally (it never seeks).
   /// A vertical wheel and a horizontal trackpad swipe both map to left/right;
   /// the pixel delta becomes seconds via the current zoom, then pans like the
   /// scrollbar would.
   void _onScroll(PointerSignalEvent signal, double width) {
     if (signal is! PointerScrollEvent || _maxStart <= 0) return;
+    _stopFlick(); // a real scroll signal (incl. any OS momentum) takes over
     final d = signal.scrollDelta;
     final delta = d.dx.abs() >= d.dy.abs() ? d.dx : d.dy;
     if (delta == 0 || width <= 0 || _visibleSecs <= 0) return;
     _onScrub((_leftRel + delta / (width / _visibleSecs)).clamp(0.0, _maxStart));
+  }
+
+  /// Trackpad two-finger swipe. macOS delivers it as a pan-zoom GESTURE (not a
+  /// scroll signal), so the seek drag ignores the trackpad and the pan is
+  /// handled here: panning like the wheel, while tracking the release velocity
+  /// so the gesture can coast (see [_startFlick]).
+  void _onPanZoom(PointerPanZoomUpdateEvent e, double width) {
+    if (_maxStart <= 0 || width <= 0 || _visibleSecs <= 0) return;
+    // Trackpad pan follows finger movement — the opposite sign to the wheel's
+    // content-scroll convention — so negate to match _onScroll's direction.
+    final comp =
+        e.panDelta.dx.abs() >= e.panDelta.dy.abs() ? e.panDelta.dx : e.panDelta.dy;
+    if (_lastPanTs != null) {
+      final dt = (e.timeStamp - _lastPanTs!).inMicroseconds / 1e6;
+      if (dt > 1e-4) _flickVel = -comp / dt;
+    }
+    _lastPanTs = e.timeStamp;
+    if (comp == 0) return;
+    _onScrub((_leftRel - comp / (width / _visibleSecs)).clamp(0.0, _maxStart));
+  }
+
+  /// Coast after a trackpad flick: decay the release velocity with friction and
+  /// keep panning until it falls below a threshold or hits an edge.
+  void _startFlick(double width) {
+    _stopFlick();
+    var vel = _flickVel; // view-direction px/sec
+    if (vel.abs() < 80 || _maxStart <= 0) return;
+    _flick = Timer.periodic(const Duration(milliseconds: 16), (t) {
+      if (!mounted || _maxStart <= 0 || width <= 0 || _visibleSecs <= 0) {
+        _stopFlick();
+        return;
+      }
+      vel *= 0.95; // friction per frame (~60 fps)
+      if (vel.abs() < 30) {
+        _stopFlick();
+        return;
+      }
+      final next = (_leftRel + (vel * 0.016) / (width / _visibleSecs))
+          .clamp(0.0, _maxStart);
+      if (next == _leftRel) {
+        _stopFlick(); // hit an edge
+        return;
+      }
+      _onScrub(next);
+    });
   }
 
   /// Scrollbar drag. A normal track moves the view; a live stream pans
@@ -363,6 +433,13 @@ class _WaveformMeterState extends State<WaveformMeter>
                     final w = c.maxWidth;
                     return Listener(
                       onPointerSignal: (s) => _onScroll(s, w),
+                      onPointerPanZoomStart: (_) {
+                        _stopFlick();
+                        _lastPanTs = null;
+                        _flickVel = 0;
+                      },
+                      onPointerPanZoomUpdate: (e) => _onPanZoom(e, w),
+                      onPointerPanZoomEnd: (_) => _startFlick(w),
                       child: MouseRegion(
                         cursor: canSeek
                             ? SystemMouseCursors.precise
@@ -377,6 +454,19 @@ class _WaveformMeterState extends State<WaveformMeter>
                         },
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
+                          // Exclude the trackpad from the seek gestures: a
+                          // two-finger trackpad swipe must PAN the view (it
+                          // falls through to the scroll handler, like the mouse
+                          // wheel), not be claimed as a horizontal drag and
+                          // seek. Trackpad CLICKS arrive as mouse events, so
+                          // tap-to-seek still works.
+                          supportedDevices: const {
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.stylus,
+                            PointerDeviceKind.invertedStylus,
+                            PointerDeviceKind.unknown,
+                          },
                           onTapDown: canSeek
                               ? (d) => _seekToX(d.localPosition.dx, w)
                               : null,
@@ -424,7 +514,7 @@ class _WaveformMeterState extends State<WaveformMeter>
                   },
                 ),
               ),
-              // Horizontal zoom for the waveform / playhead timeline.
+              // Horizontal zoom for the waveform and playhead timeline.
               Positioned(
                 top: WaveformMeter.rulerHeight + 4,
                 right: 6,
@@ -433,6 +523,17 @@ class _WaveformMeterState extends State<WaveformMeter>
                   canZoomOut: _windowSeconds < _timelineSecs,
                   onZoomIn: () => _zoomBy(0.6),
                   onZoomOut: () => _zoomBy(1 / 0.6),
+                ),
+              ),
+              // Live scan progress (the waveform decode IS the shared analysis
+              // pass). Top-left so it never collides with the zoom pill; fades
+              // out when the scan settles. An overlay, so it causes no reflow.
+              Positioned(
+                top: WaveformMeter.rulerHeight + 6,
+                left: 8,
+                child: _ScanIndicator(
+                  visible: _wave?.decoding == true,
+                  fraction: _wave?.decodeFraction,
                 ),
               ),
             ],
@@ -491,6 +592,86 @@ class _ZoomControls extends StatelessWidget {
             onTap: onZoomIn,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A compact live-scan progress chip overlaid on the meter: a label, a thin
+/// bar, and a percent. The waveform decode IS the shared analysis pass (the
+/// loudness scan, when enabled, rides it in lockstep), so the waveform decode
+/// fraction drives it. Determinate when that fraction is known, indeterminate
+/// otherwise. Fades out when no scan is running; the bar glides between updates
+/// (the worker regions seal in clumps) and the percent is fixed-width so the
+/// chip never jitters as it grows.
+class _ScanIndicator extends StatelessWidget {
+  final bool visible;
+  final double? fraction;
+  const _ScanIndicator({required this.visible, this.fraction});
+
+  @override
+  Widget build(BuildContext context) {
+    final f = visible ? fraction : 0.0;
+    return IgnorePointer(
+      ignoring: !visible,
+      child: AnimatedOpacity(
+        opacity: visible ? 1 : 0,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: Tokens.s8, vertical: Tokens.s4),
+          decoration: ShapeDecoration(
+            color: Tokens.surface2,
+            shape: Tokens.squircle(Tokens.rSm),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Scanning audio', style: Tokens.caption),
+              const SizedBox(width: Tokens.s8),
+              SizedBox(
+                width: 60,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: f == null
+                      ? const LinearProgressIndicator(
+                          minHeight: 3,
+                          color: Tokens.accent,
+                          backgroundColor: Tokens.line2,
+                        )
+                      : TweenAnimationBuilder<double>(
+                          tween: Tween(end: f.clamp(0.0, 1.0)),
+                          duration: const Duration(milliseconds: 240),
+                          curve: Curves.easeOut,
+                          builder: (_, v, __) => LinearProgressIndicator(
+                            value: v,
+                            minHeight: 3,
+                            color: Tokens.accent,
+                            backgroundColor: Tokens.line2,
+                          ),
+                        ),
+                ),
+              ),
+              if (f != null) ...[
+                const SizedBox(width: Tokens.s8),
+                SizedBox(
+                  // Wide enough for "100%" so it never wraps to a second line
+                  // at the end of the scan; fixed so the chip never jitters.
+                  width: 38,
+                  child: Text(
+                    '${(f * 100).round()}%',
+                    style: Tokens.numeric,
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.visible,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

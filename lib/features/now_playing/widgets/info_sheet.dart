@@ -61,6 +61,10 @@ class _InfoSheet extends StatelessWidget {
           ),
           Flexible(
             child: SingleChildScrollView(
+              // Clamp the overscroll: the bouncing physics at the top edge
+              // fights the modal sheet's drag-to-dismiss, which reads as the
+              // whole sheet juddering when you scroll up into the top.
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(
                   Tokens.s16, Tokens.s16, Tokens.s16, Tokens.s8),
               child: Column(
@@ -167,22 +171,30 @@ class _InfoSheet extends StatelessWidget {
       stream: player.stream.loudness,
       initial: initialScan,
       builder: (context, scan) {
-        if (scan?.state != LoudnessScanState.ready) {
-          return const SizedBox.shrink();
-        }
-        final s = scan!;
+        // Always render the section so the sheet height is stable: it used to
+        // pop in only once the scan landed, reflowing the list mid-scroll.
+        // Real values when ready, a placeholder until the measurement exists.
+        final s = scan?.state == LoudnessScanState.ready ? scan : null;
         return _section('Loudness (EBU R128)', _statGrid([
-          ('Integrated', '${s.integrated!.toStringAsFixed(1)} LUFS'),
-          ('Range', '${s.range!.toStringAsFixed(1)} LU'),
-          ('True peak', _peakDb(s.truePeak!)),
-          ('Sample peak', _peakDb(s.samplePeak!)),
+          (
+            'Integrated',
+            s?.integrated != null
+                ? '${s!.integrated!.toStringAsFixed(1)} LUFS'
+                : '-'
+          ),
+          (
+            'Range',
+            s?.range != null ? '${s!.range!.toStringAsFixed(1)} LU' : '-'
+          ),
+          ('True peak', s?.truePeak != null ? _peakDb(s!.truePeak!) : '-'),
+          ('Sample peak', s?.samplePeak != null ? _peakDb(s!.samplePeak!) : '-'),
         ]));
       },
     );
   }
 
   String _peakDb(double linear) {
-    if (linear <= 0) return '—';
+    if (linear <= 0) return '-';
     final db = 20 * math.log(linear) / math.ln10;
     return '${db.toStringAsFixed(1)} dBFS';
   }
@@ -349,7 +361,7 @@ class _InfoSheet extends StatelessWidget {
   /// adaptive streams this is the protocol (HLS/DASH); for direct files
   /// it's the real container.
   static String _friendlyContainer(String f) {
-    if (f.isEmpty) return '—';
+    if (f.isEmpty) return '-';
     final l = f.toLowerCase();
     if (l.startsWith('hls')) return 'HLS';
     if (l.startsWith('dash')) return 'DASH';
@@ -363,25 +375,25 @@ class _InfoSheet extends StatelessWidget {
     return f.split(',').first;
   }
 
-  static String _orDash(String v) => v.isEmpty ? '—' : v;
+  static String _orDash(String v) => v.isEmpty ? '-' : v;
   static String _yn(bool v) => v ? 'yes' : 'no';
   static String _secs(Duration d) =>
       '${(d.inMicroseconds / 1e6).toStringAsFixed(3)} s';
   static String _bitrate(double? v) =>
-      v == null || v <= 0 ? '—' : '${(v / 1000).toStringAsFixed(0)} kbps';
+      v == null || v <= 0 ? '-' : '${(v / 1000).toStringAsFixed(0)} kbps';
 
   static String _bytes(int b) {
-    if (b <= 0) return '—';
+    if (b <= 0) return '-';
     final mib = b / (1024 * 1024);
     return mib >= 1 ? '${mib.toStringAsFixed(2)} MiB' : '$b B';
   }
 
   static String _sampleRate(int? hz) =>
-      hz == null || hz <= 0 ? '—' : '${(hz / 1000).toStringAsFixed(1)} kHz';
+      hz == null || hz <= 0 ? '-' : '${(hz / 1000).toStringAsFixed(1)} kHz';
 
   static String _codec(AudioParams p) {
     final c = p.codec ?? p.codecName;
-    return (c == null || c.isEmpty) ? '—' : c;
+    return (c == null || c.isEmpty) ? '-' : c;
   }
 
   static String _channels(AudioParams p) {
@@ -389,7 +401,7 @@ class _InfoSheet extends StatelessWidget {
     if (p.channelCount != null && p.channelCount! > 0) {
       return '${p.channelCount} ch';
     }
-    return '—';
+    return '-';
   }
 
   static String _bitDepth(Format? f) {
@@ -414,7 +426,7 @@ class _InfoSheet extends StatelessWidget {
         return '64-bit float';
       case Format.auto:
       case null:
-        return '—';
+        return '-';
     }
   }
 }

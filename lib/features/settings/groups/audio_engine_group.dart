@@ -144,7 +144,7 @@ class _AudioEngineGroupState extends State<AudioEngineGroup> {
               stream: player.stream.currentAo,
               initial: player.state.currentAo,
               builder: (context, v) =>
-                  InfoRow(label: 'Active driver', value: v.isEmpty ? '—' : v),
+                  InfoRow(label: 'Active driver', value: v.isEmpty ? '-' : v),
             ),
             Live<AudioOutputState>(
               stream: player.stream.audioOutputState,
@@ -175,7 +175,7 @@ class _AudioEngineGroupState extends State<AudioEngineGroup> {
                   InfoRow(
                     label: 'Format',
                     value: p.format == null || p.format == Format.auto
-                        ? '—'
+                        ? '-'
                         : p.format!.mpvValue,
                   ),
                   InfoRow(label: 'Bit depth', value: _bitDepthLabel(p.format)),
@@ -197,16 +197,16 @@ class _AudioEngineGroupState extends State<AudioEngineGroup> {
 // ── Output-params formatting ───────────────────────────────────────────
 
 /// The decoded codec, preferring the descriptive `audio-codec-name` and
-/// falling back to the short `audio-codec`. '—' when nothing is decoding.
+/// falling back to the short `audio-codec`. '-' when nothing is decoding.
 String _codecLabel(AudioParams p) {
   final c = (p.codecName?.isNotEmpty ?? false) ? p.codecName! : (p.codec ?? '');
-  return c.isEmpty ? '—' : c;
+  return c.isEmpty ? '-' : c;
 }
 
 /// Human-readable sample depth + type for [f] (e.g. '16-bit signed integer'),
-/// noting planar layouts. '—' when no audio is being output.
+/// noting planar layouts. '-' when no audio is being output.
 String _bitDepthLabel(Format? f) {
-  if (f == null || f == Format.auto) return '—';
+  if (f == null || f == Format.auto) return '-';
   final base = switch (f) {
     Format.u8 || Format.u8Planar => '8-bit unsigned integer',
     Format.s16 || Format.s16Planar => '16-bit signed integer',
@@ -214,23 +214,23 @@ String _bitDepthLabel(Format? f) {
     Format.s64 || Format.s64Planar => '64-bit signed integer',
     Format.float32 || Format.float32Planar => '32-bit float',
     Format.float64 || Format.float64Planar => '64-bit float',
-    Format.auto => '—',
+    Format.auto => '-',
   };
   return f.mpvValue.endsWith('p') ? '$base (planar)' : base;
 }
 
 String _sampleRateLabel(int? hz) =>
-    hz == null ? '—' : '${(hz / 1000).toStringAsFixed(1)} kHz';
+    hz == null ? '-' : '${(hz / 1000).toStringAsFixed(1)} kHz';
 
 /// Channel layout: the human-readable name plus the raw count when both are
-/// known (e.g. 'stereo (2 ch)'). '—' when nothing is being output.
+/// known (e.g. 'stereo (2 ch)'). '-' when nothing is being output.
 String _channelsLabel(AudioParams p) {
   final hr = p.hrChannels;
   final count = p.channelCount;
   if (hr != null && hr.isNotEmpty) {
     return count != null ? '$hr ($count ch)' : hr;
   }
-  return count != null ? '$count ch' : '—';
+  return count != null ? '$count ch' : '-';
 }
 
 /// Multi-select pills for S/PDIF passthrough codecs. mpv treats the set

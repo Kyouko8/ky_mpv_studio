@@ -64,7 +64,7 @@ const _streamCategories = <StreamCategory>[
       url: 'https://streams.radiomast.io/ref-24k-heaacv1-mono',
     ),
   ]),
-  StreamCategory(name: 'Ogg / open formats', items: [
+  StreamCategory(name: 'Ogg and open formats', items: [
     StreamItem(
       label: 'Ogg Vorbis 64k Stereo',
       url: 'https://streams.radiomast.io/ref-64k-ogg-vorbis-stereo',
@@ -147,11 +147,11 @@ const _youtubeExamples = <_YtExample>[
 const _chapterCategories = <StreamCategory>[
   StreamCategory(name: 'Embedded chapters', items: [
     StreamItem(
-      label: 'Auphonic demo · 8 chapters (MP4 / m4a)',
+      label: 'Auphonic demo · 8 chapters (MP4, m4a)',
       url: 'https://auphonic.com/media/blog/auphonic_chapters_demo.m4a',
     ),
     StreamItem(
-      label: 'Auphonic demo · 8 chapters (MP3 / ID3 CHAP)',
+      label: 'Auphonic demo · 8 chapters (MP3, ID3 CHAP)',
       url: 'https://auphonic.com/media/blog/auphonic_chapters_demo.mp3',
     ),
     StreamItem(

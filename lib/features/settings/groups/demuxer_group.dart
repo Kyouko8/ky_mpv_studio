@@ -114,7 +114,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               stream: player.stream.currentDemuxer,
               initial: player.state.currentDemuxer,
               builder: (context, v) =>
-                  InfoRow(label: 'Current demuxer', value: v.isEmpty ? '—' : v),
+                  InfoRow(label: 'Current demuxer', value: v.isEmpty ? '-' : v),
             ),
             Live<Duration>(
               stream: player.stream.bufferDuration,
@@ -159,7 +159,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               InfoRow(
                 label: 'Buffered ranges',
                 value: cache.seekableRanges.isEmpty
-                    ? '—'
+                    ? '-'
                     : cache.seekableRanges
                         .map((r) => '${_fmt(r.start)}–${_fmt(r.end)}')
                         .join(', '),
@@ -167,7 +167,7 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
               InfoRow(
                 label: 'Raw input rate',
                 value: cache.rawInputRate == null
-                    ? '—'
+                    ? '-'
                     : '${(cache.rawInputRate! / 1024).toStringAsFixed(1)} KiB/s',
               ),
               InfoRow(

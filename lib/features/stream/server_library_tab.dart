@@ -185,7 +185,7 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     if (!mounted) return;
     _search.clear();
     _query = '';
-    setState(() => _error = 'Session expired — please sign in again.');
+    setState(() => _error = 'Session expired. Please sign in again.');
   }
 
   void _onSearch(String q) {

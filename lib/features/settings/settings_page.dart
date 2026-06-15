@@ -683,31 +683,39 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
             ListenableBuilder(
               listenable: normalizer,
               builder: (context, _) {
+                // Live scan status shown as read-only rows, mirroring the
+                // Prefetch state pattern (a state row plus a value row). The
+                // loudness is measured regardless of the toggle, so the state
+                // is the real scan state.
                 final scan = normalizer.lastScan;
-                final status = !normalizer.enabled
-                    ? 'Off'
-                    : switch (scan?.state) {
-                        LoudnessScanState.ready =>
-                          'Track: ${scan!.integrated!.toStringAsFixed(1)} '
-                              'LUFS → gain '
-                              '${normalizer.appliedGainDb >= 0 ? '+' : ''}'
-                              '${normalizer.appliedGainDb.toStringAsFixed(1)} dB',
-                        LoudnessScanState.unavailable =>
-                          'Live stream — cannot pre-measure, unity gain',
-                        LoudnessScanState.failed => 'Scan failed, unity gain',
-                        _ => 'Measuring…',
-                      };
+                final scanState = switch (scan?.state) {
+                  LoudnessScanState.scanning => scan!.progress != null
+                      ? 'scanning ${(scan.progress! * 100).round()}%'
+                      : 'scanning',
+                  LoudnessScanState.ready => 'ready',
+                  LoudnessScanState.failed => 'failed',
+                  LoudnessScanState.unavailable => 'unavailable',
+                  _ => 'idle',
+                };
+                final g = normalizer.appliedGainDb;
+                final isReady = scan?.state == LoudnessScanState.ready &&
+                    scan?.integrated != null;
+                final measured = !isReady
+                    ? '-'
+                    : '${scan!.integrated!.toStringAsFixed(1)} LUFS'
+                        '${normalizer.enabled ? ' · gain ${g >= 0 ? '+' : ''}${g.toStringAsFixed(1)} dB' : ''}';
                 return SettingsGroup(
                   label: 'Loudness normalization (EBU R128)',
                   children: [
                     SwitchRow(
                       label: 'Normalize volume',
                       subtitle: 'Measure each track on load and steer it to '
-                          'the target loudness — works without ReplayGain '
-                          'tags. $status',
+                          'the target loudness. Works without ReplayGain tags.',
                       value: normalizer.enabled,
                       onChanged: normalizer.setEnabled,
                     ),
+                    InfoRow(label: 'Scan state', value: scanState),
+                    InfoRow(label: 'Measured', value: measured),
                     SliderRow(
                       label: 'Target',
                       description:
@@ -1039,8 +1047,8 @@ class _AboutGroup extends StatelessWidget {
       label: 'About',
       children: [
         const InfoRow(label: 'App', value: 'MPV Studio'),
-        InfoRow(label: 'Engine', value: mpv.isEmpty ? '—' : mpv),
-        InfoRow(label: 'FFmpeg', value: ffmpeg.isEmpty ? '—' : ffmpeg),
+        InfoRow(label: 'Engine', value: mpv.isEmpty ? '-' : mpv),
+        InfoRow(label: 'FFmpeg', value: ffmpeg.isEmpty ? '-' : ffmpeg),
       ],
     );
   }
