@@ -12,7 +12,8 @@ dependencies:
     sdk: flutter
 
   # mpv_audio_kit
-  mpv_audio_kit: {path: ../mpv_audio_kit}
+  #mpv_audio_kit: {path: ../mpv_audio_kit}
+  mpv_audio_kit: ^0.4.0
 
   # Other dependencies
   file_selector: ^1.0.3

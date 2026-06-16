@@ -1,4 +1,4 @@
-## [0.2.5] - 14-06-2026
+## [0.2.5] - 16-06-2026
 
 ### Added
 - Loudness normalization (EBU R128) in the Normalization settings: a "Normalize volume" toggle and a target-LUFS slider that measure each track on load and steer it to the target loudness, works on any track, ReplayGain tags or not.
