@@ -43,51 +43,54 @@ class _DemuxerGroupState extends State<DemuxerGroup> {
         SettingsGroup(
           label: 'Demuxer performance',
           children: [
-            Live<int>(
-              stream: player.stream.demuxerMaxBytes,
-              initial: player.state.demuxerMaxBytes,
-              builder: (context, v) => SliderRow(
+            Live<DemuxerSettings>(
+              stream: player.stream.demuxer,
+              initial: player.state.demuxer,
+              builder: (context, d) => SliderRow(
                 label: 'Max cache size',
                 description: 'Memory the demuxer may use to read ahead',
-                value: v / _mib,
+                value: d.maxBytes / _mib,
                 min: 1,
                 max: 2048,
                 resetTo: 150,
                 format: (x) => '${x.round()} MiB',
-                onChanged: (x) => player.setDemuxerMaxBytes((x * _mib).round()),
+                onChanged: (x) =>
+                    player.setDemuxer(d.copyWith(maxBytes: (x * _mib).round())),
               ),
             ),
-            // mpv's demuxer-readahead-secs is fractional seconds, so the API
+            // mpv's demuxer-readahead-secs is fractional seconds, so the field
             // is a Duration. The slider scrubs whole seconds.
-            Live<Duration>(
-              stream: player.stream.demuxerReadaheadSecs,
-              initial: player.state.demuxerReadaheadSecs,
-              builder: (context, v) => SliderRow(
+            Live<DemuxerSettings>(
+              stream: player.stream.demuxer,
+              initial: player.state.demuxer,
+              builder: (context, d) => SliderRow(
                 label: 'Readahead',
                 description: 'How far ahead of playback the demuxer reads',
-                value: v.inMilliseconds / 1000.0,
+                value: d.readahead.inMilliseconds / 1000.0,
                 min: 0,
                 max: 600,
                 resetTo: 1,
                 format: (x) => '${x.round()} s',
-                onChanged: (x) => player.setDemuxerReadaheadSecs(
-                  Duration(milliseconds: (x * 1000).round()),
+                onChanged: (x) => player.setDemuxer(
+                  d.copyWith(
+                    readahead: Duration(milliseconds: (x * 1000).round()),
+                  ),
                 ),
               ),
             ),
-            Live<int>(
-              stream: player.stream.demuxerMaxBackBytes,
-              initial: player.state.demuxerMaxBackBytes,
-              builder: (context, v) => SliderRow(
+            Live<DemuxerSettings>(
+              stream: player.stream.demuxer,
+              initial: player.state.demuxer,
+              builder: (context, d) => SliderRow(
                 label: 'Seekback pool',
                 description: 'Recent audio kept so seeking back is instant',
-                value: v / _mib,
+                value: d.maxBackBytes / _mib,
                 min: 0,
                 max: 1024,
                 resetTo: 50,
                 format: (x) => '${x.round()} MiB',
-                onChanged: (x) =>
-                    player.setDemuxerMaxBackBytes((x * _mib).round()),
+                onChanged: (x) => player
+                    .setDemuxer(d.copyWith(maxBackBytes: (x * _mib).round())),
               ),
             ),
           ],
