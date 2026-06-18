@@ -1,7 +1,7 @@
 name: mpv_studio
 description: "MPV Studio"
 publish_to: 'none'
-version: 0.2.6
+version: 0.2.7
 
 environment:
   sdk: ^3.6.0
@@ -13,7 +13,7 @@ dependencies:
 
   # mpv_audio_kit
   #mpv_audio_kit: {path: ../mpv_audio_kit}
-  mpv_audio_kit: ^0.4.1
+  mpv_audio_kit: ^0.4.2
 
   # Other dependencies
   file_selector: ^1.0.3

@@ -1,3 +1,8 @@
+## [0.2.7] - 18-06-2026
+
+### Changed
+- Updated `mpv_audio_kit` to version `0.4.2`.
+
 ## [0.2.6] - 17-06-2026
 
 ### Changed
