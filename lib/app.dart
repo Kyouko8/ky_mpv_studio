@@ -23,8 +23,8 @@ class _MpvStudioAppState extends State<MpvStudioApp> {
 
   // Dock-Quit / ⌘Q call NSApplication terminate: without unwinding the widget
   // tree, so State.dispose never runs before the engine tears down.
-  // onExitRequested is the hook that does fire there: shut the player down
-  // (bounded so it can't itself stall quit), then allow the exit.
+  // onExitRequested is the hook that does fire there: kick the player shutdown
+  // off best-effort and allow the exit immediately (see _onExitRequested).
   late final AppLifecycleListener _exitGate;
   Future<void>? _inFlight;
 
@@ -43,8 +43,15 @@ class _MpvStudioAppState extends State<MpvStudioApp> {
       .shutdown()
       .timeout(const Duration(seconds: 3), onTimeout: () {});
 
+  // onExitRequested is a DECISION point, not a teardown hook: return
+  // AppExitResponse.exit promptly so the engine answers the OS quit Apple
+  // Event with .exit instead of NSTerminateCancel-then-re-terminate. Awaiting
+  // the teardown is what holds this Future pending and trips macOS's "App is
+  // preventing your computer from shutting down" panel — the mpv core +
+  // CoreAudio device are pure resource reclamation the OS frees on process
+  // exit, so the teardown runs best-effort (also fired from onDetach).
   Future<AppExitResponse> _onExitRequested() async {
-    await _teardown();
+    unawaited(_teardown());
     return AppExitResponse.exit;
   }
 

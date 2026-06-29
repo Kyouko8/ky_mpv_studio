@@ -1,3 +1,8 @@
+## [0.2.8] - 29-06-2026
+
+### Fixed
+- On macOS, shutting down or restarting the computer no longer triggers the system warning message.
+
 ## [0.2.7] - 18-06-2026
 
 ### Changed
