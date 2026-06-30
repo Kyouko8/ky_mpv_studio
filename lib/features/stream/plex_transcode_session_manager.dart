@@ -173,14 +173,13 @@ class PlexTranscodeSessionManager {
         params: params,
         extraHeaders: {'X-Plex-Client-Profile-Extra': profileValue},
       );
-      // Accept any *playable* decision, not just isTranscode (2xxx).
-      // With directPlay=0/directStream=0 Plex cannot direct-play, so a
-      // successful decision comes back as 1001 "Direct play not available;
-      // Conversion OK" — that IS a transcode (it spins up a session and a
-      // valid start.mpd). isTranscode only matches 2xxx and so wrongly
-      // rejected 1001, falling back to direct play. isPlayable (isDirect ||
-      // isTranscode) is the correct gate. Only a genuinely non-playable
-      // decision (no/error code) falls through to the direct part URL.
+      // Accept any playable decision. With directPlay=0 and directStream=0
+      // Plex can't direct-play, so a successful decision comes back as a
+      // 1xxx code (e.g. 1001 "Direct play not available; Conversion OK"),
+      // which spins up a transcode session and a valid start.mpd. As of
+      // dart_plex 0.1.0 isPlayable is true for any 1xxx decision; only a
+      // genuinely non-playable decision (an error code) falls through to
+      // the direct part URL.
       if (!decision.isPlayable) {
         debugPrint('PlexTranscode: decision=${decision.code} not playable '
             '→ direct play');

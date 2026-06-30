@@ -1,3 +1,8 @@
+## [0.2.9] - 30-06-2026
+
+### Changed
+- Updated `dart_plex` and `dart_jellyfin` to version `0.1.0`.
+
 ## [0.2.8] - 29-06-2026
 
 ### Fixed
