@@ -12,7 +12,7 @@ import 'media_server.dart';
 /// drives the server's "Now Playing", play-progress / on-deck, and scrobble.
 ///
 /// It listens to the single app [Player] and routes each report to the right
-/// connected [MediaServer] using the `'serverInstanceId'` / `'serverId'` keys embedded
+/// connected [MediaServer] using the `'server'` / `'serverId'` keys embedded
 /// in the playing [Media]'s extras (see `ServerLibraryTab`). Tracks without
 /// those extras (the Lab tab, local files) are ignored. All reporting is
 /// best-effort — the server impls swallow their own errors.

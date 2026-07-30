@@ -8,11 +8,18 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../../studio/player_scope.dart';
 import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
-import 'media_server.dart';
 
 /// The Samba (SMB2/3) tab: a connect form until authenticated, then a
 /// **folder browser** — navigate the share's directory tree and tap a track to
-/// play it.
+/// play it. Unlike the Jellyfin / Plex tabs (flat searchable song lists), an
+/// SMB share is a raw filesystem, so this is a path-walking view: directories
+/// first, then audio files, with a breadcrumb + up button.
+///
+/// Playback hands mpv an `smb2://user:pass@host/share/path` URL — the bundled
+/// libmpv links libsmb2, so it opens these directly (and the waveform analyzer
+/// treats them as ordinary seekable files → full envelope up-front).
+import 'media_server.dart';
+
 class SambaBrowserTab extends StatefulWidget {
   final SambaServer server;
   const SambaBrowserTab({super.key, required this.server});
@@ -155,7 +162,8 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     });
   }
 
-  /// List [path] and show it.
+  /// List [path] and show it. Directories sort first, then audio files; both
+  /// alphabetical (case-insensitive). Non-audio files are hidden.
   Future<void> _open(String path) async {
     final pool = widget.server.pool;
     if (pool == null) return;
@@ -201,6 +209,18 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     _open(i < 0 ? '' : _path.substring(0, i));
   }
 
+  /// `smb2://[domain;]user:password@host/share/path`, properly percent-encoded.
+  ///
+  /// The bundled libmpv's libsmb2 decodes the domain / user / share / path (and
+  /// password), so this sends a standards-correct URL — spaces, accents and
+  /// reserved chars (`#`, `?`, `&`, …) in folder/file names all survive. The
+  /// host is left verbatim (it's an IP / hostname). Path and share are encoded
+  /// per segment so the `/` separators stay literal.
+  ///
+  /// NOTE: needs the libsmb2 path-decode patch (libmpv-scripts
+  /// patches/ffmpeg/libsmb2.c) — i.e. a libmpv rebuilt after that change. An
+  /// older libmpv decodes only the password, so it would see the encoded path
+  /// literally; the two must ship together.
   String _smbUrl(String filePath) {
     String enc(String s) => Uri.encodeComponent(s);
     String encPath(String p) =>
@@ -215,6 +235,8 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     return 'smb2://$auth${instance.host}/${encPath(instance.share)}/${encPath(filePath)}';
   }
 
+  /// Queue the current folder's audio files starting at the tapped one (capped
+  /// at [_queueMax]) and play.
   void _play(Smb2DirEntry tapped) {
     final files = _entries.where((e) => e.isFile).toList();
     final start = files.indexOf(tapped);
@@ -391,6 +413,9 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
   }
 }
 
+/// A directory or file row in the Queue's squircle-card style: a folder glyph
+/// for directories, the file size for audio files. The currently-playing file
+/// lights up (accent wash + speaker glyph), like the Jellyfin/Plex rows.
 class _EntryTile extends StatelessWidget {
   final Smb2DirEntry entry;
   final bool current;
@@ -416,6 +441,8 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dir = entry.isDirectory;
+    // Leading: folder glyph for dirs, a speaker glyph for the playing file, and
+    // a music-note glyph for every other (track) file.
     final Widget leading = dir
         ? const Icon(Icons.folder_rounded, size: 18, color: Tokens.accent)
         : current
@@ -467,6 +494,8 @@ class _EntryTile extends StatelessWidget {
     );
   }
 }
+
+// ── Form pieces (match the Jellyfin / Plex connect form) ───────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;

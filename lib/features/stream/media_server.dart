@@ -47,11 +47,6 @@ Future<void> resolveDeviceId() async {
   _deviceId = id;
 }
 
-/// Set the stable device id (for Plex/Jellyfin identifier binding).
-void setMediaDeviceId(String id) {
-  if (id.trim().isNotEmpty) _deviceId = id.trim();
-}
-
 /// Best-effort, header-safe device name for server reporting: the machine
 /// name on desktop, the device name on mobile. Falls back to 'MPV Studio'.
 Future<String> resolveDeviceName() async {
@@ -322,9 +317,9 @@ class JellyfinServer implements MediaServer {
   JellyfinClient? _client;
 
   JellyfinServer({required this.instance, this.onSessionChanged}) {
-    if (instance.token != null) {
+    if (instance.token != null && instance.userId != null) {
       final client = JellyfinClient(baseUrl: instance.host, credentials: _credentials);
-      client.setSession(token: instance.token!, userId: instance.userId ?? '');
+      client.setSession(token: instance.token!, userId: instance.userId!);
       _client = client;
     }
   }
@@ -339,6 +334,13 @@ class JellyfinServer implements MediaServer {
         version: '0.1.0',
       );
 
+  // The PlaySessionId minted for each track's transcode (itemId → session),
+  // captured when [streamUrl] builds the URL so the playback reports
+  // ([reportStart] / [reportProgress] / [reportStopped]) can carry the SAME id.
+  // That linkage is what lets Jellyfin reap a track's transcode the moment we
+  // report it stopped — without it (reports with no session) the server keeps
+  // old transcodes alive across track changes and the pile-up 500s the next
+  // track's first segment. Bounded so a long queue can't grow it unboundedly.
   final Map<String, String> _playSessionByItem = {};
   int _sessionSeq = 0;
   String _nextSession() =>
@@ -393,7 +395,6 @@ class JellyfinServer implements MediaServer {
     required int pageSize,
     String query = '',
   }) async {
-    if (_client == null) throw Exception("Not connected");
     final res = await _client!.items.list(
       includeItemTypes: const [JellyfinItemKind.audio],
       recursive: true,
@@ -412,6 +413,7 @@ class JellyfinServer implements MediaServer {
               ? it.artists.join(', ')
               : (it.albumArtist ?? ''),
           album: it.album ?? '',
+          // runTimeTicks are 100-ns units → microseconds = ticks / 10.
           duration: Duration(microseconds: (it.runTimeTicks ?? 0) ~/ 10),
           artUrl: _imageUrl(it.id, token),
           isFavorite: it.isFavorite,
@@ -431,8 +433,10 @@ class JellyfinServer implements MediaServer {
     }
   }
 
+  // Primary (album) image. The images API omits the token, so append it —
+  // private servers reject image requests otherwise. A 404 (no art) just
+  // falls through to the placeholder in the UI.
   String _imageUrl(String itemId, String token) {
-    if (_client == null) return '';
     final u = _client!.images
         .url(itemId: itemId, fillWidth: 400, fillHeight: 400);
     return u.contains('?') ? '$u&api_key=$token' : '$u?api_key=$token';
@@ -445,12 +449,23 @@ class JellyfinServer implements MediaServer {
     String codec = 'aac',
     int bitrateKbps = 256,
     StreamTransport transport = StreamTransport.fmp4,
+    // Jellyfin transcodes over HLS only; [protocol] is accepted for interface
+    // parity (the picker greys DASH out on this tab) but never selects DASH.
     StreamProtocol protocol = StreamProtocol.hls,
   }) {
-    if (_client == null) return '';
     if (mode == PlaybackMode.direct) {
       return _client!.audio.directStreamUrl(itemId: track.id).$1;
     }
+    // Transcode over HLS; the container follows the picker — fMP4 ('mp4') by
+    // default, MPEG-TS ('ts') only for MP3 (see [effectiveTransport]). fMP4 is
+    // safe again: the bundled libmpv's waveform analyzer no longer opens the
+    // stream a SECOND time to classify it (libmpv-scripts
+    // patch_bulk_analysis.py — it now arms from mpv's own demuxer info), and it
+    // was that concurrent open of the fMP4 init section that used to make
+    // Jellyfin 500 the first segment. A per-track PlaySessionId is captured so
+    // the playback reports can reap THIS transcode on stop (see
+    // [_playSessionByItem]) instead of leaving it warm to pile up against the
+    // next track's.
     final t = effectiveTransport(transport, codec);
     final session = _nextSession();
     _playSessionByItem[track.id] = session;
@@ -480,6 +495,14 @@ class JellyfinServer implements MediaServer {
           ? effectiveTransport(transport, codec).label
           : null;
 
+  // `seg_max_retry=5` on the HLS demuxer (via mpv `demuxer-lavf-o`). libav
+  // defaults it to 0 — a single segment error aborts the whole open. A live
+  // Jellyfin transcode can briefly 500 a segment under load (e.g. a
+  // just-started transcode that hasn't produced the segment yet); a few
+  // retries let the demuxer re-request it a moment later instead of failing
+  // the track. Light, codec-agnostic defense (the real waveform/desync fix was
+  // making the libmpv analyzer stop re-opening the stream). Transcode only —
+  // direct play streams the original file and needs nothing.
   @override
   Map<String, String>? demuxerLavfOptions(
     PlaybackMode mode, {
@@ -529,6 +552,8 @@ class JellyfinServer implements MediaServer {
     final c = _client;
     if (c == null) return;
     try {
+      // Carry the track's PlaySessionId so Jellyfin reaps THIS transcode now,
+      // instead of leaving it warm to pile up against the next track's.
       await c.playback.stopped(
         itemId: itemId,
         position: position,
@@ -536,248 +561,6 @@ class JellyfinServer implements MediaServer {
       );
     } catch (e) {
       debugPrint('JellyfinServer: reportStopped failed: $e');
-    }
-  }
-}
-
-// ── Plex ──────────────────────────────────────────────────────────────
-
-class PlexServer implements MediaServer {
-  @override
-  final ServerInstance instance;
-  final void Function(String? token, String? sectionId)? onSessionChanged;
-
-  PlexClient? _client;
-  String? _musicSectionId;
-  PlexTranscodeSessionManager? _transcodes;
-
-  PlexTranscodeSessionManager? get transcodes => _transcodes;
-
-  PlexServer({required this.instance, this.onSessionChanged}) {
-    if (instance.token != null) {
-      final client = PlexClient(credentials: _credentials);
-      client.setToken(instance.token!);
-      client.connect(instance.host, accessToken: instance.token!);
-      _musicSectionId = instance.sectionId;
-      _client = client;
-      _transcodes = PlexTranscodeSessionManager(client);
-    }
-  }
-
-  PlexCredentials get _credentials => PlexCredentials(
-        clientIdentifier: _deviceId,
-        product: 'MPV Studio',
-        version: '0.1.0',
-        device: _deviceName,
-        deviceName: _deviceName,
-        platform: _platform,
-        clientProfileExtra:
-            'add-transcode-target(type=musicProfile&context=streaming'
-            '&protocol=hls&container=mpegts&audioCodec=aac,mp3)',
-      );
-
-  static String get _platform {
-    if (Platform.isIOS) return 'iOS';
-    if (Platform.isAndroid) return 'Android';
-    if (Platform.isWindows) return 'Windows';
-    return 'Generic';
-  }
-
-  @override
-  String get name => instance.name;
-
-  @override
-  bool get isConnected => _client?.isAuthenticated ?? false;
-
-  @override
-  Future<void> connect({
-    required String host,
-    required String username,
-    required String password,
-  }) async {
-    final base = _normalizeBase(host, 32400);
-    final client = PlexClient(credentials: _credentials);
-    final user = await client.account
-        .signInWithPassword(username: username, password: password);
-    client.setToken(user.authToken);
-    client.connect(base, accessToken: user.authToken);
-    final sections = await client.library.sections();
-    final music = sections.firstWhere(
-      (s) => s.type == PlexLibraryType.music,
-      orElse: () => sections.first,
-    );
-    _musicSectionId = music.id;
-    _client = client;
-    _transcodes = PlexTranscodeSessionManager(client);
-    onSessionChanged?.call(user.authToken, music.id);
-  }
-
-  @override
-  Future<bool> tryRestore() async {
-    if (instance.token != null && instance.sectionId != null) {
-      final client = PlexClient(credentials: _credentials);
-      client.setToken(instance.token!);
-      client.connect(instance.host, accessToken: instance.token!);
-      _musicSectionId = instance.sectionId;
-      _client = client;
-      _transcodes = PlexTranscodeSessionManager(client);
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  Future<void> logout() async {
-    _transcodes?.clear();
-    _transcodes = null;
-    _client = null;
-    _musicSectionId = null;
-    onSessionChanged?.call(null, null);
-  }
-
-  @override
-  bool isAuthError(Object error) =>
-      error is PlexException && error.type == PlexErrorType.auth;
-
-  @override
-  Future<TrackPage> fetchTracks({
-    required int startIndex,
-    required int pageSize,
-    String query = '',
-  }) async {
-    if (_client == null) throw Exception("Not connected");
-    final res = await _client!.library.allByType(
-      sectionId: _musicSectionId!,
-      type: PlexMetadataType.track,
-      start: startIndex,
-      size: pageSize,
-      sort: 'titleSort',
-      title: query.isEmpty ? null : query,
-    );
-    final tracks = [
-      for (final m in res.items)
-        ServerTrack(
-          id: m.ratingKey,
-          title: m.title,
-          artist: m.grandparentTitle ?? '',
-          album: m.parentTitle ?? '',
-          duration: Duration(milliseconds: m.durationMs ?? 0),
-          artUrl: _imageUrl(m.parentThumb ?? m.grandparentThumb),
-          isFavorite: m.isFavorite,
-        ),
-    ];
-    return TrackPage(tracks, res.totalSize);
-  }
-
-  @override
-  Future<void> setFavorite(String trackId, bool isFavorite) async {
-    final c = _client;
-    if (c == null) return;
-    try {
-      await c.playback.setFavorite(ratingKey: trackId, isFavorite: isFavorite);
-    } catch (e) {
-      debugPrint('PlexServer: setFavorite failed: $e');
-    }
-  }
-
-  String? _imageUrl(String? sourcePath) {
-    if (_client == null || sourcePath == null || sourcePath.isEmpty) return null;
-    return _client!.images
-        .transcodeUrl(sourcePath: sourcePath, width: 400, height: 400);
-  }
-
-  @override
-  String streamUrl(
-    ServerTrack track,
-    PlaybackMode mode, {
-    String codec = 'aac',
-    int bitrateKbps = 256,
-    StreamTransport transport = StreamTransport.fmp4,
-    StreamProtocol protocol = StreamProtocol.dash,
-  }) {
-    if (_client == null) return '';
-    final streaming = _client!.streaming;
-    final directUrl = streaming.universalAudioUrl(
-      ratingKey: track.id,
-      protocol: 'http',
-      directPlay: true,
-      directStream: true,
-    );
-    final t = effectiveTransport(transport, codec, protocol: protocol);
-    final wireProtocol = protocol == StreamProtocol.dash ? 'dash' : 'hls';
-    return _transcodes!.register(
-      ratingKey: track.id,
-      codec: codec,
-      fallbackUrl: directUrl,
-      bitrateKbps: bitrateKbps,
-      transcode: mode == PlaybackMode.transcode,
-      protocol: wireProtocol,
-      container: t == StreamTransport.mpegts ? 'mpegts' : 'mp4',
-    );
-  }
-
-  @override
-  String? segmentContainer(
-    PlaybackMode mode, {
-    String codec = 'aac',
-    StreamTransport transport = StreamTransport.fmp4,
-    StreamProtocol protocol = StreamProtocol.dash,
-  }) =>
-      mode == PlaybackMode.transcode
-          ? effectiveTransport(transport, codec, protocol: protocol).label
-          : null;
-
-  @override
-  Map<String, String>? demuxerLavfOptions(
-    PlaybackMode mode, {
-    String codec = 'aac',
-    StreamTransport transport = StreamTransport.fmp4,
-    StreamProtocol protocol = StreamProtocol.dash,
-  }) =>
-      null;
-
-  @override
-  ServerKind get kind => ServerKind.plex;
-
-  @override
-  Future<void> reportStart(String itemId) =>
-      _timeline(itemId, PlexPlaybackApi.statePlaying, Duration.zero);
-
-  @override
-  Future<void> reportProgress(
-    String itemId, {
-    required Duration position,
-    required bool paused,
-  }) =>
-      _timeline(
-        itemId,
-        paused ? PlexPlaybackApi.statePaused : PlexPlaybackApi.statePlaying,
-        position,
-      );
-
-  @override
-  Future<void> reportStopped(String itemId, {required Duration position}) =>
-      _timeline(itemId, PlexPlaybackApi.stateStopped, position,
-          continuing: true);
-
-  Future<void> _timeline(
-    String ratingKey,
-    String state,
-    Duration position, {
-    bool continuing = false,
-  }) async {
-    final c = _client;
-    if (c == null) return;
-    try {
-      await c.playback.timeline(
-        ratingKey: ratingKey,
-        state: state,
-        timeMs: position.inMilliseconds,
-        durationMs: 0,
-        continuing: continuing,
-      );
-    } catch (e) {
-      debugPrint('PlexServer: timeline($state) failed: $e');
     }
   }
 }
@@ -847,7 +630,7 @@ class SambaServer implements MediaServer {
     required int pageSize,
     String query = '',
   }) async {
-    // Samba browsing is implemented folder-by-folder in samba_browser_tab.dart
+    // Samba browsing is folder-by-folder in samba_browser_tab.dart
     return const TrackPage([], 0);
   }
 
@@ -860,7 +643,7 @@ class SambaServer implements MediaServer {
     StreamTransport transport = StreamTransport.fmp4,
     StreamProtocol protocol = StreamProtocol.hls,
   }) {
-    // Media URI for Samba format: smb2://[domain;]user:pass@host/share/path
+    // Media URI for Samba: smb2://[domain;]user:pass@host/share/path
     return track.id;
   }
 
@@ -896,4 +679,284 @@ class SambaServer implements MediaServer {
 
   @override
   Future<void> reportStopped(String itemId, {required Duration position}) async {}
+}
+
+// ── Plex ──────────────────────────────────────────────────────────────
+
+class PlexServer implements MediaServer {
+  @override
+  final ServerInstance instance;
+  final void Function(String? token, String? sectionId)? onSessionChanged;
+
+  PlexClient? _client;
+  String? _musicSectionId;
+  PlexTranscodeSessionManager? _transcodes;
+
+  PlexTranscodeSessionManager? get transcodes => _transcodes;
+
+  PlexServer({required this.instance, this.onSessionChanged}) {
+    if (instance.token != null) {
+      final client = PlexClient(credentials: _credentials);
+      client.setToken(instance.token!);
+      client.connect(instance.host, accessToken: instance.token!);
+      _musicSectionId = instance.sectionId;
+      _client = client;
+      _transcodes = PlexTranscodeSessionManager(client);
+    }
+  }
+
+  // Built per access so it picks up the resolved [_deviceName]. `device` /
+  // `deviceName` are the machine name (shown in Now Playing); `platform` is
+  // a SEPARATE field — the transcode-profile selector (see [_platform]).
+  PlexCredentials get _credentials => PlexCredentials(
+        clientIdentifier: _deviceId,
+        product: 'MPV Studio',
+        version: '0.1.0',
+        device: _deviceName,
+        deviceName: _deviceName,
+        // Plex selects a base transcode profile by X-Plex-Platform; an
+        // unrecognised value 400s the /decision with "Unable to find
+        // client profile for device". So map the real OS to a
+        // Plex-recognised platform name (see [_platform]).
+        platform: _platform,
+        // Seed a base musicProfile transcode target. The per-track
+        // add-transcode-target in PlexTranscodeSessionManager.resolve only
+        // *extends* an existing music profile — without this seed there is
+        // no musicProfile context to extend, so Plex ignores our audioCodec
+        // and the transcode never starts.
+        clientProfileExtra:
+            'add-transcode-target(type=musicProfile&context=streaming'
+            '&protocol=hls&container=mpegts&audioCodec=aac,mp3)',
+      );
+
+  // X-Plex-Platform value Plex uses to pick the transcode client profile.
+  // An unrecognised value makes /transcode/universal/decision return 400
+  // ("Unable to find client profile for device"), so transcode never
+  // starts. Verified against a live PMS: iOS / Android / Windows resolve to
+  // a built-in profile; macOS, Linux (and anything else) do NOT — for those
+  // we send 'Generic', Plex's own profile for custom/unrecognised clients,
+  // which transcodes fine. This is the platform reported for profile
+  // matching only; the app's real identity stays in product/deviceName.
+  static String get _platform {
+    if (Platform.isIOS) return 'iOS';
+    if (Platform.isAndroid) return 'Android';
+    if (Platform.isWindows) return 'Windows';
+    // macOS, Linux, etc.: no built-in Plex profile → fall back to Generic.
+    return 'Generic';
+  }
+
+  @override
+  String get name => instance.name;
+
+  @override
+  bool get isConnected => _client?.isAuthenticated ?? false;
+
+  @override
+  Future<void> connect({
+    required String host,
+    required String username,
+    required String password,
+  }) async {
+    final base = _normalizeBase(host, 32400);
+    final client = PlexClient(credentials: _credentials);
+    // Account auth goes to plex.tv; the token then authorises the local PMS.
+    final user = await client.account
+        .signInWithPassword(username: username, password: password);
+    client.setToken(user.authToken);
+    client.connect(base, accessToken: user.authToken);
+    final sections = await client.library.sections();
+    final music = sections.firstWhere(
+      (s) => s.type == PlexLibraryType.music,
+      orElse: () => sections.first,
+    );
+    _musicSectionId = music.id;
+    _client = client;
+    _transcodes = PlexTranscodeSessionManager(client);
+    onSessionChanged?.call(user.authToken, music.id);
+  }
+
+  @override
+  Future<bool> tryRestore() async {
+    if (instance.token != null && instance.sectionId != null) {
+      final client = PlexClient(credentials: _credentials);
+      client.setToken(instance.token!);
+      client.connect(instance.host, accessToken: instance.token!);
+      _musicSectionId = instance.sectionId;
+      _client = client;
+      _transcodes = PlexTranscodeSessionManager(client);
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> logout() async {
+    _transcodes?.clear();
+    _transcodes = null;
+    _client = null;
+    _musicSectionId = null;
+    onSessionChanged?.call(null, null);
+  }
+
+  @override
+  bool isAuthError(Object error) =>
+      error is PlexException && error.type == PlexErrorType.auth;
+
+  @override
+  Future<TrackPage> fetchTracks({
+    required int startIndex,
+    required int pageSize,
+    String query = '',
+  }) async {
+    final res = await _client!.library.allByType(
+      sectionId: _musicSectionId!,
+      type: PlexMetadataType.track,
+      start: startIndex,
+      size: pageSize,
+      sort: 'titleSort',
+      title: query.isEmpty ? null : query,
+    );
+    final tracks = [
+      for (final m in res.items)
+        ServerTrack(
+          id: m.ratingKey,
+          title: m.title,
+          artist: m.grandparentTitle ?? '',
+          album: m.parentTitle ?? '',
+          duration: Duration(milliseconds: m.durationMs ?? 0),
+          artUrl: _imageUrl(m.parentThumb ?? m.grandparentThumb),
+          isFavorite: m.isFavorite,
+        ),
+    ];
+    return TrackPage(tracks, res.totalSize);
+  }
+
+  @override
+  Future<void> setFavorite(String trackId, bool isFavorite) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.setFavorite(ratingKey: trackId, isFavorite: isFavorite);
+    } catch (e) {
+      debugPrint('PlexServer: setFavorite failed: $e');
+    }
+  }
+
+  // Album/artist thumbnail through Plex's photo transcoder (token embedded).
+  String? _imageUrl(String? sourcePath) {
+    if (sourcePath == null || sourcePath.isEmpty) return null;
+    return _client!.images
+        .transcodeUrl(sourcePath: sourcePath, width: 400, height: 400);
+  }
+
+  @override
+  String streamUrl(
+    ServerTrack track,
+    PlaybackMode mode, {
+    String codec = 'aac',
+    int bitrateKbps = 256,
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
+  }) {
+    final streaming = _client!.streaming;
+    final directUrl = streaming.universalAudioUrl(
+      ratingKey: track.id,
+      protocol: 'http',
+      directPlay: true,
+      directStream: true,
+    );
+    // Protocol and container are independent on Plex: DASH (start.mpd) always
+    // rides fMP4, while HLS (start.m3u8) carries fMP4 or MPEG-TS. MPEG-TS only
+    // survives with MP3, and never under DASH (see [effectiveTransport]).
+    final t = effectiveTransport(transport, codec, protocol: protocol);
+    final wireProtocol = protocol == StreamProtocol.dash ? 'dash' : 'hls';
+    // BOTH modes hand mpv a `plex-transcode://{session}` marker that the
+    // global on_load hook resolves just before playback. Plex's universal
+    // `start.*` URL isn't openable by mpv, so:
+    //   • direct   → the hook resolves to the original media Part URL;
+    //   • transcode→ /decision spins up a session → real start.mpd/m3u8 (and
+    //     on a non-playable decision, falls back to the same Part URL).
+    // [directUrl] is only the last-resort fallback if the Part can't be found.
+    return _transcodes!.register(
+      ratingKey: track.id,
+      codec: codec,
+      fallbackUrl: directUrl,
+      bitrateKbps: bitrateKbps,
+      transcode: mode == PlaybackMode.transcode,
+      protocol: wireProtocol,
+      container: t == StreamTransport.mpegts ? 'mpegts' : 'mp4',
+    );
+  }
+
+  @override
+  String? segmentContainer(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
+  }) =>
+      mode == PlaybackMode.transcode
+          ? effectiveTransport(transport, codec, protocol: protocol).label
+          : null;
+
+  // Plex needs no demuxer override: its DASH/HLS segmenter is exactly what the
+  // bundled ffmpeg `advanced_editlist` patch targets, so the patched path is
+  // correct here (the Jellyfin-only override in [JellyfinServer] is what backs
+  // that patch off for Jellyfin's incompatible HLS-fMP4 edit list).
+  @override
+  Map<String, String>? demuxerLavfOptions(
+    PlaybackMode mode, {
+    String codec = 'aac',
+    StreamTransport transport = StreamTransport.fmp4,
+    StreamProtocol protocol = StreamProtocol.dash,
+  }) =>
+      null;
+
+  @override
+  ServerKind get kind => ServerKind.plex;
+
+  @override
+  Future<void> reportStart(String itemId) =>
+      _timeline(itemId, PlexPlaybackApi.statePlaying, Duration.zero);
+
+  @override
+  Future<void> reportProgress(
+    String itemId, {
+    required Duration position,
+    required bool paused,
+  }) =>
+      _timeline(
+        itemId,
+        paused ? PlexPlaybackApi.statePaused : PlexPlaybackApi.statePlaying,
+        position,
+      );
+
+  @override
+  Future<void> reportStopped(String itemId, {required Duration position}) =>
+      // `continuing: true` mirrors Plex Web's track-transition report so the
+      // server doesn't reap the (still-warm) transcode session when the next
+      // track starts.
+      _timeline(itemId, PlexPlaybackApi.stateStopped, position,
+          continuing: true);
+
+  Future<void> _timeline(
+    String ratingKey,
+    String state,
+    Duration position, {
+    bool continuing = false,
+  }) async {
+    final c = _client;
+    if (c == null) return;
+    try {
+      await c.playback.timeline(
+        ratingKey: ratingKey,
+        state: state,
+        timeMs: position.inMilliseconds,
+        durationMs: 0,
+        continuing: continuing,
+      );
+    } catch (e) {
+      debugPrint('PlexServer: timeline($state) failed: $e');
+    }
+  }
 }
