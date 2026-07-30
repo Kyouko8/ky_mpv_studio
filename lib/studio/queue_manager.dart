@@ -162,9 +162,40 @@ class QueueManager extends ChangeNotifier {
   List<QueueModel> _queues = [];
   String _viewedQueueId = '';
   String? _playingQueueId;
+  int _lastPlayingIndex = 0;
   bool _loaded = false;
 
-  QueueManager(this._player, this._settings);
+  StreamSubscription? _playlistSub;
+
+  QueueManager(this._player, this._settings) {
+    _initPlayerListener();
+  }
+
+  void _initPlayerListener() {
+    _playlistSub = _player.stream.playlist.listen((pl) {
+      if (_loaded && _playingQueueId != null) {
+        final qIdx = _queues.indexWhere((q) => q.id == _playingQueueId);
+        if (qIdx != -1) {
+          final queue = _queues[qIdx];
+          final activeItems = queue.items.where((item) => item.active).toList();
+          if (pl.index >= 0 && pl.index < pl.items.length && pl.index < activeItems.length) {
+            final playingUri = pl.items[pl.index].uri;
+            final fullIndex = queue.items.indexWhere((item) => item.uri == playingUri);
+            if (fullIndex != -1 && fullIndex != _lastPlayingIndex) {
+              _lastPlayingIndex = fullIndex;
+              save();
+            }
+          }
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _playlistSub?.cancel();
+    super.dispose();
+  }
 
   List<QueueModel> get queues => _queues;
   String get viewedQueueId => _viewedQueueId;
@@ -201,6 +232,7 @@ class QueueManager extends ChangeNotifier {
             _queues = qList.map((q) => QueueModel.fromJson(q as Map<String, dynamic>)).toList();
             _viewedQueueId = decoded['viewedQueueId'] as String? ?? '';
             _playingQueueId = decoded['playingQueueId'] as String?;
+            _lastPlayingIndex = decoded['lastPlayingIndex'] as int? ?? 0;
           }
         }
       }
@@ -221,6 +253,33 @@ class QueueManager extends ChangeNotifier {
       _viewedQueueId = _queues.first.id;
     }
 
+    // Restore player state
+    try {
+      final targetQueueId = _playingQueueId ?? _viewedQueueId;
+      final idx = _queues.indexWhere((q) => q.id == targetQueueId);
+      if (idx != -1) {
+        final queue = _queues[idx];
+        final activeItems = queue.items.where((item) => item.active).toList();
+        if (activeItems.isNotEmpty) {
+          final mediaList = activeItems.map((item) => item.toMedia()).toList();
+
+          int targetMpvIndex = 0;
+          if (_lastPlayingIndex >= 0 && _lastPlayingIndex < queue.items.length) {
+            final targetUri = queue.items[_lastPlayingIndex].uri;
+            final foundIdx = activeItems.indexWhere((item) => item.uri == targetUri);
+            if (foundIdx != -1) {
+              targetMpvIndex = foundIdx;
+            }
+          }
+
+          // Open but do not play
+          await _player.openAll(mediaList, play: false, index: targetMpvIndex);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error restoring last queue state: $e');
+    }
+
     _loaded = true;
     notifyListeners();
   }
@@ -232,6 +291,7 @@ class QueueManager extends ChangeNotifier {
         'queues': _queues.map((q) => q.toJson()).toList(),
         'viewedQueueId': _viewedQueueId,
         'playingQueueId': _playingQueueId,
+        'lastPlayingIndex': _lastPlayingIndex,
       };
       await file.writeAsString(jsonEncode(data));
     } catch (e) {
@@ -333,6 +393,7 @@ class QueueManager extends ChangeNotifier {
     final items = queue.items;
 
     _playingQueueId = queue.id;
+    _lastPlayingIndex = fullIndex;
     save();
 
     final activeItems = items.where((item) => item.active).toList();

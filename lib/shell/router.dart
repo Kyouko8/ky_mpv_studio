@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/console/console_page.dart';
 import '../features/effects/effects_page.dart';
+import '../features/library/library_page.dart';
 import '../features/now_playing/now_playing_page.dart';
 import '../features/queue/queue_page.dart';
 import '../features/settings/settings_page.dart';
@@ -59,13 +59,13 @@ Widget _pageFor(Section section) {
       return const NowPlayingPage();
     case Section.queue:
       return const QueuePage();
+    case Section.library:
+      return const LibraryPage();
     case Section.effects:
       return const EffectsPage();
     case Section.stream:
       return const StreamPage();
     case Section.settings:
       return const SettingsPage();
-    case Section.console:
-      return const ConsolePage();
   }
 }

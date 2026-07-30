@@ -28,6 +28,8 @@ dependencies:
   dart_smb2: ^0.1.0
 
   # Other dependencies
+  on_audio_query: ^2.9.0
+  metatagger: ^2.0.1
   file_selector: 1.0.3
   desktop_drop: ^0.7.1
   shared_preferences: ^2.5.4

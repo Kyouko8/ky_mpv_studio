@@ -17,6 +17,8 @@ import 'groups/audio_track_group.dart';
 import 'groups/demuxer_group.dart';
 import 'groups/session_group.dart';
 import 'groups/streaming_group.dart';
+import '../console/console_page.dart';
+import '../../studio/library_manager.dart';
 
 /// One settings category — a squircle grid box whose detail is built lazily.
 class _Category {
@@ -53,12 +55,16 @@ class _SettingsPageState extends State<SettingsPage> {
         _Category('Streaming', Icons.podcasts_rounded, _streaming),
         _Category('Session', Icons.lock_outline_rounded, _session),
         _Category('Queue', Icons.queue_music_rounded, _queue),
+        _Category('Library', Icons.library_music_rounded, _library),
+        _Category('Logs', Icons.terminal_rounded, _logs),
         _Category('Visualizer', Icons.graphic_eq_rounded, _visualizer),
         _Category('Cover art', Icons.image_outlined, _coverArt),
         _Category('About', Icons.info_outline_rounded, _about),
       ];
 
   static Widget _queue(BuildContext c) => _QueueGroup(PlayerScope.settingsOf(c));
+  static Widget _library(BuildContext c) => _LibraryGroup(PlayerScope.libraryManagerOf(c));
+  static Widget _logs(BuildContext c) => const ConsolePage();
   static Widget _playback(BuildContext c) => _PlaybackGroup(PlayerScope.of(c));
   static Widget _resume(BuildContext c) => _ResumeGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _output(BuildContext c) => _OutputGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
@@ -94,6 +100,7 @@ class _CategoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool useFullHeight = category.title == 'Logs';
     return Scaffold(
       backgroundColor: Tokens.bg,
       body: SafeArea(
@@ -103,10 +110,84 @@ class _CategoryDetailScreen extends StatelessWidget {
               title: category.title,
               onBack: () => Navigator.of(context).maybePop(),
             ),
-            Expanded(child: SectionBody(children: [category.build(context)])),
+            Expanded(
+              child: useFullHeight
+                  ? category.build(context)
+                  : SectionBody(children: [category.build(context)]),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LibraryGroup extends StatelessWidget {
+  final LibraryManager manager;
+  const _LibraryGroup(this.manager);
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: manager,
+      builder: (context, _) {
+        final folders = manager.folders;
+        return SettingsGroup(
+          label: 'Library Folders',
+          children: [
+            SettingTile(
+              title: 'Add Folder',
+              description: 'Select a directory to scan for music files',
+              trailing: IconButton(
+                icon: const Icon(Icons.add_rounded, color: Tokens.accent),
+                onPressed: () async {
+                  final dir = await getDirectoryPath(
+                    confirmButtonText: 'Add to Library',
+                  );
+                  if (dir != null) {
+                    await manager.addFolder(dir);
+                  }
+                },
+              ),
+            ),
+            if (folders.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: Tokens.s12),
+                child: Text(
+                  'No folders added yet.',
+                  style: Tokens.caption,
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              for (final folder in folders)
+                SettingTile(
+                  title: folder,
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: Tokens.red),
+                    onPressed: () => manager.removeFolder(folder),
+                  ),
+                ),
+            const SizedBox(height: Tokens.s12),
+            SettingTile(
+              title: 'Manual Rescan',
+              description: manager.isScanning
+                  ? 'Scanning library tracks...'
+                  : '${manager.tracks.length} tracks cached',
+              trailing: manager.isScanning
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Tokens.accent),
+                    )
+                  : TextButton(
+                      onPressed: () => manager.scan(),
+                      child: const Text('Scan Now', style: TextStyle(color: Tokens.accent)),
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
