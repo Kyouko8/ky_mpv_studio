@@ -6,6 +6,7 @@ import '../features/stream/media_server.dart';
 import '../features/stream/plex_transcode_session_manager.dart';
 import 'app_settings.dart';
 import 'audio_engine.dart';
+import 'library_manager.dart';
 import 'loudness_normalizer.dart';
 import 'media_servers.dart';
 import 'queue_manager.dart';
@@ -45,6 +46,9 @@ class MpvStudio {
   /// Manages multiple playlists (queues) and active/inactive tracks.
   final QueueManager queueManager;
 
+  /// Manages the local device audio library.
+  final LibraryManager libraryManager;
+
   const MpvStudio._({
     required this.player,
     required this.settings,
@@ -53,6 +57,7 @@ class MpvStudio {
     required this.consoleLog,
     required this.normalizer,
     required this.queueManager,
+    required this.libraryManager,
   });
 
   /// Powers the app on. Restores persisted settings, starts the audio engine
@@ -77,6 +82,9 @@ class MpvStudio {
     final queueManager = QueueManager(engine.player, settings);
     await queueManager.load();
 
+    final libraryManager = LibraryManager();
+    queueManager.libraryManager = libraryManager;
+
     return MpvStudio._(
       player: engine.player,
       settings: settings,
@@ -85,6 +93,7 @@ class MpvStudio {
       consoleLog: engine.consoleLog,
       normalizer: normalizer,
       queueManager: queueManager,
+      libraryManager: libraryManager,
     );
   }
 
@@ -95,6 +104,7 @@ class MpvStudio {
     await settings.dispose();
     await consoleLog.dispose();
     await queueManager.save();
+    libraryManager.dispose();
     await player.dispose();
   }
 }

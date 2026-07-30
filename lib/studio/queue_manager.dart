@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'app_settings.dart';
+import 'library_manager.dart';
 
 class PlaylistItem {
   final String uri;
@@ -162,9 +163,86 @@ class QueueManager extends ChangeNotifier {
   List<QueueModel> _queues = [];
   String _viewedQueueId = '';
   String? _playingQueueId;
+  int _lastPlayingIndex = 0;
   bool _loaded = false;
 
-  QueueManager(this._player, this._settings);
+  StreamSubscription? _playlistSub;
+  LibraryManager? libraryManager;
+
+  QueueManager(this._player, this._settings) {
+    _initPlayerListener();
+  }
+
+  void _initPlayerListener() {
+    _playlistSub = _player.stream.playlist.listen((pl) async {
+      if (_loaded && _playingQueueId != null) {
+        final qIdx = _queues.indexWhere((q) => q.id == _playingQueueId);
+        if (qIdx != -1) {
+          final queue = _queues[qIdx];
+          final activeItems = queue.items.where((item) => item.active).toList();
+          if (pl.index >= 0 && pl.index < pl.items.length && pl.index < activeItems.length) {
+            final playingUri = pl.items[pl.index].uri;
+            final fullIndex = queue.items.indexWhere((item) => item.uri == playingUri);
+            if (fullIndex != -1 && fullIndex != _lastPlayingIndex) {
+              _lastPlayingIndex = fullIndex;
+              save();
+            }
+
+            // Enrich metadata dynamically if available!
+            final lib = libraryManager;
+            if (lib != null) {
+              final enriched = await lib.enrichTrackWithMetaTagger(playingUri);
+              if (enriched != null) {
+                updatePlaylistItemMetadata(
+                  enriched.uri,
+                  enriched.title,
+                  enriched.artist,
+                  enriched.album,
+                );
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  void updatePlaylistItemMetadata(String uri, String title, String artist, String album) {
+    bool changed = false;
+    for (int qIdx = 0; qIdx < _queues.length; qIdx++) {
+      final queue = _queues[qIdx];
+      final items = List<PlaylistItem>.from(queue.items);
+      bool queueChanged = false;
+      for (int i = 0; i < items.length; i++) {
+        if (items[i].uri == uri) {
+          final old = items[i];
+          final updated = old.copyWith(
+            title: title.isNotEmpty ? title : old.title,
+            artist: artist.isNotEmpty ? artist : old.artist,
+            album: album.isNotEmpty ? album : old.album,
+          );
+          if (old.title != updated.title || old.artist != updated.artist || old.album != updated.album) {
+            items[i] = updated;
+            queueChanged = true;
+          }
+        }
+      }
+      if (queueChanged) {
+        _queues[qIdx] = queue.copyWith(items: items);
+        changed = true;
+      }
+    }
+    if (changed) {
+      save();
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _playlistSub?.cancel();
+    super.dispose();
+  }
 
   List<QueueModel> get queues => _queues;
   String get viewedQueueId => _viewedQueueId;
@@ -201,6 +279,7 @@ class QueueManager extends ChangeNotifier {
             _queues = qList.map((q) => QueueModel.fromJson(q as Map<String, dynamic>)).toList();
             _viewedQueueId = decoded['viewedQueueId'] as String? ?? '';
             _playingQueueId = decoded['playingQueueId'] as String?;
+            _lastPlayingIndex = decoded['lastPlayingIndex'] as int? ?? 0;
           }
         }
       }
@@ -221,6 +300,33 @@ class QueueManager extends ChangeNotifier {
       _viewedQueueId = _queues.first.id;
     }
 
+    // Restore player state
+    try {
+      final targetQueueId = _playingQueueId ?? _viewedQueueId;
+      final idx = _queues.indexWhere((q) => q.id == targetQueueId);
+      if (idx != -1) {
+        final queue = _queues[idx];
+        final activeItems = queue.items.where((item) => item.active).toList();
+        if (activeItems.isNotEmpty) {
+          final mediaList = activeItems.map((item) => item.toMedia()).toList();
+
+          int targetMpvIndex = 0;
+          if (_lastPlayingIndex >= 0 && _lastPlayingIndex < queue.items.length) {
+            final targetUri = queue.items[_lastPlayingIndex].uri;
+            final foundIdx = activeItems.indexWhere((item) => item.uri == targetUri);
+            if (foundIdx != -1) {
+              targetMpvIndex = foundIdx;
+            }
+          }
+
+          // Open but do not play
+          await _player.openAll(mediaList, play: false, index: targetMpvIndex);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error restoring last queue state: $e');
+    }
+
     _loaded = true;
     notifyListeners();
   }
@@ -232,6 +338,7 @@ class QueueManager extends ChangeNotifier {
         'queues': _queues.map((q) => q.toJson()).toList(),
         'viewedQueueId': _viewedQueueId,
         'playingQueueId': _playingQueueId,
+        'lastPlayingIndex': _lastPlayingIndex,
       };
       await file.writeAsString(jsonEncode(data));
     } catch (e) {
@@ -333,6 +440,7 @@ class QueueManager extends ChangeNotifier {
     final items = queue.items;
 
     _playingQueueId = queue.id;
+    _lastPlayingIndex = fullIndex;
     save();
 
     final activeItems = items.where((item) => item.active).toList();

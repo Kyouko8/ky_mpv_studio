@@ -1,9 +1,11 @@
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../shell/sections.dart';
 import '../../studio/player_scope.dart';
 import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
@@ -234,6 +236,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final folderEnabled = !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
     const folderDisabledTip = 'Folder import isn’t available on iOS';
 
@@ -246,6 +249,33 @@ class _Toolbar extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
+          if (isAndroid) {
+            return Row(
+              children: [
+                ToolButton(
+                  icon: Icons.library_music_rounded,
+                  label: 'Library',
+                  onTap: () => context.go(Section.library.path),
+                  primary: true,
+                ),
+                const SizedBox(width: Tokens.s8),
+                ToolButton(
+                  icon: Icons.playlist_play_rounded,
+                  label: 'Load playlist',
+                  onTap: onLoadPlaylist,
+                  iconOnly: constraints.maxWidth < Tokens.desktopBreakpoint,
+                ),
+                const Spacer(),
+                ToolButton(
+                  icon: Icons.clear_all_rounded,
+                  label: 'Clear',
+                  onTap: onClear,
+                  iconOnly: constraints.maxWidth < Tokens.desktopBreakpoint,
+                ),
+              ],
+            );
+          }
+
           if (constraints.maxWidth < Tokens.desktopBreakpoint) {
             return Row(
               children: [
@@ -548,6 +578,8 @@ class _EmptyQueue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -556,28 +588,38 @@ class _EmptyQueue extends StatelessWidget {
           const SizedBox(height: Tokens.s12),
           const Text('Queue is empty', style: Tokens.label),
           const SizedBox(height: Tokens.s4),
-          const Text(
-            'Add files, a folder, or drop them here.',
+          Text(
+            isAndroid
+                ? 'Use the Library section to explore your music.'
+                : 'Add files, a folder, or drop them here.',
             style: Tokens.caption,
           ),
           const SizedBox(height: Tokens.s20),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ToolButton(
-                icon: Icons.add_rounded,
-                label: 'Add files',
-                onTap: onAddFiles,
-                primary: true,
-              ),
-              const SizedBox(width: Tokens.s8),
-              ToolButton(
-                icon: Icons.folder_open_rounded,
-                label: 'Add folder',
-                onTap: onAddFolder,
-              ),
-            ],
-          ),
+          if (isAndroid)
+            ToolButton(
+              icon: Icons.library_music_rounded,
+              label: 'Go to Library',
+              onTap: () => context.go(Section.library.path),
+              primary: true,
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ToolButton(
+                  icon: Icons.add_rounded,
+                  label: 'Add files',
+                  onTap: onAddFiles,
+                  primary: true,
+                ),
+                const SizedBox(width: Tokens.s8),
+                ToolButton(
+                  icon: Icons.folder_open_rounded,
+                  label: 'Add folder',
+                  onTap: onAddFolder,
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -683,6 +725,7 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
               children: [
                 Expanded(
                   child: ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
                     itemCount: queues.length,
                     onReorder: (oldIdx, newIdx) {
                       qm.reorderQueues(oldIdx, newIdx);

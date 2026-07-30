@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 enum Section {
   nowPlaying('Playback', 'Play', Icons.play_circle_outline_rounded, '/'),
   queue('Queue', 'Queue', Icons.queue_music_rounded, '/queue'),
+  library('Library', 'Library', Icons.library_music_rounded, '/library'),
   stream('Stream', 'Stream', Icons.podcasts_rounded, '/stream'),
   effects('Effects', 'FX', Icons.graphic_eq_rounded, '/effects'),
-  settings('Settings', 'More', Icons.tune_rounded, '/settings'),
-  console('Console', 'Logs', Icons.terminal_rounded, '/console');
+  settings('Settings', 'More', Icons.tune_rounded, '/settings');
 
   const Section(this.title, this.shortLabel, this.icon, this.path);
 

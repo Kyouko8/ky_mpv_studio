@@ -5,6 +5,7 @@ import '../features/console/console_log.dart';
 import '../features/stream/favorites_controller.dart';
 import '../features/stream/media_server.dart';
 import 'app_settings.dart';
+import 'library_manager.dart';
 import 'loudness_normalizer.dart';
 import 'mpv_studio.dart';
 import 'queue_manager.dart';
@@ -54,6 +55,10 @@ class PlayerScope extends InheritedWidget {
   /// The active queue manager managing multiple queues/playlists.
   static QueueManager queueManagerOf(BuildContext context) =>
       _scope(context).queueManager;
+
+  /// The active library manager.
+  static LibraryManager libraryManagerOf(BuildContext context) =>
+      _scope(context).libraryManager;
 
   @override
   bool updateShouldNotify(PlayerScope oldWidget) =>
