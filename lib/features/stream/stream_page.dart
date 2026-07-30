@@ -421,7 +421,7 @@ class _StreamPageState extends State<StreamPage> {
                     final host = hostCtrl.text.trim();
                     if (name.isEmpty || host.isEmpty) return;
 
-                    if (isEdit) {
+                    if (instance != null) {
                       manager.updateInstance(instance.copyWith(
                         name: name,
                         host: host,

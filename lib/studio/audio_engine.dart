@@ -79,19 +79,16 @@ Future<void> wireMediaServersHook(Player player, ServerManager serverManager) as
       }
 
       if (currentMedia == null) {
-        await player.continueHook(event.id);
         return;
       }
 
       final extras = currentMedia.extras;
       if (extras == null) {
-        await player.continueHook(event.id);
         return;
       }
 
       final serverInstanceId = extras['serverInstanceId'] as String?;
       if (serverInstanceId == null) {
-        await player.continueHook(event.id);
         return;
       }
 
@@ -100,7 +97,6 @@ Future<void> wireMediaServersHook(Player player, ServerManager serverManager) as
       if (instanceIdx == -1) {
         debugPrint('Server instance $serverInstanceId not found. Skipping track.');
         await player.setRawProperty('stream-open-filename', 'null://');
-        await player.continueHook(event.id);
         return;
       }
 
@@ -127,7 +123,6 @@ Future<void> wireMediaServersHook(Player player, ServerManager serverManager) as
       if (!server.isConnected) {
         debugPrint('Server ${instance.name} connection failed. Skipping/omitting track.');
         await player.setRawProperty('stream-open-filename', 'null://');
-        await player.continueHook(event.id);
         return;
       }
 

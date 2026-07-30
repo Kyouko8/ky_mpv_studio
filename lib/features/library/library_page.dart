@@ -800,34 +800,39 @@ class _LibraryPageState extends State<LibraryPage> {
       );
     } else {
       // Hierarchical Tree Navigation
-      final allFolders = <String>{};
-      for (final track in filtered) {
-        allFolders.add(_getParentFolder(track.uri));
-      }
+      final manager = PlayerScope.libraryManagerOf(context);
 
-      final rootFolders = <String>{};
-      for (final f in allFolders) {
-        bool hasParentInSet = false;
-        for (final other in allFolders) {
-          if (other != f && f.startsWith(other + (other.contains('\\') ? '\\' : '/'))) {
-            hasParentInSet = true;
-            break;
+      // 1. Get starting roots
+      final roots = <String>{};
+      if (manager.folders.isNotEmpty) {
+        roots.addAll(manager.folders);
+      } else {
+        // Fallback: calculate root parent directories of all filtered tracks
+        final allFolders = filtered.map((t) => _getParentFolder(t.uri)).toSet();
+        for (final f in allFolders) {
+          bool hasParent = false;
+          for (final other in allFolders) {
+            final sep = other.contains('\\') ? '\\' : '/';
+            if (other != f && f.startsWith(other + sep)) {
+              hasParent = true;
+              break;
+            }
+          }
+          if (!hasParent) {
+            roots.add(f);
           }
         }
-        if (!hasParentInSet) {
-          rootFolders.add(f);
-        }
       }
+      final sortedRoots = roots.toList()..sort();
 
       if (_treeCurrentPath == 'Root') {
-        final sortedRoots = rootFolders.toList()..sort();
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
           itemCount: sortedRoots.length,
           itemBuilder: (context, i) {
             final path = sortedRoots[i];
             final name = _getFolderName(path);
-            final totalTracks = filtered.where((t) => _getParentFolder(t.uri).startsWith(path)).toList();
+            final totalTracks = filtered.where((t) => t.uri.startsWith(path)).toList();
             return _buildGroupTile(
               title: name,
               subtitle: '${totalTracks.length} tracks · $path',
@@ -842,25 +847,35 @@ class _LibraryPageState extends State<LibraryPage> {
           },
         );
       } else {
-        // Direct child folders
-        final childFolders = allFolders.where((f) {
-          final sep = _treeCurrentPath.contains('\\') ? '\\' : '/';
-          if (!f.startsWith(_treeCurrentPath + sep)) return false;
-          final remaining = f.substring(_treeCurrentPath.length + 1);
-          return !remaining.contains('/') && !remaining.contains('\\');
-        }).toList()..sort();
+        // Find direct child folders of _treeCurrentPath that contain music tracks recursively
+        final childFolders = <String>{};
+        final sep = _treeCurrentPath.contains('\\') ? '\\' : '/';
+        final prefix = _treeCurrentPath + sep;
 
-        // Direct tracks
+        for (final track in filtered) {
+          final uri = track.uri;
+          if (uri.startsWith(prefix)) {
+            final relative = uri.substring(prefix.length);
+            final idx = relative.indexOf(sep);
+            if (idx != -1) {
+              final subName = relative.substring(0, idx);
+              childFolders.add(_treeCurrentPath + sep + subName);
+            }
+          }
+        }
+        final sortedChildren = childFolders.toList()..sort();
+
+        // Direct tracks under _treeCurrentPath
         final directTracks = filtered.where((t) => _getParentFolder(t.uri) == _treeCurrentPath).toList()
           ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
-        final totalItems = childFolders.length + directTracks.length;
+        final totalItems = sortedChildren.length + directTracks.length;
 
         return Column(
           children: [
             _buildSubGroupHeader(_getFolderName(_treeCurrentPath), () {
               setState(() {
-                if (rootFolders.contains(_treeCurrentPath)) {
+                if (sortedRoots.contains(_treeCurrentPath)) {
                   _treeCurrentPath = 'Root';
                 } else {
                   _treeCurrentPath = _getParentFolder(_treeCurrentPath);
@@ -872,10 +887,10 @@ class _LibraryPageState extends State<LibraryPage> {
                 padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
                 itemCount: totalItems,
                 itemBuilder: (context, i) {
-                  if (i < childFolders.length) {
-                    final path = childFolders[i];
+                  if (i < sortedChildren.length) {
+                    final path = sortedChildren[i];
                     final name = _getFolderName(path);
-                    final recTracks = filtered.where((t) => _getParentFolder(t.uri).startsWith(path)).toList();
+                    final recTracks = filtered.where((t) => t.uri.startsWith(path)).toList();
                     return _buildGroupTile(
                       title: name,
                       subtitle: '${recTracks.length} tracks',
@@ -888,7 +903,7 @@ class _LibraryPageState extends State<LibraryPage> {
                       onPlay: () => _showLibraryMenu(context, 'Folder: $name', recTracks),
                     );
                   } else {
-                    final track = directTracks[i - childFolders.length];
+                    final track = directTracks[i - sortedChildren.length];
                     return _buildTrackTile(track);
                   }
                 },

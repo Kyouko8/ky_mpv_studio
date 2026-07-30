@@ -40,6 +40,23 @@ class MpvStudio {
         map[instance.kind] = serverManager.getOrCreateServer(instance);
       }
     }
+    // Fallback/placeholder servers for legacy code compatibility
+    if (!map.containsKey(ServerKind.jellyfin)) {
+      map[ServerKind.jellyfin] = serverManager.getOrCreateServer(ServerInstance(
+        id: 'jellyfin-fallback-id',
+        name: 'Jellyfin',
+        kind: ServerKind.jellyfin,
+        host: '',
+      ));
+    }
+    if (!map.containsKey(ServerKind.plex)) {
+      map[ServerKind.plex] = serverManager.getOrCreateServer(ServerInstance(
+        id: 'plex-fallback-id',
+        name: 'Plex',
+        kind: ServerKind.plex,
+        host: '',
+      ));
+    }
     return map;
   }
 
