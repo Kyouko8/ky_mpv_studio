@@ -116,7 +116,7 @@ class _QueuePageState extends State<QueuePage> {
                               children: [
                                 Flexible(
                                   child: Text(
-                                    'Lista: ${queue.name}',
+                                    'Queue: ${queue.name}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: Tokens.body.copyWith(fontWeight: FontWeight.bold),
@@ -137,7 +137,7 @@ class _QueuePageState extends State<QueuePage> {
                           constraints: const BoxConstraints(),
                           onPressed: _showAdminDialog,
                           icon: const Icon(Icons.settings_rounded, size: 18, color: Tokens.fgDim),
-                          tooltip: 'Administrar listas',
+                          tooltip: 'Manage queues',
                         ),
                       ],
                     ),
@@ -168,8 +168,6 @@ class _QueuePageState extends State<QueuePage> {
                         );
                       }
 
-                      // Check which track is playing
-                      // We can match playing URI with items in our viewed list
                       final playingUri = (mpvPlaylist.index >= 0 && mpvPlaylist.index < mpvPlaylist.items.length)
                           ? mpvPlaylist.items[mpvPlaylist.index].uri
                           : null;
@@ -193,7 +191,6 @@ class _QueuePageState extends State<QueuePage> {
                         },
                         itemBuilder: (context, i) {
                           final item = items[i];
-                          // Is this item the currently playing track?
                           final isPlaying = _queueManager.playingQueueId == queue.id &&
                               playingUri != null &&
                               item.uri == playingUri &&
@@ -676,12 +673,12 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
             children: [
               const Icon(Icons.queue_music_rounded, color: Tokens.accent),
               const SizedBox(width: Tokens.s8),
-              const Text('Administrar Listas', style: Tokens.heading),
+              const Text('Manage Queues', style: Tokens.heading),
             ],
           ),
           content: SizedBox(
             width: 400,
-            height: 350,
+            height: 300,
             child: Column(
               children: [
                 Expanded(
@@ -719,32 +716,31 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
                     },
                   ),
                 ),
-                const SizedBox(height: Tokens.s12),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Tokens.accent,
-                    foregroundColor: Tokens.onAccent,
-                    shape: Tokens.squircle(Tokens.rSm) as OutlinedBorder,
-                  ),
-                  onPressed: () {
-                    try {
-                      qm.createQueue();
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString())),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Nueva Lista'),
-                ),
               ],
             ),
           ),
           actions: [
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Tokens.accent,
+                foregroundColor: Tokens.onAccent,
+                shape: Tokens.squircle(Tokens.rSm) as OutlinedBorder,
+              ),
+              onPressed: () {
+                try {
+                  qm.createQueue();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              },
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('New Queue'),
+            ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar', style: TextStyle(color: Tokens.accent)),
+              child: const Text('Close', style: TextStyle(color: Tokens.accent)),
             ),
           ],
         );
@@ -759,7 +755,7 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: Tokens.surface2,
-          title: const Text('Renombrar Lista', style: Tokens.label),
+          title: const Text('Rename Queue', style: Tokens.label),
           content: TextField(
             controller: controller,
             style: const TextStyle(color: Tokens.fg),
@@ -773,7 +769,7 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar', style: TextStyle(color: Tokens.fgDim)),
+              child: const Text('Cancel', style: TextStyle(color: Tokens.fgDim)),
             ),
             TextButton(
               onPressed: () {
@@ -783,7 +779,7 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
                 }
                 Navigator.of(context).pop();
               },
-              child: const Text('Guardar', style: TextStyle(color: Tokens.accent)),
+              child: const Text('Save', style: TextStyle(color: Tokens.accent)),
             ),
           ],
         );
@@ -862,7 +858,7 @@ class _DialogQueueTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${queue.items.length} canciones',
+                        '${queue.items.length} tracks',
                         style: Tokens.caption,
                       ),
                     ],
@@ -873,7 +869,7 @@ class _DialogQueueTile extends StatelessWidget {
                   icon: const Icon(Icons.edit_rounded, size: 16),
                   color: Tokens.fgDim,
                   splashRadius: 16,
-                  tooltip: 'Renombrar',
+                  tooltip: 'Rename',
                 ),
                 if (onDelete != null)
                   IconButton(
@@ -881,7 +877,7 @@ class _DialogQueueTile extends StatelessWidget {
                     icon: const Icon(Icons.delete_outline_rounded, size: 16),
                     color: Tokens.red,
                     splashRadius: 16,
-                    tooltip: 'Eliminar',
+                    tooltip: 'Delete',
                   ),
               ],
             ),

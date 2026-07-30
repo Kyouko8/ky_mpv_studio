@@ -1104,11 +1104,11 @@ class _QueueGroupState extends State<_QueueGroup> {
   @override
   Widget build(BuildContext context) {
     return SettingsGroup(
-      label: 'Configuraciones de Cola (Queue)',
+      label: 'Queue Settings',
       children: [
         SettingTile(
-          title: 'Nombre base para listas nuevas',
-          description: 'Nombre predeterminado asignado al crear una lista de reproducción.',
+          title: 'Base name for new queues',
+          description: 'Default name assigned when creating a new queue.',
           below: Padding(
             padding: const EdgeInsets.only(top: Tokens.s8),
             child: Container(
@@ -1135,8 +1135,8 @@ class _QueueGroupState extends State<_QueueGroup> {
           ),
         ),
         SliderRow(
-          label: 'Cantidad máxima de listas',
-          description: 'Límite de listas de reproducción permitidas (máximo 200).',
+          label: 'Maximum number of queues',
+          description: 'Limit of allowed queues (maximum 200).',
           value: widget.settings.queueMaxLists.toDouble(),
           min: 1,
           max: 200,

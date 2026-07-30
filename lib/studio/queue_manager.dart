@@ -250,7 +250,7 @@ class QueueManager extends ChangeNotifier {
   QueueModel createQueue([String? name]) {
     final maxAllowed = _settings.queueMaxLists;
     if (_queues.length >= maxAllowed) {
-      throw Exception('Llegaste al límite máximo de listas ($maxAllowed).');
+      throw Exception('You have reached the maximum limit of lists ($maxAllowed).');
     }
 
     final newQueue = QueueModel(
@@ -290,7 +290,7 @@ class QueueManager extends ChangeNotifier {
 
   void deleteQueue(String id) {
     if (_queues.length <= 1) {
-      throw Exception('Debe haber al menos una lista.');
+      throw Exception('At least one list is required.');
     }
     final index = _queues.indexWhere((q) => q.id == id);
     if (index != -1) {

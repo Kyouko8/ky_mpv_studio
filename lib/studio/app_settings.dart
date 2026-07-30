@@ -132,7 +132,7 @@ class AppSettings {
   double get loudnessTargetLufs => _double('loudnessTargetLufs', -18);
   String get demuxerCacheDir => _string('demuxerCacheDir', '');
 
-  String get queueBaseName => _string('queueBaseName', 'Nueva Lista');
+  String get queueBaseName => _string('queueBaseName', 'New Queue');
   int get queueMaxLists => _int('queueMaxLists', 30).clamp(1, 200);
 
   void recordResumePlayback(bool v) => _snap('resumePlayback', v);
