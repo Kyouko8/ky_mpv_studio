@@ -8,6 +8,7 @@ import 'app_settings.dart';
 import 'audio_engine.dart';
 import 'loudness_normalizer.dart';
 import 'media_servers.dart';
+import 'queue_manager.dart';
 
 /// The running MPV Studio: every long-lived service the player app needs,
 /// owned in one place. [launch] turns the app on (settings → audio engine →
@@ -41,6 +42,9 @@ class MpvStudio {
   /// scan. The Settings toggle and the Now Playing badge observe this.
   final LoudnessNormalizer normalizer;
 
+  /// Manages multiple playlists (queues) and active/inactive tracks.
+  final QueueManager queueManager;
+
   const MpvStudio._({
     required this.player,
     required this.settings,
@@ -48,6 +52,7 @@ class MpvStudio {
     required this.favorites,
     required this.consoleLog,
     required this.normalizer,
+    required this.queueManager,
   });
 
   /// Powers the app on. Restores persisted settings, starts the audio engine
@@ -69,6 +74,9 @@ class MpvStudio {
     // subscription itself arms the scan, so an off toggle costs nothing.
     final normalizer = LoudnessNormalizer(engine.player, settings)..restore();
 
+    final queueManager = QueueManager(engine.player, settings);
+    await queueManager.load();
+
     return MpvStudio._(
       player: engine.player,
       settings: settings,
@@ -76,6 +84,7 @@ class MpvStudio {
       favorites: media.favorites,
       consoleLog: engine.consoleLog,
       normalizer: normalizer,
+      queueManager: queueManager,
     );
   }
 
@@ -85,6 +94,7 @@ class MpvStudio {
     normalizer.dispose();
     await settings.dispose();
     await consoleLog.dispose();
+    await queueManager.save();
     await player.dispose();
   }
 }
