@@ -201,54 +201,240 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     });
   }
 
-  void _play(int index) {
-    final items = _paging.value.items ?? const <ServerTrack>[];
-    if (index < 0 || index >= items.length) return;
-    final favorites = PlayerScope.favoritesOf(context);
-    final window =
-        items.sublist(index, math.min(index + _queueMax, items.length));
+  Media _serverTrackToMedia(ServerTrack t, FavoritesController favorites) {
     final segment = _server.segmentContainer(
       _mode,
       codec: _codec.value,
       transport: _transport,
       protocol: _protocol,
     );
-    // Per-track demuxer options (e.g. Jellyfin's HLS segment-retry guard);
-    // null for streams that need none.
     final lavfOptions = _server.demuxerLavfOptions(
       _mode,
       codec: _codec.value,
       transport: _transport,
       protocol: _protocol,
     );
-    final medias = [
-      for (final t in window)
-        Media(
-          _server.streamUrl(
-            t,
-            _mode,
-            codec: _codec.value,
-            bitrateKbps: _bitrateKbps,
-            transport: _transport,
-            protocol: _protocol,
-          ),
-          demuxerLavfOptions: lavfOptions,
-          extras: {
-            'title': t.title,
-            'artist': t.artist,
-            'album': t.album,
-            if (t.artUrl != null) 'art': t.artUrl,
-            if (segment != null) 'segment': segment,
-            // Lets the app-level PlaybackReporter report this track back to
-            // the right server (Now Playing / progress / scrobble) and drive
-            // the OS lock-screen "like" from the track's favourite state.
-            'serverId': t.id,
-            'server': _server.kind.name,
-            'isFavorite': favorites.resolved(_server.kind, t.id, t.isFavorite),
-          },
-        ),
-    ];
+    return Media(
+      _server.streamUrl(
+        t,
+        _mode,
+        codec: _codec.value,
+        bitrateKbps: _bitrateKbps,
+        transport: _transport,
+        protocol: _protocol,
+      ),
+      demuxerLavfOptions: lavfOptions,
+      extras: {
+        'title': t.title,
+        'artist': t.artist,
+        'album': t.album,
+        if (t.artUrl != null) 'art': t.artUrl,
+        if (segment != null) 'segment': segment,
+        'serverId': t.id,
+        'server': _server.kind.name,
+        'serverInstanceId': _server.instance.id,
+        'playbackMode': _mode.name,
+        'codec': _codec.value,
+        'bitrateKbps': _bitrateKbps,
+        'transport': _transport.name,
+        'protocol': _protocol.name,
+        'durationMs': t.duration.inMilliseconds,
+        'isFavorite': favorites.resolvedByInstance(_server.instance.id, t.id, t.isFavorite),
+      },
+    );
+  }
+
+  void _play(int index) {
+    final items = _paging.value.items ?? const <ServerTrack>[];
+    if (index < 0 || index >= items.length) return;
+    final favorites = PlayerScope.favoritesOf(context);
+    final window =
+        items.sublist(index, math.min(index + _queueMax, items.length));
+    final medias = window.map((t) => _serverTrackToMedia(t, favorites)).toList();
     _queueManager?.openAll(medias, play: true, index: 0);
+  }
+
+  Future<void> _addMediasToQueue(
+    QueueManager qm,
+    String queueId,
+    List<Media> medias, {
+    required bool skipDuplicates,
+  }) async {
+    final origId = qm.viewedQueueId;
+    qm.selectViewedQueue(queueId);
+    final queue = qm.queues.firstWhere((q) => q.id == queueId);
+    final existingUris = queue.items.map((item) => item.uri).toSet();
+    for (final media in medias) {
+      if (skipDuplicates && existingUris.contains(media.uri)) {
+        continue;
+      }
+      await qm.add(media);
+    }
+    qm.selectViewedQueue(origId);
+  }
+
+  void _showQueueSelectionDialog(
+    BuildContext context,
+    QueueManager qm,
+    List<Media> medias,
+    String title, {
+    required bool skipDuplicates,
+  }) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Tokens.surface,
+          title: const Text('Select a Queue', style: Tokens.heading),
+          content: SizedBox(
+            width: 300,
+            height: 250,
+            child: ListView.builder(
+              itemCount: qm.queues.length,
+              itemBuilder: (context, i) {
+                final q = qm.queues[i];
+                return ListTile(
+                  title: Text(q.name, style: Tokens.body),
+                  subtitle: Text('${q.items.length} tracks', style: Tokens.caption),
+                  onTap: () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final nav = Navigator.of(context);
+                    await _addMediasToQueue(qm, q.id, medias, skipDuplicates: skipDuplicates);
+                    nav.pop();
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Added ${medias.length} track(s) to ${q.name}')),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Tokens.accent)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showServerTrackMenu(BuildContext context, ServerTrack track) {
+    final qm = _queueManager;
+    if (qm == null) return;
+
+    bool addAll = false;
+    bool skipDuplicates = false;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Tokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Tokens.rMd)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final favorites = PlayerScope.favoritesOf(context);
+            final items = _paging.value.items ?? const <ServerTrack>[];
+            final targetTracks = addAll ? items : [track];
+            final medias = targetTracks.map((t) => _serverTrackToMedia(t, favorites)).toList();
+
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Tokens.s12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Agregar todas', style: Tokens.body),
+                        subtitle: const Text('Añade todas las canciones de la vista actual', style: Tokens.caption),
+                        value: addAll,
+                        activeThumbColor: Tokens.accent,
+                        onChanged: (val) => setSheetState(() => addAll = val),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Omitir si ya se encuentra en la lista', style: Tokens.body),
+                        subtitle: const Text('Evita duplicados en la lista de reproducción', style: Tokens.caption),
+                        value: skipDuplicates,
+                        activeThumbColor: Tokens.accent,
+                        onChanged: (val) => setSheetState(() => skipDuplicates = val),
+                      ),
+                      const Divider(color: Tokens.line),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: Tokens.s16, vertical: Tokens.s8),
+                        child: Text(
+                          track.title,
+                          style: Tokens.heading.copyWith(fontSize: 15),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Divider(color: Tokens.line),
+                      ListTile(
+                        leading: const Icon(Icons.playlist_play_rounded, color: Tokens.accent),
+                        title: const Text('Play now as new list', style: Tokens.body),
+                        onTap: () async {
+                          final nav = Navigator.of(context);
+                          qm.createQueue(track.title);
+                          await qm.openAll(medias, play: true);
+                          nav.pop();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.bookmark_added_rounded, color: Tokens.accent),
+                        title: const Text('Add to Listen Later', style: Tokens.body),
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final nav = Navigator.of(context);
+                          QueueModel? target;
+                          for (final q in qm.queues) {
+                            if (q.name == 'Listen Later') {
+                              target = q;
+                              break;
+                            }
+                          }
+                          target ??= qm.createQueue('Listen Later');
+                          await _addMediasToQueue(qm, target.id, medias, skipDuplicates: skipDuplicates);
+                          nav.pop();
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Added ${medias.length} track(s) to Listen Later')),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.playlist_add_rounded, color: Tokens.accent),
+                        title: Text('Add to current list (${qm.viewedQueue.name})', style: Tokens.body),
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final nav = Navigator.of(context);
+                          await _addMediasToQueue(qm, qm.viewedQueueId, medias, skipDuplicates: skipDuplicates);
+                          nav.pop();
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Added ${medias.length} track(s) to current list')),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.queue_music_rounded, color: Tokens.accent),
+                        title: const Text('Add to a list...', style: Tokens.body),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _showQueueSelectionDialog(context, qm, medias, track.title, skipDuplicates: skipDuplicates);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   // ── Transcode option dropdowns (shown only in transcode mode) ────────
@@ -491,9 +677,10 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
                   current: _currentId.isNotEmpty &&
                       track.id == _currentId &&
                       _currentServer == _server.kind.name,
-                  kind: _server.kind,
+                  serverInstanceId: _server.instance.id,
                   favorites: PlayerScope.favoritesOf(context),
                   onTap: () => _play(index),
+                  onMore: () => _showServerTrackMenu(context, track),
                 ),
                 firstPageProgressIndicatorBuilder: (_) => const _Spinner(),
                 newPageProgressIndicatorBuilder: (_) => const _Spinner(),
@@ -524,15 +711,17 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
 class _TrackTile extends StatelessWidget {
   final ServerTrack track;
   final bool current;
-  final ServerKind kind;
+  final String serverInstanceId;
   final FavoritesController favorites;
   final VoidCallback onTap;
+  final VoidCallback onMore;
   const _TrackTile({
     required this.track,
     required this.current,
-    required this.kind,
+    required this.serverInstanceId,
     required this.favorites,
     required this.onTap,
+    required this.onMore,
   });
 
   static String _fmt(Duration d) {
@@ -592,9 +781,17 @@ class _TrackTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Tokens.s4),
-                _FavoriteStar(favorites: favorites, kind: kind, track: track),
+                _FavoriteStar(favorites: favorites, serverInstanceId: serverInstanceId, track: track),
                 const SizedBox(width: Tokens.s4),
                 Text(_fmt(track.duration), style: Tokens.numeric),
+                const SizedBox(width: Tokens.s8),
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded, size: 18, color: Tokens.fgDim),
+                  onPressed: onMore,
+                  constraints: const BoxConstraints(),
+                  padding: EdgeInsets.zero,
+                  splashRadius: 18,
+                ),
               ],
             ),
           ),
@@ -608,11 +805,11 @@ class _TrackTile extends StatelessWidget {
 /// so a toggle from the OS lock screen (or another row) reflects immediately.
 class _FavoriteStar extends StatelessWidget {
   final FavoritesController favorites;
-  final ServerKind kind;
+  final String serverInstanceId;
   final ServerTrack track;
   const _FavoriteStar({
     required this.favorites,
-    required this.kind,
+    required this.serverInstanceId,
     required this.track,
   });
 
@@ -621,9 +818,9 @@ class _FavoriteStar extends StatelessWidget {
     return ListenableBuilder(
       listenable: favorites,
       builder: (context, _) {
-        final fav = favorites.resolved(kind, track.id, track.isFavorite);
+        final fav = favorites.resolvedByInstance(serverInstanceId, track.id, track.isFavorite);
         return IconButton(
-          onPressed: () => favorites.setFavorite(kind, track.id, !fav),
+          onPressed: () => favorites.setFavoriteByInstance(serverInstanceId, track.id, !fav),
           icon: Icon(fav ? Icons.star_rounded : Icons.star_border_rounded,
               size: 18),
           color: fav ? Tokens.accent : Tokens.fgDim,

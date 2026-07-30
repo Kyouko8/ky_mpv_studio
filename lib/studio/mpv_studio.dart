@@ -3,13 +3,14 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import '../features/console/console_log.dart';
 import '../features/stream/favorites_controller.dart';
 import '../features/stream/media_server.dart';
+import '../features/stream/playback_reporter.dart';
 import '../features/stream/plex_transcode_session_manager.dart';
 import 'app_settings.dart';
 import 'audio_engine.dart';
 import 'library_manager.dart';
 import 'loudness_normalizer.dart';
-import 'media_servers.dart';
 import 'queue_manager.dart';
+import 'server_manager.dart';
 
 /// The running MPV Studio: every long-lived service the player app needs,
 /// owned in one place. [launch] turns the app on (settings → audio engine →
@@ -28,8 +29,36 @@ class MpvStudio {
   /// and records changes back to disk.
   final AppSettings settings;
 
+  /// Multi-instance quick-access server manager.
+  final ServerManager serverManager;
+
   /// Connected media servers (Jellyfin / Plex), keyed by kind.
-  final Map<ServerKind, MediaServer> servers;
+  Map<ServerKind, MediaServer> get servers {
+    final map = <ServerKind, MediaServer>{};
+    for (final instance in serverManager.instances) {
+      if (!map.containsKey(instance.kind)) {
+        map[instance.kind] = serverManager.getOrCreateServer(instance);
+      }
+    }
+    // Fallback/placeholder servers for legacy code compatibility
+    if (!map.containsKey(ServerKind.jellyfin)) {
+      map[ServerKind.jellyfin] = serverManager.getOrCreateServer(ServerInstance(
+        id: 'jellyfin-fallback-id',
+        name: 'Jellyfin',
+        kind: ServerKind.jellyfin,
+        host: '',
+      ));
+    }
+    if (!map.containsKey(ServerKind.plex)) {
+      map[ServerKind.plex] = serverManager.getOrCreateServer(ServerInstance(
+        id: 'plex-fallback-id',
+        name: 'Plex',
+        kind: ServerKind.plex,
+        host: '',
+      ));
+    }
+    return map;
+  }
 
   /// Shared favourite (like) state for server tracks — the song-list star and
   /// the OS lock-screen like both read/write this.
@@ -52,7 +81,7 @@ class MpvStudio {
   const MpvStudio._({
     required this.player,
     required this.settings,
-    required this.servers,
+    required this.serverManager,
     required this.favorites,
     required this.consoleLog,
     required this.normalizer,
@@ -70,10 +99,28 @@ class MpvStudio {
 
     final engine = await startAudioEngine(settings);
 
+    // Resolve device name and device ID before initializing servers
+    await Future.wait([
+      resolveDeviceName().then(setMediaDeviceName),
+      resolveDeviceId(),
+    ]);
+
+    final serverManager = ServerManager();
+    await serverManager.load();
+
+    // Wire up unified loading hook!
+    await wireMediaServersHook(engine.player, serverManager);
+
     // Plex hands mpv marker URLs that must be resolved in an on_load hook.
     await wirePlexTranscodeHook(engine.player);
 
-    final media = await connectMediaServers(engine.player);
+    final favorites = FavoritesController(serverManager);
+
+    // Report playback (start / progress / stop) of server tracks back to their
+    // server, and bridge the OS lock-screen "like" to favourites. Lives for the
+    // whole session.
+    final reporter = PlaybackReporter(engine.player, serverManager, favorites);
+    reporter.start();
 
     // Volume normalization rides the engine's offline loudness scan; the
     // subscription itself arms the scan, so an off toggle costs nothing.
@@ -88,8 +135,8 @@ class MpvStudio {
     return MpvStudio._(
       player: engine.player,
       settings: settings,
-      servers: media.servers,
-      favorites: media.favorites,
+      serverManager: serverManager,
+      favorites: favorites,
       consoleLog: engine.consoleLog,
       normalizer: normalizer,
       queueManager: queueManager,

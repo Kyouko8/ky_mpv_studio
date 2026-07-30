@@ -5,6 +5,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../studio/player_scope.dart';
 import '../../studio/queue_manager.dart';
+import '../../studio/server_manager.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/chapter_scrubber.dart';
 import '../../ui/widgets/custom_url_bar.dart';
@@ -163,14 +164,11 @@ const _chapterCategories = <StreamCategory>[
   ]),
 ];
 
-/// The Stream surface: six windowed tabs — **Lab** (reference network
+/// The Stream surface: four windowed tabs — **Lab** (reference network
 /// streams), **YouTube** (resolve a YouTube URL to its audio stream and play
 /// it, in [_ytChunkSize] chunks), **Chapters** (chapter-bearing reference
-/// streams + a now-playing [ChapterScrubber]), **Jellyfin** and **Plex**
-/// (connect to a server and browse the paginated music library), and **Samba**
-/// (an SMB2/3 share, browsed as a folder tree — see [SambaBrowserTab]). The two
-/// media-server clients are created once and kept alive for the lifetime of
-/// the page.
+/// streams + a now-playing [ChapterScrubber]), and **Servers** (the dynamic multi-instance
+/// quick-access server administrator page).
 class StreamPage extends StatefulWidget {
   const StreamPage({super.key});
 
@@ -180,45 +178,403 @@ class StreamPage extends StatefulWidget {
 
 class _StreamPageState extends State<StreamPage> {
   int _tab = 0;
+  ServerInstance? _selectedInstance;
 
   @override
   Widget build(BuildContext context) {
-    // Servers live app-level (see PlayerScope) so their sessions and the
-    // playback reporting persist across navigating away from this page.
-    final jellyfin = PlayerScope.serverOf(context, ServerKind.jellyfin);
-    final plex = PlayerScope.serverOf(context, ServerKind.plex);
+    final serverManager = PlayerScope.serverManagerOf(context);
+
+    return ListenableBuilder(
+      listenable: serverManager,
+      builder: (context, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _ChromeTabBar(
+              selected: _tab,
+              tabs: const [
+                'Lab',
+                'YouTube',
+                'Chapters',
+                'Servers',
+              ],
+              onSelect: (i) => setState(() {
+                _tab = i;
+                _selectedInstance = null;
+              }),
+            ),
+            Expanded(
+              child: IndexedStack(
+                index: _tab,
+                sizing: StackFit.expand,
+                children: [
+                  const _LabTab(),
+                  const _YouTubeTab(),
+                  const _ChaptersTab(),
+                  _buildServersTab(serverManager),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildServersTab(ServerManager serverManager) {
+    if (_selectedInstance != null) {
+      final server = serverManager.getOrCreateServer(_selectedInstance!);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: Tokens.surface,
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.s16, vertical: Tokens.s8),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () => setState(() => _selectedInstance = null),
+                  behavior: HitTestBehavior.opaque,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.arrow_back_ios_new_rounded, size: 14, color: Tokens.accent),
+                      SizedBox(width: Tokens.s6),
+                      Text('Back to Servers', style: TextStyle(color: Tokens.accent, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: Tokens.s16),
+                Expanded(
+                  child: Text(
+                    _selectedInstance!.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Tokens.heading.copyWith(fontSize: 16),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _selectedInstance!.kind == ServerKind.samba
+                ? SambaBrowserTab(server: server as SambaServer)
+                : ServerLibraryTab(server: server),
+          ),
+        ],
+      );
+    }
+
+    return SectionBody(
+      padding: const EdgeInsets.fromLTRB(Tokens.s16, Tokens.s12, Tokens.s16, Tokens.s32),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const SectionHeader('Saved Servers'),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Tokens.accent,
+                foregroundColor: Tokens.onAccent,
+                shape: Tokens.squircle(Tokens.rSm) as OutlinedBorder,
+                padding: const EdgeInsets.symmetric(horizontal: Tokens.s12, vertical: Tokens.s8),
+              ),
+              onPressed: () => _showServerFormDialog(context, serverManager),
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('Add Server', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: Tokens.s12),
+        if (serverManager.instances.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 48),
+              child: Column(
+                children: [
+                  const Icon(Icons.dns_rounded, size: 48, color: Tokens.fgFaint),
+                  const SizedBox(height: Tokens.s12),
+                  const Text('No servers added yet.', style: Tokens.caption),
+                ],
+              ),
+            ),
+          )
+        else
+          for (final inst in serverManager.instances)
+            _ServerInstanceTile(
+              instance: inst,
+              onTap: () => setState(() => _selectedInstance = inst),
+              onEdit: () => _showServerFormDialog(context, serverManager, instance: inst),
+              onDelete: () => _confirmDelete(context, serverManager, inst),
+            ),
+      ],
+    );
+  }
+
+  void _confirmDelete(BuildContext context, ServerManager manager, ServerInstance inst) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Tokens.surface,
+        title: const Text('Delete Server', style: Tokens.heading),
+        content: Text('Are you sure you want to delete "${inst.name}"?', style: Tokens.body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Tokens.fgDim)),
+          ),
+          TextButton(
+            onPressed: () {
+              manager.removeInstance(inst.id);
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Tokens.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showServerFormDialog(BuildContext context, ServerManager manager, {ServerInstance? instance}) {
+    final isEdit = instance != null;
+    final nameCtrl = TextEditingController(text: instance?.name ?? '');
+    final hostCtrl = TextEditingController(text: instance?.host ?? '');
+    final shareCtrl = TextEditingController(text: instance?.share ?? '');
+    final userCtrl = TextEditingController(text: instance?.username ?? '');
+    final passCtrl = TextEditingController(text: instance?.password ?? '');
+    final domCtrl = TextEditingController(text: instance?.domain ?? '');
+
+    ServerKind kind = instance?.kind ?? ServerKind.jellyfin;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Tokens.surface,
+              title: Text(isEdit ? 'Edit Server' : 'Add Server', style: Tokens.heading),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Server Type', style: Tokens.caption),
+                    const SizedBox(height: Tokens.s6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+                      decoration: ShapeDecoration(
+                        color: Tokens.surface2,
+                        shape: Tokens.squircle(Tokens.rSm),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<ServerKind>(
+                          value: kind,
+                          dropdownColor: Tokens.surface,
+                          items: ServerKind.values.map((k) {
+                            return DropdownMenuItem(
+                              value: k,
+                              child: Text(k.name.toUpperCase(), style: Tokens.body),
+                            );
+                          }).toList(),
+                          onChanged: isEdit ? null : (val) {
+                            if (val != null) {
+                              setDialogState(() {
+                                kind = val;
+                                if (nameCtrl.text.isEmpty || nameCtrl.text == 'My Jellyfin' || nameCtrl.text == 'My Plex' || nameCtrl.text == 'My Samba') {
+                                  nameCtrl.text = val == ServerKind.jellyfin
+                                      ? 'My Jellyfin'
+                                      : (val == ServerKind.plex ? 'My Plex' : 'My Samba');
+                                }
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: Tokens.s12),
+                    _DialogField(controller: nameCtrl, label: 'Server Name', hint: 'e.g. My Media Server'),
+                    const SizedBox(height: Tokens.s12),
+                    _DialogField(controller: hostCtrl, label: 'Host IP / URL', hint: kind == ServerKind.plex ? '192.168.1.10:32400' : '192.168.1.10'),
+                    if (kind == ServerKind.samba) ...[
+                      const SizedBox(height: Tokens.s12),
+                      _DialogField(controller: shareCtrl, label: 'Share Name', hint: 'e.g. Music'),
+                    ],
+                    const SizedBox(height: Tokens.s12),
+                    _DialogField(controller: userCtrl, label: 'Username (Optional)', hint: 'e.g. alex'),
+                    const SizedBox(height: Tokens.s12),
+                    _DialogField(controller: passCtrl, label: 'Password (Optional)', hint: 'e.g. password123', obscure: true),
+                    if (kind == ServerKind.samba) ...[
+                      const SizedBox(height: Tokens.s12),
+                      _DialogField(controller: domCtrl, label: 'Domain (Optional)', hint: 'e.g. WORKGROUP'),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Tokens.fgDim)),
+                ),
+                TextButton(
+                  onPressed: () {
+                    final name = nameCtrl.text.trim();
+                    final host = hostCtrl.text.trim();
+                    if (name.isEmpty || host.isEmpty) return;
+
+                    if (instance != null) {
+                      manager.updateInstance(instance.copyWith(
+                        name: name,
+                        host: host,
+                        share: shareCtrl.text.trim(),
+                        username: userCtrl.text,
+                        password: passCtrl.text,
+                        domain: domCtrl.text.trim(),
+                        kind: kind,
+                      ));
+                    } else {
+                      manager.addInstance(
+                        name: name,
+                        kind: kind,
+                        host: host,
+                        share: shareCtrl.text.trim(),
+                        username: userCtrl.text,
+                        password: passCtrl.text,
+                        domain: domCtrl.text.trim(),
+                      );
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: Text(isEdit ? 'Save' : 'Add', style: const TextStyle(color: Tokens.accent, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _DialogField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final bool obscure;
+
+  const _DialogField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    this.obscure = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
-      // Fill the width so the tab strip and tab bodies sit flush-left instead
-      // of the Column's default centre alignment.
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _ChromeTabBar(
-          selected: _tab,
-          tabs: const [
-            'Lab',
-            'YouTube',
-            'Chapters',
-            'Jellyfin',
-            'Plex',
-            'Samba',
-          ],
-          onSelect: (i) => setState(() => _tab = i),
-        ),
-        Expanded(
-          child: IndexedStack(
-            index: _tab,
-            sizing: StackFit.expand,
-            children: [
-              const _LabTab(),
-              const _YouTubeTab(),
-              const _ChaptersTab(),
-              ServerLibraryTab(server: jellyfin),
-              ServerLibraryTab(server: plex),
-              const SambaBrowserTab(),
-            ],
+        Text(label, style: Tokens.caption),
+        const SizedBox(height: Tokens.s6),
+        Container(
+          height: Tokens.controlH,
+          decoration: ShapeDecoration(
+            color: Tokens.surface2,
+            shape: Tokens.squircle(Tokens.rSm),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+          child: TextField(
+            controller: controller,
+            obscureText: obscure,
+            style: const TextStyle(fontSize: 13, color: Tokens.fg),
+            cursorColor: Tokens.accent,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: hint,
+              hintStyle: Tokens.caption,
+              border: InputBorder.none,
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ServerInstanceTile extends StatelessWidget {
+  final ServerInstance instance;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ServerInstanceTile({
+    required this.instance,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = instance.kind == ServerKind.samba
+        ? '${instance.host}/${instance.share}'
+        : instance.host;
+
+    final IconData icon = instance.kind == ServerKind.samba
+        ? Icons.folder_shared_rounded
+        : (instance.kind == ServerKind.plex ? Icons.dns_rounded : Icons.computer_rounded);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: Tokens.s8),
+      decoration: ShapeDecoration(
+        color: Tokens.surface,
+        shape: Tokens.squircle(Tokens.rMd),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: Tokens.squircle(Tokens.rMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.s16, vertical: Tokens.s12),
+            child: Row(
+              children: [
+                Icon(icon, size: 24, color: Tokens.accent),
+                const SizedBox(width: Tokens.s16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        instance.name,
+                        style: Tokens.body.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: Tokens.caption,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onEdit,
+                  icon: const Icon(Icons.edit_rounded, size: 16, color: Tokens.fgDim),
+                  tooltip: 'Edit Server',
+                ),
+                IconButton(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_rounded, size: 16, color: Tokens.red),
+                  tooltip: 'Delete Server',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

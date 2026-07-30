@@ -9,6 +9,7 @@ import 'library_manager.dart';
 import 'loudness_normalizer.dart';
 import 'mpv_studio.dart';
 import 'queue_manager.dart';
+import 'server_manager.dart';
 
 /// Exposes the running [MpvStudio] — the single [Player] and the app's
 /// services — to the whole widget tree. MPV Studio is a single-player app, so
@@ -43,6 +44,10 @@ class PlayerScope extends InheritedWidget {
   /// The connected server of the given [kind].
   static MediaServer serverOf(BuildContext context, ServerKind kind) =>
       _scope(context).servers[kind]!;
+
+  /// The active ServerManager.
+  static ServerManager serverManagerOf(BuildContext context) =>
+      _scope(context).serverManager;
 
   /// The always-on engine-log buffer.
   static ConsoleLog consoleLogOf(BuildContext context) =>
