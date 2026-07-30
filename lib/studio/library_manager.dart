@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,6 +18,7 @@ class LibraryTrack {
   final String genre;
   final String year;
   final int mtime; // File modification timestamp (ms since epoch)
+  final bool requireAdvancedScan;
 
   LibraryTrack({
     required this.uri,
@@ -26,6 +28,7 @@ class LibraryTrack {
     this.genre = '',
     this.year = '',
     required this.mtime,
+    this.requireAdvancedScan = false,
   });
 
   factory LibraryTrack.fromJson(Map<String, dynamic> json) {
@@ -37,6 +40,7 @@ class LibraryTrack {
       genre: json['genre'] as String? ?? '',
       year: json['year'] as String? ?? '',
       mtime: json['mtime'] as int? ?? 0,
+      requireAdvancedScan: json['requireAdvancedScan'] as bool? ?? false,
     );
   }
 
@@ -49,6 +53,7 @@ class LibraryTrack {
       'genre': genre,
       'year': year,
       'mtime': mtime,
+      'requireAdvancedScan': requireAdvancedScan,
     };
   }
 
@@ -60,6 +65,7 @@ class LibraryTrack {
     String? genre,
     String? year,
     int? mtime,
+    bool? requireAdvancedScan,
   }) {
     return LibraryTrack(
       uri: uri ?? this.uri,
@@ -69,16 +75,19 @@ class LibraryTrack {
       genre: genre ?? this.genre,
       year: year ?? this.year,
       mtime: mtime ?? this.mtime,
+      requireAdvancedScan: requireAdvancedScan ?? this.requireAdvancedScan,
     );
   }
 }
 
 class IsolateScanParams {
+  final SendPort sendPort;
   final List<String> paths;
   final List<LibraryTrack> cachedTracks;
   final Map<String, Map<String, String>> fallbacks;
 
   IsolateScanParams({
+    required this.sendPort,
     required this.paths,
     required this.cachedTracks,
     required this.fallbacks,
@@ -86,22 +95,24 @@ class IsolateScanParams {
 }
 
 // Background scan isolate function
-Future<List<LibraryTrack>> _isolateScan(IsolateScanParams params) async {
+Future<void> _isolateScan(IsolateScanParams params) async {
   final tagger = MetaTagger();
-  final List<LibraryTrack> results = [];
   final cacheMap = {for (final t in params.cachedTracks) t.uri: t};
 
   for (final path in params.paths) {
     try {
       final file = File(path);
-      if (!file.existsSync()) continue;
+      if (!file.existsSync()) {
+        params.sendPort.send(null);
+        continue;
+      }
 
       final stat = file.statSync();
       final mtime = stat.modified.millisecondsSinceEpoch;
 
       final cached = cacheMap[path];
       if (cached != null && cached.mtime == mtime) {
-        results.add(cached);
+        params.sendPort.send(cached);
         continue;
       }
 
@@ -150,7 +161,7 @@ Future<List<LibraryTrack>> _isolateScan(IsolateScanParams params) async {
       if (genre == '<unknown>' || genre.isEmpty) genre = 'Unknown Genre';
       if (year.isEmpty) year = 'Unknown Year';
 
-      results.add(LibraryTrack(
+      final track = LibraryTrack(
         uri: path,
         title: title.trim(),
         artist: artist.trim(),
@@ -158,13 +169,14 @@ Future<List<LibraryTrack>> _isolateScan(IsolateScanParams params) async {
         genre: genre.trim(),
         year: year.trim(),
         mtime: mtime,
-      ));
+        requireAdvancedScan: false,
+      );
+      params.sendPort.send(track);
     } catch (e) {
       debugPrint('Error scanning file $path in isolate: $e');
+      params.sendPort.send(null);
     }
   }
-
-  return results;
 }
 
 class LibraryManager extends ChangeNotifier {
@@ -173,6 +185,8 @@ class LibraryManager extends ChangeNotifier {
   List<LibraryTrack> _tracks = [];
   bool _isScanning = false;
   bool _loaded = false;
+  int _scannedCount = 0;
+  int _totalToScan = 0;
 
   LibraryManager() {
     _init();
@@ -182,6 +196,8 @@ class LibraryManager extends ChangeNotifier {
   List<LibraryTrack> get tracks => _tracks;
   bool get isScanning => _isScanning;
   bool get loaded => _loaded;
+  int get scannedCount => _scannedCount;
+  int get totalToScan => _totalToScan;
 
   Future<void> _init() async {
     await loadSettingsAndCache();
@@ -258,6 +274,8 @@ class LibraryManager extends ChangeNotifier {
   Future<void> scan() async {
     if (_isScanning) return;
     _isScanning = true;
+    _scannedCount = 0;
+    _totalToScan = 0;
     notifyListeners();
 
     try {
@@ -273,19 +291,40 @@ class LibraryManager extends ChangeNotifier {
         }
 
         final songs = await _onAudioQuery.querySongs();
+        _totalToScan = songs.length;
+        _scannedCount = 0;
+        notifyListeners();
+
+        final List<LibraryTrack> androidTracks = [];
         for (final song in songs) {
           final path = song.data;
           if (isAudioPath(path)) {
-            pathsToScan.add(path);
-            fallbacks[path] = {
-              'title': song.title,
-              'artist': song.artist ?? '',
-              'album': song.album ?? '',
-              'genre': song.genre ?? '',
-              'year': '',
-            };
+            // Use MediaStore info directly
+            String artist = song.artist ?? 'Unknown Artist';
+            if (artist == '<unknown>' || artist.isEmpty) artist = 'Unknown Artist';
+            String album = song.album ?? 'Unknown Album';
+            if (album == '<unknown>' || album.isEmpty) album = 'Unknown Album';
+            String genre = song.genre ?? 'Unknown Genre';
+            if (genre == '<unknown>' || genre.isEmpty) genre = 'Unknown Genre';
+
+            androidTracks.add(LibraryTrack(
+              uri: path,
+              title: song.title.trim(),
+              artist: artist.trim(),
+              album: album.trim(),
+              genre: genre.trim(),
+              year: 'Unknown Year',
+              mtime: (song.dateModified ?? 0) * 1000,
+              requireAdvancedScan: true,
+            ));
+          }
+          _scannedCount++;
+          if (_scannedCount % 50 == 0 || _scannedCount == _totalToScan) {
+            notifyListeners();
           }
         }
+        _tracks = androidTracks;
+        await saveCache();
       } else {
         // Windows / desktop
         for (final folder in _folders) {
@@ -302,23 +341,43 @@ class LibraryManager extends ChangeNotifier {
             }
           }
         }
-      }
 
-      if (pathsToScan.isNotEmpty) {
-        // Run Isolate-based scan using compute
-        final updatedTracks = await compute(
+        if (pathsToScan.isNotEmpty) {
+          _totalToScan = pathsToScan.length;
+          _scannedCount = 0;
+          notifyListeners();
+
+          final receivePort = ReceivePort();
+          final isolate = await Isolate.spawn(
             _isolateScan,
             IsolateScanParams(
+              sendPort: receivePort.sendPort,
               paths: pathsToScan,
               cachedTracks: _tracks,
               fallbacks: fallbacks,
-            ));
+            ),
+          );
 
-        _tracks = updatedTracks;
-        await saveCache();
-      } else {
-        _tracks = [];
-        await saveCache();
+          final List<LibraryTrack> updatedTracks = [];
+          await for (final msg in receivePort) {
+            if (msg is LibraryTrack) {
+              updatedTracks.add(msg);
+            }
+            _scannedCount++;
+            notifyListeners();
+            if (_scannedCount >= _totalToScan) {
+              receivePort.close();
+              isolate.kill();
+              break;
+            }
+          }
+
+          _tracks = updatedTracks;
+          await saveCache();
+        } else {
+          _tracks = [];
+          await saveCache();
+        }
       }
     } catch (e) {
       debugPrint('Error scanning library: $e');
@@ -326,5 +385,50 @@ class LibraryManager extends ChangeNotifier {
       _isScanning = false;
       notifyListeners();
     }
+  }
+
+  Future<LibraryTrack?> enrichTrackWithMetaTagger(String uri) async {
+    final idx = _tracks.indexWhere((t) => t.uri == uri);
+    if (idx == -1) return null;
+    final track = _tracks[idx];
+    if (!track.requireAdvancedScan) return track;
+
+    try {
+      final file = File(uri);
+      if (!await file.exists()) {
+        final updated = track.copyWith(requireAdvancedScan: false);
+        _tracks[idx] = updated;
+        await saveCache();
+        notifyListeners();
+        return updated;
+      }
+
+      final tagger = MetaTagger();
+      if (tagger.isSupported(uri)) {
+        final tags = await tagger.readCommonTags(uri);
+        final title = tags[CommonTags.title]?.toString() ?? '';
+        final artist = tags[CommonTags.artist]?.toString() ?? '';
+        final album = tags[CommonTags.album]?.toString() ?? '';
+        final genre = tags[CommonTags.genre]?.toString() ?? '';
+        final year = tags[CommonTags.year]?.toString() ?? '';
+
+        final updated = track.copyWith(
+          title: title.isNotEmpty ? title.trim() : track.title,
+          artist: artist.isNotEmpty ? artist.trim() : track.artist,
+          album: album.isNotEmpty ? album.trim() : track.album,
+          genre: genre.isNotEmpty ? genre.trim() : track.genre,
+          year: year.isNotEmpty ? year.trim() : track.year,
+          requireAdvancedScan: false,
+        );
+
+        _tracks[idx] = updated;
+        await saveCache();
+        notifyListeners();
+        return updated;
+      }
+    } catch (e) {
+      debugPrint('Error enriching track with metatagger: $e');
+    }
+    return track;
   }
 }

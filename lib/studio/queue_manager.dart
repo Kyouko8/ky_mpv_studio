@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import 'app_settings.dart';
+import 'library_manager.dart';
 
 class PlaylistItem {
   final String uri;
@@ -166,13 +167,14 @@ class QueueManager extends ChangeNotifier {
   bool _loaded = false;
 
   StreamSubscription? _playlistSub;
+  LibraryManager? libraryManager;
 
   QueueManager(this._player, this._settings) {
     _initPlayerListener();
   }
 
   void _initPlayerListener() {
-    _playlistSub = _player.stream.playlist.listen((pl) {
+    _playlistSub = _player.stream.playlist.listen((pl) async {
       if (_loaded && _playingQueueId != null) {
         final qIdx = _queues.indexWhere((q) => q.id == _playingQueueId);
         if (qIdx != -1) {
@@ -185,10 +187,55 @@ class QueueManager extends ChangeNotifier {
               _lastPlayingIndex = fullIndex;
               save();
             }
+
+            // Enrich metadata dynamically if available!
+            final lib = libraryManager;
+            if (lib != null) {
+              final enriched = await lib.enrichTrackWithMetaTagger(playingUri);
+              if (enriched != null) {
+                updatePlaylistItemMetadata(
+                  enriched.uri,
+                  enriched.title,
+                  enriched.artist,
+                  enriched.album,
+                );
+              }
+            }
           }
         }
       }
     });
+  }
+
+  void updatePlaylistItemMetadata(String uri, String title, String artist, String album) {
+    bool changed = false;
+    for (int qIdx = 0; qIdx < _queues.length; qIdx++) {
+      final queue = _queues[qIdx];
+      final items = List<PlaylistItem>.from(queue.items);
+      bool queueChanged = false;
+      for (int i = 0; i < items.length; i++) {
+        if (items[i].uri == uri) {
+          final old = items[i];
+          final updated = old.copyWith(
+            title: title.isNotEmpty ? title : old.title,
+            artist: artist.isNotEmpty ? artist : old.artist,
+            album: album.isNotEmpty ? album : old.album,
+          );
+          if (old.title != updated.title || old.artist != updated.artist || old.album != updated.album) {
+            items[i] = updated;
+            queueChanged = true;
+          }
+        }
+      }
+      if (queueChanged) {
+        _queues[qIdx] = queue.copyWith(items: items);
+        changed = true;
+      }
+    }
+    if (changed) {
+      save();
+      notifyListeners();
+    }
   }
 
   @override
