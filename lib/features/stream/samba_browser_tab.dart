@@ -4,35 +4,24 @@ import 'dart:math' as math;
 import 'package:dart_smb2/dart_smb2.dart';
 import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../studio/player_scope.dart';
 import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
+import 'media_server.dart';
 
 /// The Samba (SMB2/3) tab: a connect form until authenticated, then a
 /// **folder browser** — navigate the share's directory tree and tap a track to
-/// play it. Unlike the Jellyfin / Plex tabs (flat searchable song lists), an
-/// SMB share is a raw filesystem, so this is a path-walking view: directories
-/// first, then audio files, with a breadcrumb + up button.
-///
-/// Playback hands mpv an `smb2://user:pass@host/share/path` URL — the bundled
-/// libmpv links libsmb2, so it opens these directly (and the waveform analyzer
-/// treats them as ordinary seekable files → full envelope up-front).
+/// play it.
 class SambaBrowserTab extends StatefulWidget {
-  const SambaBrowserTab({super.key});
+  final SambaServer server;
+  const SambaBrowserTab({super.key, required this.server});
 
   @override
   State<SambaBrowserTab> createState() => _SambaBrowserTabState();
 }
 
 class _SambaBrowserTabState extends State<SambaBrowserTab> {
-  static const _kHost = 'samba.host';
-  static const _kShare = 'samba.share';
-  static const _kUser = 'samba.user';
-  static const _kPass = 'samba.pass';
-  static const _kDomain = 'samba.domain';
-
   static const int _queueMax = 200;
 
   /// Extensions mpv can decode that we surface as playable tracks.
@@ -68,23 +57,12 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
 
   Player? _player;
   QueueManager? _queueManager;
-  Smb2Pool? _pool;
 
   StreamSubscription<Playlist>? _plSub;
 
   /// URI of the currently-playing track, to light up its row in the browser.
   String _currentUri = '';
 
-  // The credentials behind the live [_pool], kept so playback URLs can embed
-  // them (mpv opens `smb2://user:pass@host/share/...` itself).
-  String _connHost = '';
-  String _connShare = '';
-  String _connUser = '';
-  String _connPass = '';
-  String _connDomain = '';
-
-  bool _restoring = true;
-  bool _connecting = false;
   bool _loading = false;
   String? _error;
 
@@ -92,12 +70,19 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
   String _path = '';
   List<Smb2DirEntry> _entries = const [];
 
-  bool get _connected => _pool != null;
+  bool get _connected => widget.server.isConnected;
 
   @override
   void initState() {
     super.initState();
-    _restore();
+    _host.text = widget.server.instance.host;
+    _share.text = widget.server.instance.share;
+    _user.text = widget.server.instance.username;
+    _pass.text = widget.server.instance.password;
+    _domain.text = widget.server.instance.domain;
+    if (_connected) {
+      _open('');
+    }
   }
 
   @override
@@ -128,28 +113,10 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     _user.dispose();
     _pass.dispose();
     _domain.dispose();
-    _pool?.disconnect();
     super.dispose();
   }
 
-  Future<void> _restore() async {
-    final p = await SharedPreferences.getInstance();
-    final host = p.getString(_kHost);
-    final share = p.getString(_kShare);
-    if (host == null || share == null) {
-      if (mounted) setState(() => _restoring = false);
-      return;
-    }
-    _host.text = host;
-    _share.text = share;
-    _user.text = p.getString(_kUser) ?? '';
-    _pass.text = p.getString(_kPass) ?? '';
-    _domain.text = p.getString(_kDomain) ?? '';
-    await _connect(persist: false);
-    if (mounted) setState(() => _restoring = false);
-  }
-
-  Future<void> _connect({bool persist = true}) async {
+  Future<void> _connect() async {
     final host = _host.text.trim();
     final share = _share.text.trim();
     if (host.isEmpty || share.isEmpty) {
@@ -157,53 +124,29 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
       return;
     }
     setState(() {
-      _connecting = true;
+      _loading = true;
       _error = null;
     });
     try {
-      final pool = await Smb2Pool.connect(
+      await widget.server.connect(
         host: host,
-        share: share,
-        user: _user.text.isEmpty ? null : _user.text,
-        password: _pass.text.isEmpty ? null : _pass.text,
-        domain: _domain.text.trim().isEmpty ? null : _domain.text.trim(),
+        username: _user.text,
+        password: _pass.text,
       );
-      _pool = pool;
-      _connHost = host;
-      _connShare = share;
-      _connUser = _user.text;
-      _connPass = _pass.text;
-      _connDomain = _domain.text.trim();
-      if (persist) {
-        final p = await SharedPreferences.getInstance();
-        await p.setString(_kHost, host);
-        await p.setString(_kShare, share);
-        await p.setString(_kUser, _connUser);
-        await p.setString(_kPass, _connPass);
-        await p.setString(_kDomain, _connDomain);
-      }
       if (!mounted) return;
-      setState(() => _connecting = false);
+      setState(() => _loading = false);
       await _open('');
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _connecting = false;
+        _loading = false;
         _error = e.toString();
       });
     }
   }
 
   Future<void> _disconnect() async {
-    final pool = _pool;
-    _pool = null;
-    await pool?.disconnect();
-    final p = await SharedPreferences.getInstance();
-    await p.remove(_kHost);
-    await p.remove(_kShare);
-    await p.remove(_kUser);
-    await p.remove(_kPass);
-    await p.remove(_kDomain);
+    await widget.server.logout();
     if (!mounted) return;
     setState(() {
       _path = '';
@@ -212,10 +155,9 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     });
   }
 
-  /// List [path] and show it. Directories sort first, then audio files; both
-  /// alphabetical (case-insensitive). Non-audio files are hidden.
+  /// List [path] and show it.
   Future<void> _open(String path) async {
-    final pool = _pool;
+    final pool = widget.server.pool;
     if (pool == null) return;
     setState(() {
       _loading = true;
@@ -259,33 +201,20 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     _open(i < 0 ? '' : _path.substring(0, i));
   }
 
-  /// `smb2://[domain;]user:password@host/share/path`, properly percent-encoded.
-  ///
-  /// The bundled libmpv's libsmb2 decodes the domain / user / share / path (and
-  /// password), so this sends a standards-correct URL — spaces, accents and
-  /// reserved chars (`#`, `?`, `&`, …) in folder/file names all survive. The
-  /// host is left verbatim (it's an IP / hostname). Path and share are encoded
-  /// per segment so the `/` separators stay literal.
-  ///
-  /// NOTE: needs the libsmb2 path-decode patch (libmpv-scripts
-  /// patches/ffmpeg/libsmb2.c) — i.e. a libmpv rebuilt after that change. An
-  /// older libmpv decodes only the password, so it would see the encoded path
-  /// literally; the two must ship together.
   String _smbUrl(String filePath) {
     String enc(String s) => Uri.encodeComponent(s);
     String encPath(String p) =>
         p.split('/').where((s) => s.isNotEmpty).map(enc).join('/');
-    final dom = _connDomain.isEmpty ? '' : '${enc(_connDomain)};';
-    final auth = _connUser.isEmpty
+    final instance = widget.server.instance;
+    final dom = instance.domain.isEmpty ? '' : '${enc(instance.domain)};';
+    final auth = instance.username.isEmpty
         ? ''
-        : (_connPass.isEmpty
-            ? '$dom${enc(_connUser)}@'
-            : '$dom${enc(_connUser)}:${enc(_connPass)}@');
-    return 'smb2://$auth$_connHost/${encPath(_connShare)}/${encPath(filePath)}';
+        : (instance.password.isEmpty
+            ? '$dom${enc(instance.username)}@'
+            : '$dom${enc(instance.username)}:${enc(instance.password)}@');
+    return 'smb2://$auth${instance.host}/${encPath(instance.share)}/${encPath(filePath)}';
   }
 
-  /// Queue the current folder's audio files starting at the tapped one (capped
-  /// at [_queueMax]) and play.
   void _play(Smb2DirEntry tapped) {
     final files = _entries.where((e) => e.isFile).toList();
     final start = files.indexOf(tapped);
@@ -293,7 +222,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     final window =
         files.sublist(start, math.min(start + _queueMax, files.length));
     final album = _path.isEmpty
-        ? _connShare
+        ? widget.server.instance.share
         : _path.substring(_path.lastIndexOf('/') + 1);
     final medias = [
       for (final f in window)
@@ -302,6 +231,9 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
           extras: {
             'title': _stripExt(f.name),
             'album': album,
+            'server': ServerKind.samba.name,
+            'serverInstanceId': widget.server.instance.id,
+            'path': _join(_path, f.name),
           },
         ),
     ];
@@ -315,7 +247,6 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (_restoring) return const _Spinner();
     return _connected ? _browser() : _connectForm();
   }
 
@@ -372,7 +303,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
                     overflow: TextOverflow.ellipsis),
               ],
               const SizedBox(height: Tokens.s16),
-              _ConnectButton(busy: _connecting, onTap: _connect),
+              _ConnectButton(busy: _loading, onTap: _connect),
             ],
           ),
         ),
@@ -400,7 +331,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
               ),
               Expanded(
                 child: Text(
-                  '$_connShare${_path.isEmpty ? '' : '/$_path'}',
+                  '${widget.server.instance.share}${_path.isEmpty ? '' : '/$_path'}',
                   style: Tokens.body.copyWith(fontFamily: Tokens.mono),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -460,9 +391,6 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
   }
 }
 
-/// A directory or file row in the Queue's squircle-card style: a folder glyph
-/// for directories, the file size for audio files. The currently-playing file
-/// lights up (accent wash + speaker glyph), like the Jellyfin/Plex rows.
 class _EntryTile extends StatelessWidget {
   final Smb2DirEntry entry;
   final bool current;
@@ -488,8 +416,6 @@ class _EntryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dir = entry.isDirectory;
-    // Leading: folder glyph for dirs, a speaker glyph for the playing file, and
-    // a music-note glyph for every other (track) file.
     final Widget leading = dir
         ? const Icon(Icons.folder_rounded, size: 18, color: Tokens.accent)
         : current
@@ -541,8 +467,6 @@ class _EntryTile extends StatelessWidget {
     );
   }
 }
-
-// ── Form pieces (match the Jellyfin / Plex connect form) ───────────────
 
 class _Field extends StatelessWidget {
   final TextEditingController controller;

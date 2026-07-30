@@ -335,63 +335,10 @@ class _PendingTranscode {
   ({String url, Map<String, String> headers})? resolved;
 }
 
-/// Wire Plex's transcode flow into the [player]. Plex hands mpv a
-/// `plex-transcode://{session}` marker URL (it can't be a plain URL — Plex
-/// needs a `/decision` round-trip first). The on_load hook intercepts each
-/// file open, resolves the marker to the real `start.mpd` URL via the
-/// session manager, and rewrites `stream-open-filename` before mpv opens it.
-/// A heartbeat then pings the live session so Plex doesn't reap it while
-/// paused/buffering. Non-marker URLs (Jellyfin, files, direct play) pass
-/// straight through.
+/// Wire Plex's transcode flow into the [player]. Since the unified
+/// load hook in MpvStudio handles resolution and refreshing, this function
+/// now only starts the periodic heartbeat timer to keep the active transcode session warm.
 Future<void> wirePlexTranscodeHook(Player player) async {
-  await player.registerHook(Hook.load, timeout: const Duration(seconds: 10));
-  player.stream.hook.listen((event) async {
-    if (event.hook != Hook.load) {
-      await player.continueHook(event.id);
-      return;
-    }
-    try {
-      // Gate to Plex-only: with no marker registered, the load being opened
-      // cannot be a Plex transcode (register() runs synchronously in
-      // streamUrl, before openAll fires this load), so skip the
-      // stream-open-filename read and marker work entirely. This keeps the
-      // hook a true no-op on every Jellyfin / YouTube / local-file load
-      // instead of doing an async property read on each one.
-      if (!PlexTranscodeSessionManager.hasRegisteredSessions) return;
-      final url = await player.getRawProperty('stream-open-filename') ?? '';
-      debugPrint('PlexTranscode hook: on_load url="$url"');
-      if (PlexTranscodeSessionManager.extractMarker(url) == null) return;
-      final resolved = await PlexTranscodeSessionManager.resolveMarker(url);
-      if (resolved == null) {
-        // stale/unknown session — mpv will now open the raw marker and
-        // emit "no protocol handler found". Log loudly so we can see it.
-        debugPrint(
-          'PlexTranscode hook: resolveMarker returned null for "$url" '
-          '— mpv will fail to open this URL',
-        );
-        return;
-      }
-      debugPrint('PlexTranscode hook: rewriting → ${resolved.url}');
-      await player.setRawProperty('stream-open-filename', resolved.url);
-      if (resolved.headers.isNotEmpty) {
-        final headerString = resolved.headers.entries
-            .map((e) => '${e.key}: ${e.value}')
-            .join(',');
-        await player.setRawProperty(
-          'file-local-options/http-header-fields',
-          headerString,
-        );
-      }
-    } catch (e, st) {
-      // Any throw here would otherwise be swallowed and the marker would
-      // leak through to mpv silently. Surface it.
-      debugPrint('PlexTranscode hook: error — $e\n$st');
-    } finally {
-      // Must always fire — even on error — or mpv stalls on the hook.
-      await player.continueHook(event.id);
-    }
-  });
-
   // Keep the active Plex transcode session warm (~2 min reap window).
   Timer.periodic(
     const Duration(seconds: 20),

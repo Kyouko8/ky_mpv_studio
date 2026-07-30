@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
+import '../../studio/server_manager.dart';
 import 'favorites_controller.dart';
 import 'media_server.dart';
 
@@ -11,21 +12,21 @@ import 'media_server.dart';
 /// drives the server's "Now Playing", play-progress / on-deck, and scrobble.
 ///
 /// It listens to the single app [Player] and routes each report to the right
-/// connected [MediaServer] using the `'server'` / `'serverId'` keys embedded
+/// connected [MediaServer] using the `'serverInstanceId'` / `'serverId'` keys embedded
 /// in the playing [Media]'s extras (see `ServerLibraryTab`). Tracks without
 /// those extras (the Lab tab, local files) are ignored. All reporting is
 /// best-effort — the server impls swallow their own errors.
 class PlaybackReporter {
-  PlaybackReporter(this._player, this._servers, this._favorites);
+  PlaybackReporter(this._player, this._serverManager, this._favorites);
 
   final Player _player;
-  final Map<ServerKind, MediaServer> _servers;
+  final ServerManager _serverManager;
   final FavoritesController _favorites;
 
   /// How often a still-playing track re-reports its position.
   static const _progressInterval = Duration(seconds: 15);
 
-  ServerKind? _kind;
+  String? _instanceId;
   String? _itemId;
   bool _started = false;
 
@@ -63,10 +64,10 @@ class PlaybackReporter {
   // ─── Stream handlers ──────────────────────────────────────────────────
 
   void _onPlaylist() {
-    final (kind, id) = _currentTrack();
-    if (id == _itemId && kind == _kind) return; // same track — nothing new
+    final (instanceId, id) = _currentTrack();
+    if (id == _itemId && instanceId == _instanceId) return; // same track — nothing new
     _reportStop(); // stop the previous track (no-op if none / not started)
-    _kind = kind;
+    _instanceId = instanceId;
     _itemId = id;
     _started = false;
     _maybeStart();
@@ -91,8 +92,8 @@ class PlaybackReporter {
   void _syncSessionFavorite() {
     final session = _player.state.mediaSession;
     if (session == null) return;
-    final fav = (_kind != null && _itemId != null)
-        ? _favorites.resolved(_kind!, _itemId!, _currentFavoriteFallback())
+    final fav = (_instanceId != null && _itemId != null)
+        ? _favorites.resolvedByInstance(_instanceId!, _itemId!, _currentFavoriteFallback())
         : false;
     if (session.isFavorite == fav) return;
     unawaited(_player.setMediaSession(session.copyWith(isFavorite: fav)));
@@ -100,11 +101,11 @@ class PlaybackReporter {
 
   void _onSessionCommand(MediaSessionCommand command) {
     if (command is! MediaSessionCommandLike) return;
-    final kind = _kind, id = _itemId;
-    if (kind == null || id == null) return; // not a server track
-    final current = _favorites.resolved(kind, id, _currentFavoriteFallback());
+    final instanceId = _instanceId, id = _itemId;
+    if (instanceId == null || id == null) return; // not a server track
+    final current = _favorites.resolvedByInstance(instanceId, id, _currentFavoriteFallback());
     // Flip it; the controller notifies → _syncSessionFavorite updates the star.
-    unawaited(_favorites.setFavorite(kind, id, !current));
+    unawaited(_favorites.setFavoriteByInstance(instanceId, id, !current));
   }
 
   void _onPlaying(bool playing) {
@@ -130,19 +131,23 @@ class PlaybackReporter {
   // ─── Reporting ────────────────────────────────────────────────────────
 
   void _maybeStart() {
-    if (_started || _itemId == null) return;
+    if (_started || _itemId == null || _instanceId == null) return;
     if (!_player.state.playing) return; // wait for actual playback
-    final server = _servers[_kind];
-    if (server == null) return;
+    final idx = _serverManager.instances.indexWhere((i) => i.id == _instanceId);
+    if (idx == -1) return;
+    final server = _serverManager.getOrCreateServer(_serverManager.instances[idx]);
     _started = true;
-    debugPrint('PlaybackReporter: start ${_kind!.name} $_itemId');
+    debugPrint('PlaybackReporter: start ${server.name} $_itemId');
     server.reportStart(_itemId!);
     _restartTimer();
   }
 
   void _reportProgress({required bool paused}) {
-    if (!_started || _itemId == null) return;
-    _servers[_kind]?.reportProgress(
+    if (!_started || _itemId == null || _instanceId == null) return;
+    final idx = _serverManager.instances.indexWhere((i) => i.id == _instanceId);
+    if (idx == -1) return;
+    final server = _serverManager.getOrCreateServer(_serverManager.instances[idx]);
+    server.reportProgress(
       _itemId!,
       position: _player.state.position,
       paused: paused,
@@ -150,10 +155,13 @@ class PlaybackReporter {
   }
 
   void _reportStop() {
-    if (!_started || _itemId == null) return;
-    debugPrint('PlaybackReporter: stop ${_kind!.name} $_itemId '
+    if (!_started || _itemId == null || _instanceId == null) return;
+    final idx = _serverManager.instances.indexWhere((i) => i.id == _instanceId);
+    if (idx == -1) return;
+    final server = _serverManager.getOrCreateServer(_serverManager.instances[idx]);
+    debugPrint('PlaybackReporter: stop ${server.name} $_itemId '
         '@ ${_player.state.position}');
-    _servers[_kind]?.reportStopped(_itemId!, position: _player.state.position);
+    server.reportStopped(_itemId!, position: _player.state.position);
     _started = false;
     _progressTimer?.cancel();
   }
@@ -167,25 +175,17 @@ class PlaybackReporter {
 
   // ─── Current track resolution ─────────────────────────────────────────
 
-  /// The currently-playing track's (server kind, server item id), or
+  /// The currently-playing track's (server instance id, server item id), or
   /// (null, null) when there is no current item or it isn't a server track.
-  (ServerKind?, String?) _currentTrack() {
+  (String?, String?) _currentTrack() {
     final playlist = _player.state.playlist;
     final items = playlist.items;
     final i = playlist.index;
     if (i < 0 || i >= items.length) return (null, null);
     final extras = items[i].extras;
     if (extras == null) return (null, null);
-    final id = extras['serverId'];
-    final serverName = extras['server'];
-    if (id is! String || serverName is! String) return (null, null);
-    final kind = ServerKind.values
-        .where((k) => k.name == serverName)
-        .firstOrNull;
-    if (kind == null) {
-      debugPrint('PlaybackReporter: unknown server "$serverName"');
-      return (null, null);
-    }
-    return (kind, id);
+    final id = extras['serverId'] as String?;
+    final instanceId = extras['serverInstanceId'] as String?;
+    return (instanceId, id);
   }
 }

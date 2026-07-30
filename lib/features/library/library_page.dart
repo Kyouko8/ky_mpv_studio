@@ -17,6 +17,8 @@ class LibraryPage extends StatefulWidget {
 class _LibraryPageState extends State<LibraryPage> {
   int _activeTab = 1; // Default to Songs tab
   bool _hasPermission = true;
+  String _folderViewMode = 'List'; // List, Tree
+  String _treeCurrentPath = 'Root';
 
   // Search controllers for each tab
   final Map<int, TextEditingController> _searchControllers = {
@@ -83,17 +85,32 @@ class _LibraryPageState extends State<LibraryPage> {
     }
   }
 
-  // Group addition utilities
-  Future<void> _addTracksToQueue(QueueManager qm, String queueId, List<LibraryTrack> libraryTracks) async {
+  Future<void> _addMediasToQueue(
+    QueueManager qm,
+    String queueId,
+    List<Media> medias, {
+    required bool skipDuplicates,
+  }) async {
     final origId = qm.viewedQueueId;
     qm.selectViewedQueue(queueId);
-    for (final t in libraryTracks) {
-      await qm.add(Media(t.uri, extras: {'title': t.title, 'artist': t.artist, 'album': t.album}));
+    final queue = qm.queues.firstWhere((q) => q.id == queueId);
+    final existingUris = queue.items.map((item) => item.uri).toSet();
+    for (final media in medias) {
+      if (skipDuplicates && existingUris.contains(media.uri)) {
+        continue;
+      }
+      await qm.add(media);
     }
     qm.selectViewedQueue(origId);
   }
 
-  void _showQueueSelectionDialog(BuildContext context, QueueManager qm, List<LibraryTrack> tracks, String title) {
+  void _showQueueSelectionDialog(
+    BuildContext context,
+    QueueManager qm,
+    List<Media> medias,
+    String title, {
+    required bool skipDuplicates,
+  }) {
     showDialog(
       context: context,
       builder: (context) {
@@ -113,10 +130,10 @@ class _LibraryPageState extends State<LibraryPage> {
                   onTap: () async {
                     final messenger = ScaffoldMessenger.of(context);
                     final nav = Navigator.of(context);
-                    await _addTracksToQueue(qm, q.id, tracks);
+                    await _addMediasToQueue(qm, q.id, medias, skipDuplicates: skipDuplicates);
                     nav.pop();
                     messenger.showSnackBar(
-                      SnackBar(content: Text('Added ${tracks.length} track(s) to ${q.name}')),
+                      SnackBar(content: Text('Added ${medias.length} track(s) to ${q.name}')),
                     );
                   },
                 );
@@ -134,9 +151,78 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
+  List<LibraryTrack> _getCurrentVisibleTracks() {
+    final filtered = _filterTracks(PlayerScope.libraryManagerOf(context).tracks);
+    if (_activeTab == 0) {
+      if (_folderViewMode == 'List') {
+        if (_selectedFolder != null) {
+          return filtered.where((t) => _getParentFolder(t.uri) == _selectedFolder).toList();
+        }
+      } else {
+        if (_treeCurrentPath != 'Root') {
+          return filtered.where((t) => _getParentFolder(t.uri) == _treeCurrentPath).toList();
+        }
+      }
+    } else if (_activeTab == 1) {
+      return filtered;
+    } else if (_activeTab == 2) {
+      if (_selectedArtist != null) {
+        final artistTracks = filtered.where((t) => t.artist == _selectedArtist).toList();
+        if (_selectedArtistSubItem != null) {
+          if (_artistGroupMode == 'Albums') {
+            return artistTracks.where((t) => t.album == _selectedArtistSubItem).toList();
+          } else if (_artistGroupMode == 'Years') {
+            return artistTracks.where((t) => t.year == _selectedArtistSubItem).toList();
+          } else if (_artistGroupMode == 'Genres') {
+            return artistTracks.where((t) => t.genre == _selectedArtistSubItem).toList();
+          }
+        }
+        return artistTracks;
+      }
+    } else if (_activeTab == 3) {
+      if (_selectedAlbum != null) {
+        final albumTracks = filtered.where((t) => t.album == _selectedAlbum).toList();
+        if (_selectedAlbumSubItem != null) {
+          if (_albumGroupMode == 'Artists') {
+            return albumTracks.where((t) => t.artist == _selectedAlbumSubItem).toList();
+          } else if (_albumGroupMode == 'Years') {
+            return albumTracks.where((t) => t.year == _selectedAlbumSubItem).toList();
+          } else if (_albumGroupMode == 'Genres') {
+            return albumTracks.where((t) => t.genre == _selectedAlbumSubItem).toList();
+          }
+        }
+        return albumTracks;
+      }
+    } else if (_activeTab == 4) {
+      if (_selectedGenre != null) {
+        final genreTracks = filtered.where((t) => t.genre == _selectedGenre).toList();
+        if (_selectedGenreSubItem != null) {
+          if (_genreGroupMode == 'Artists') {
+            return genreTracks.where((t) => t.artist == _selectedGenreSubItem).toList();
+          } else if (_genreGroupMode == 'Albums') {
+            return genreTracks.where((t) => t.album == _selectedGenreSubItem).toList();
+          }
+        }
+        return genreTracks;
+      }
+    } else if (_activeTab == 5) {
+      if (_selectedYear != null) {
+        final yearTracks = filtered.where((t) => t.year == _selectedYear).toList();
+        if (_selectedYearSubItem != null) {
+          return yearTracks.where((t) => t.album == _selectedYearSubItem).toList();
+        }
+        return yearTracks;
+      }
+    }
+    return filtered;
+  }
+
   void _showLibraryMenu(BuildContext context, String title, List<LibraryTrack> tracks) {
     if (tracks.isEmpty) return;
     final qm = PlayerScope.queueManagerOf(context);
+
+    bool addAll = false;
+    bool skipDuplicates = false;
 
     showModalBottomSheet(
       context: context,
@@ -145,79 +231,103 @@ class _LibraryPageState extends State<LibraryPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(Tokens.rMd)),
       ),
       builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: Tokens.s12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: Tokens.s16, vertical: Tokens.s8),
-                  child: Text(
-                    title,
-                    style: Tokens.heading.copyWith(fontSize: 15),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final allInView = _getCurrentVisibleTracks();
+            final targetTracks = addAll ? allInView : tracks;
+            final medias = targetTracks.map((t) => Media(t.uri, extras: {'title': t.title, 'artist': t.artist, 'album': t.album})).toList();
+
+            return SafeArea(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Tokens.s12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Agregar todas', style: Tokens.body),
+                        subtitle: const Text('Añade todas las canciones de la vista actual', style: Tokens.caption),
+                        value: addAll,
+                        activeThumbColor: Tokens.accent,
+                        onChanged: (val) => setSheetState(() => addAll = val),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Omitir si ya se encuentra en la lista', style: Tokens.body),
+                        subtitle: const Text('Evita duplicados en la lista de reproducción', style: Tokens.caption),
+                        value: skipDuplicates,
+                        activeThumbColor: Tokens.accent,
+                        onChanged: (val) => setSheetState(() => skipDuplicates = val),
+                      ),
+                      const Divider(color: Tokens.line),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: Tokens.s16, vertical: Tokens.s8),
+                        child: Text(
+                          title,
+                          style: Tokens.heading.copyWith(fontSize: 15),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Divider(color: Tokens.line),
+                      ListTile(
+                        leading: const Icon(Icons.playlist_play_rounded, color: Tokens.accent),
+                        title: const Text('Play now as new list', style: Tokens.body),
+                        onTap: () async {
+                          final nav = Navigator.of(context);
+                          qm.createQueue(title);
+                          await qm.openAll(medias, play: true);
+                          nav.pop();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.bookmark_added_rounded, color: Tokens.accent),
+                        title: const Text('Add to Listen Later', style: Tokens.body),
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final nav = Navigator.of(context);
+                          QueueModel? target;
+                          for (final q in qm.queues) {
+                            if (q.name == 'Listen Later') {
+                              target = q;
+                              break;
+                            }
+                          }
+                          target ??= qm.createQueue('Listen Later');
+                          await _addMediasToQueue(qm, target.id, medias, skipDuplicates: skipDuplicates);
+                          nav.pop();
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Added ${medias.length} track(s) to Listen Later')),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.playlist_add_rounded, color: Tokens.accent),
+                        title: Text('Add to current list (${qm.viewedQueue.name})', style: Tokens.body),
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final nav = Navigator.of(context);
+                          await _addMediasToQueue(qm, qm.viewedQueueId, medias, skipDuplicates: skipDuplicates);
+                          nav.pop();
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('Added ${medias.length} track(s) to current list')),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.queue_music_rounded, color: Tokens.accent),
+                        title: const Text('Add to a list...', style: Tokens.body),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _showQueueSelectionDialog(context, qm, medias, title, skipDuplicates: skipDuplicates);
+                        },
+                      ),
+                    ],
                   ),
                 ),
-                const Divider(color: Tokens.line),
-                ListTile(
-                  leading: const Icon(Icons.playlist_play_rounded, color: Tokens.accent),
-                  title: const Text('Play now as new list', style: Tokens.body),
-                  onTap: () async {
-                    final nav = Navigator.of(context);
-                    qm.createQueue(title);
-                    final medias = tracks.map((t) => Media(t.uri, extras: {'title': t.title, 'artist': t.artist, 'album': t.album})).toList();
-                    await qm.openAll(medias, play: true);
-                    nav.pop();
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.bookmark_added_rounded, color: Tokens.accent),
-                  title: const Text('Add to Listen Later', style: Tokens.body),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(context);
-                    QueueModel? target;
-                    for (final q in qm.queues) {
-                      if (q.name == 'Listen Later') {
-                        target = q;
-                        break;
-                      }
-                    }
-                    target ??= qm.createQueue('Listen Later');
-                    await _addTracksToQueue(qm, target.id, tracks);
-                    nav.pop();
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('Added ${tracks.length} track(s) to Listen Later')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.playlist_add_rounded, color: Tokens.accent),
-                  title: Text('Add to current list (${qm.viewedQueue.name})', style: Tokens.body),
-                  onTap: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(context);
-                    await _addTracksToQueue(qm, qm.viewedQueueId, tracks);
-                    nav.pop();
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('Added ${tracks.length} track(s) to current list')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.queue_music_rounded, color: Tokens.accent),
-                  title: const Text('Add to a list...', style: Tokens.body),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    _showQueueSelectionDialog(context, qm, tracks, title);
-                  },
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -622,55 +732,172 @@ class _LibraryPageState extends State<LibraryPage> {
   Widget _buildFoldersTab(List<LibraryTrack> tracks) {
     final filtered = _filterTracks(tracks);
 
-    if (_selectedFolder != null) {
-      final folderTracks = filtered.where((t) => _getParentFolder(t.uri) == _selectedFolder).toList();
-      return Column(
-        children: [
-          _buildSubGroupHeader(_getFolderName(_selectedFolder!), () {
-            setState(() {
-              _selectedFolder = null;
-            });
-          }),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
-              itemCount: folderTracks.length,
-              itemBuilder: (context, i) => _buildTrackTile(folderTracks[i]),
-            ),
-          ),
-        ],
-      );
-    }
-
-    // Grouping list of folders
-    final foldersMap = <String, List<LibraryTrack>>{};
-    for (final track in filtered) {
-      final pf = _getParentFolder(track.uri);
-      foldersMap.putIfAbsent(pf, () => []).add(track);
-    }
-
-    final folderList = foldersMap.keys.toList()..sort();
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
-      itemCount: folderList.length,
-      itemBuilder: (context, i) {
-        final path = folderList[i];
-        final name = _getFolderName(path);
-        final count = foldersMap[path]!.length;
-        return _buildGroupTile(
-          title: name,
-          subtitle: '$count tracks · $path',
-          icon: Icons.folder_rounded,
-          onTap: () {
-            setState(() {
-              _selectedFolder = path;
-            });
-          },
-          onPlay: () => _showLibraryMenu(context, 'Folder: $name', foldersMap[path]!),
-        );
-      },
+    return Column(
+      children: [
+        _buildSelectorRow(_folderViewMode, const ['List', 'Tree'], (mode) {
+          setState(() {
+            _folderViewMode = mode;
+            _treeCurrentPath = 'Root';
+          });
+        }),
+        Expanded(
+          child: _buildFoldersContent(filtered),
+        ),
+      ],
     );
+  }
+
+  Widget _buildFoldersContent(List<LibraryTrack> filtered) {
+    if (_folderViewMode == 'List') {
+      if (_selectedFolder != null) {
+        final folderTracks = filtered.where((t) => _getParentFolder(t.uri) == _selectedFolder).toList();
+        return Column(
+          children: [
+            _buildSubGroupHeader(_getFolderName(_selectedFolder!), () {
+              setState(() {
+                _selectedFolder = null;
+              });
+            }),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+                itemCount: folderTracks.length,
+                itemBuilder: (context, i) => _buildTrackTile(folderTracks[i]),
+              ),
+            ),
+          ],
+        );
+      }
+
+      // Grouping list of folders
+      final foldersMap = <String, List<LibraryTrack>>{};
+      for (final track in filtered) {
+        final pf = _getParentFolder(track.uri);
+        foldersMap.putIfAbsent(pf, () => []).add(track);
+      }
+
+      final folderList = foldersMap.keys.toList()..sort();
+
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+        itemCount: folderList.length,
+        itemBuilder: (context, i) {
+          final path = folderList[i];
+          final name = _getFolderName(path);
+          final count = foldersMap[path]!.length;
+          return _buildGroupTile(
+            title: name,
+            subtitle: '$count tracks · $path',
+            icon: Icons.folder_rounded,
+            onTap: () {
+              setState(() {
+                _selectedFolder = path;
+              });
+            },
+            onPlay: () => _showLibraryMenu(context, 'Folder: $name', foldersMap[path]!),
+          );
+        },
+      );
+    } else {
+      // Hierarchical Tree Navigation
+      final allFolders = <String>{};
+      for (final track in filtered) {
+        allFolders.add(_getParentFolder(track.uri));
+      }
+
+      final rootFolders = <String>{};
+      for (final f in allFolders) {
+        bool hasParentInSet = false;
+        for (final other in allFolders) {
+          if (other != f && f.startsWith(other + (other.contains('\\') ? '\\' : '/'))) {
+            hasParentInSet = true;
+            break;
+          }
+        }
+        if (!hasParentInSet) {
+          rootFolders.add(f);
+        }
+      }
+
+      if (_treeCurrentPath == 'Root') {
+        final sortedRoots = rootFolders.toList()..sort();
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+          itemCount: sortedRoots.length,
+          itemBuilder: (context, i) {
+            final path = sortedRoots[i];
+            final name = _getFolderName(path);
+            final totalTracks = filtered.where((t) => _getParentFolder(t.uri).startsWith(path)).toList();
+            return _buildGroupTile(
+              title: name,
+              subtitle: '${totalTracks.length} tracks · $path',
+              icon: Icons.folder_copy_rounded,
+              onTap: () {
+                setState(() {
+                  _treeCurrentPath = path;
+                });
+              },
+              onPlay: () => _showLibraryMenu(context, 'Folder: $name', totalTracks),
+            );
+          },
+        );
+      } else {
+        // Direct child folders
+        final childFolders = allFolders.where((f) {
+          final sep = _treeCurrentPath.contains('\\') ? '\\' : '/';
+          if (!f.startsWith(_treeCurrentPath + sep)) return false;
+          final remaining = f.substring(_treeCurrentPath.length + 1);
+          return !remaining.contains('/') && !remaining.contains('\\');
+        }).toList()..sort();
+
+        // Direct tracks
+        final directTracks = filtered.where((t) => _getParentFolder(t.uri) == _treeCurrentPath).toList()
+          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+
+        final totalItems = childFolders.length + directTracks.length;
+
+        return Column(
+          children: [
+            _buildSubGroupHeader(_getFolderName(_treeCurrentPath), () {
+              setState(() {
+                if (rootFolders.contains(_treeCurrentPath)) {
+                  _treeCurrentPath = 'Root';
+                } else {
+                  _treeCurrentPath = _getParentFolder(_treeCurrentPath);
+                }
+              });
+            }),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: Tokens.s16),
+                itemCount: totalItems,
+                itemBuilder: (context, i) {
+                  if (i < childFolders.length) {
+                    final path = childFolders[i];
+                    final name = _getFolderName(path);
+                    final recTracks = filtered.where((t) => _getParentFolder(t.uri).startsWith(path)).toList();
+                    return _buildGroupTile(
+                      title: name,
+                      subtitle: '${recTracks.length} tracks',
+                      icon: Icons.folder_rounded,
+                      onTap: () {
+                        setState(() {
+                          _treeCurrentPath = path;
+                        });
+                      },
+                      onPlay: () => _showLibraryMenu(context, 'Folder: $name', recTracks),
+                    );
+                  } else {
+                    final track = directTracks[i - childFolders.length];
+                    return _buildTrackTile(track);
+                  }
+                },
+              ),
+            ),
+          ],
+        );
+      }
+    }
   }
 
   // 2. SONGS TAB
