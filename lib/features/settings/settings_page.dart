@@ -60,23 +60,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
   static Widget _queue(BuildContext c) => _QueueGroup(PlayerScope.settingsOf(c));
   static Widget _playback(BuildContext c) => _PlaybackGroup(PlayerScope.of(c));
-  static Widget _resume(BuildContext c) =>
-      _ResumeGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
-  static Widget _output(BuildContext c) =>
-      _OutputGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _resume(BuildContext c) => _ResumeGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _output(BuildContext c) => _OutputGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _engine(BuildContext c) => AudioEngineGroup(PlayerScope.of(c));
   static Widget _track(BuildContext c) => AudioTrackGroup(PlayerScope.of(c));
-  static Widget _normalization(BuildContext c) =>
-      _NormalizationGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _normalization(BuildContext c) => _NormalizationGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
   static Widget _cache(BuildContext c) => _CacheGroup(PlayerScope.of(c));
-  static Widget _demuxer(BuildContext c) =>
-      DemuxerGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
-  static Widget _streaming(BuildContext c) =>
-      StreamingGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
-  static Widget _session(BuildContext c) =>
-      SessionGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
-  static Widget _visualizer(BuildContext c) =>
-      _VisualizerGroup(PlayerScope.of(c));
+  static Widget _demuxer(BuildContext c) => DemuxerGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _streaming(BuildContext c) => StreamingGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _session(BuildContext c) => SessionGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
+  static Widget _visualizer(BuildContext c) => _VisualizerGroup(PlayerScope.of(c));
   static Widget _coverArt(BuildContext c) => _CoverArtGroup(PlayerScope.of(c));
   static Widget _about(BuildContext c) => _AboutGroup(PlayerScope.of(c));
 
@@ -411,9 +404,7 @@ class _ResumeGroupState extends State<_ResumeGroup> {
             ),
             SettingTile(
               title: 'Watch-later directory',
-              description: _dir.isEmpty
-                  ? 'mpv default (often not writable on mobile)'
-                  : _dir,
+              description: _dir.isEmpty ? 'mpv default (often not writable on mobile)' : _dir,
               trailing: GestureDetector(
                 onTap: _pickDir,
                 child: const ValueBadge('Choose…', color: Tokens.accent),
@@ -545,10 +536,8 @@ class _OutputGroup extends StatelessWidget {
                 DropdownMenuItem(value: Format.s16, child: Text('16-bit int')),
                 DropdownMenuItem(value: Format.s32, child: Text('32-bit int')),
                 DropdownMenuItem(value: Format.s64, child: Text('64-bit int')),
-                DropdownMenuItem(
-                    value: Format.float32, child: Text('32-bit float')),
-                DropdownMenuItem(
-                    value: Format.float64, child: Text('64-bit float')),
+                DropdownMenuItem(value: Format.float32, child: Text('32-bit float')),
+                DropdownMenuItem(value: Format.float64, child: Text('64-bit float')),
               ],
               onChanged: (f) {
                 if (f != null) player.setAudioFormat(f);
@@ -573,8 +562,7 @@ class _OutputGroup extends StatelessWidget {
               value: match,
               hint: match == null ? v.mpvValue : null,
               items: [
-                for (final c in _channels)
-                  DropdownMenuItem(value: c.$1, child: Text(c.$2)),
+                for (final c in _channels) DropdownMenuItem(value: c.$1, child: Text(c.$2)),
               ],
               onChanged: (c) {
                 if (c != null) player.setAudioChannels(c);
@@ -595,9 +583,7 @@ class _OutputGroup extends StatelessWidget {
                 for (final r in rates)
                   DropdownMenuItem(
                     value: r,
-                    child: Text(r == 0
-                        ? 'Auto'
-                        : '${r ~/ 1000}.${(r % 1000) ~/ 100} kHz'),
+                    child: Text(r == 0 ? 'Auto' : '${r ~/ 1000}.${(r % 1000) ~/ 100} kHz'),
                   ),
               ],
               onChanged: (r) {
@@ -617,8 +603,7 @@ class _OutputGroup extends StatelessWidget {
             max: 2000,
             resetTo: 200,
             format: (x) => '${x.round()} ms',
-            onChanged: (x) =>
-                player.setAudioBuffer(Duration(milliseconds: x.round())),
+            onChanged: (x) => player.setAudioBuffer(Duration(milliseconds: x.round())),
           ),
         ),
         Live<Duration>(
@@ -632,8 +617,7 @@ class _OutputGroup extends StatelessWidget {
             max: 5,
             resetTo: 0,
             format: (x) => '${x.toStringAsFixed(3)} s',
-            onChanged: (x) =>
-                player.setAudioDelay(Duration(microseconds: (x * 1e6).round())),
+            onChanged: (x) => player.setAudioDelay(Duration(microseconds: (x * 1e6).round())),
           ),
         ),
         // Report a "music" media role to the OS audio server (PulseAudio /
@@ -691,17 +675,15 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
                 // is the real scan state.
                 final scan = normalizer.lastScan;
                 final scanState = switch (scan?.state) {
-                  LoudnessScanState.scanning => scan!.progress != null
-                      ? 'scanning ${(scan.progress! * 100).round()}%'
-                      : 'scanning',
+                  LoudnessScanState.scanning =>
+                    scan!.progress != null ? 'scanning ${(scan.progress! * 100).round()}%' : 'scanning',
                   LoudnessScanState.ready => 'ready',
                   LoudnessScanState.failed => 'failed',
                   LoudnessScanState.unavailable => 'unavailable',
                   _ => 'idle',
                 };
                 final g = normalizer.appliedGainDb;
-                final isReady = scan?.state == LoudnessScanState.ready &&
-                    scan?.integrated != null;
+                final isReady = scan?.state == LoudnessScanState.ready && scan?.integrated != null;
                 final measured = !isReady
                     ? '-'
                     : '${scan!.integrated!.toStringAsFixed(1)} LUFS'
@@ -720,8 +702,7 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
                     InfoRow(label: 'Measured', value: measured),
                     SliderRow(
                       label: 'Target',
-                      description:
-                          'Integrated loudness target. -18 LUFS is the '
+                      description: 'Integrated loudness target. -18 LUFS is the '
                           'ReplayGain 2.0 reference; streaming services sit '
                           'around -14',
                       value: normalizer.targetLufs,
@@ -761,8 +742,7 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
                   resetTo: 0,
                   format: (x) => '${x.toStringAsFixed(1)} dB',
                   enabled: rg.mode != ReplayGain.no,
-                  onChanged: (x) =>
-                      player.setReplayGain(rg.copyWith(preamp: x)),
+                  onChanged: (x) => player.setReplayGain(rg.copyWith(preamp: x)),
                 ),
                 SliderRow(
                   label: 'Fallback gain',
@@ -773,8 +753,7 @@ class _NormalizationGroupState extends State<_NormalizationGroup> {
                   resetTo: 0,
                   format: (x) => '${x.toStringAsFixed(1)} dB',
                   enabled: rg.mode != ReplayGain.no,
-                  onChanged: (x) =>
-                      player.setReplayGain(rg.copyWith(fallback: x)),
+                  onChanged: (x) => player.setReplayGain(rg.copyWith(fallback: x)),
                 ),
                 SwitchRow(
                   label: 'Allow clipping',
@@ -843,8 +822,7 @@ class _CacheGroup extends StatelessWidget {
               min: 30,
               max: 7200,
               format: (x) => '${(x / 60).round()} min',
-              onChanged: (x) => player
-                  .setCache(cache.copyWith(secs: Duration(seconds: x.round()))),
+              onChanged: (x) => player.setCache(cache.copyWith(secs: Duration(seconds: x.round()))),
             ),
             SwitchRow(
               label: 'Cache on disk',
@@ -862,8 +840,7 @@ class _CacheGroup extends StatelessWidget {
               label: 'Pre-buffer on start',
               subtitle: 'Buffer before playback starts, and again after a seek',
               value: cache.pauseInitial,
-              onChanged: (v) =>
-                  player.setCache(cache.copyWith(pauseInitial: v)),
+              onChanged: (v) => player.setCache(cache.copyWith(pauseInitial: v)),
             ),
             SliderRow(
               label: 'Buffer wait',
@@ -891,8 +868,7 @@ class _CacheGroup extends StatelessWidget {
                 max: 120,
                 resetTo: 60,
                 format: (x) => '${x.round()} s',
-                onChanged: (x) =>
-                    player.setNetworkTimeout(Duration(seconds: x.round())),
+                onChanged: (x) => player.setNetworkTimeout(Duration(seconds: x.round())),
               ),
             ),
             Live<bool>(
@@ -916,8 +892,7 @@ class _CacheGroup extends StatelessWidget {
             Live<int>(
               stream: player.stream.cacheBufferingState,
               initial: player.state.cacheBufferingState,
-              builder: (context, v) =>
-                  InfoRow(label: 'Cache buffering', value: '$v%'),
+              builder: (context, v) => InfoRow(label: 'Cache buffering', value: '$v%'),
             ),
             StreamBuilder<double>(
               stream: player.stream.bufferingPercentage,
@@ -930,8 +905,7 @@ class _CacheGroup extends StatelessWidget {
             Live<bool>(
               stream: player.stream.pausedForCache,
               initial: player.state.pausedForCache,
-              builder: (context, v) =>
-                  InfoRow(label: 'Paused for cache', value: v ? 'yes' : 'no'),
+              builder: (context, v) => InfoRow(label: 'Paused for cache', value: v ? 'yes' : 'no'),
             ),
           ],
         );
@@ -991,8 +965,7 @@ class _VisualizerGroup extends StatelessWidget {
               max: 128,
               divisions: 112,
               format: (x) => x.round().toString(),
-              onChanged: (x) =>
-                  player.setSpectrum(spec.copyWith(bandCount: x.round())),
+              onChanged: (x) => player.setSpectrum(spec.copyWith(bandCount: x.round())),
             ),
           ],
         );
@@ -1117,7 +1090,7 @@ class _QueueGroupState extends State<_QueueGroup> {
                 color: Tokens.surface2,
                 shape: Tokens.squircle(Tokens.rSm),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12, vertical: Tokens.s8),
               child: TextField(
                 controller: _baseNameController,
                 style: const TextStyle(fontSize: 13.5, color: Tokens.fg),
