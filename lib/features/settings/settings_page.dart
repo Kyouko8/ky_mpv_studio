@@ -111,9 +111,7 @@ class _CategoryDetailScreen extends StatelessWidget {
               onBack: () => Navigator.of(context).maybePop(),
             ),
             Expanded(
-              child: useFullHeight
-                  ? category.build(context)
-                  : SectionBody(children: [category.build(context)]),
+              child: useFullHeight ? category.build(context) : SectionBody(children: [category.build(context)]),
             ),
           ],
         ),
@@ -132,6 +130,7 @@ class _LibraryGroup extends StatelessWidget {
       listenable: manager,
       builder: (context, _) {
         final folders = manager.folders;
+        debugPrint("$folders");
         return SettingsGroup(
           label: 'Library Folders',
           children: [
@@ -144,7 +143,7 @@ class _LibraryGroup extends StatelessWidget {
                   final dir = await getDirectoryPath(
                     confirmButtonText: 'Add to Library',
                   );
-                  if (dir != null) {
+                  if (dir != null && dir.isNotEmpty) {
                     await manager.addFolder(dir);
                   }
                 },
@@ -171,9 +170,7 @@ class _LibraryGroup extends StatelessWidget {
             const SizedBox(height: Tokens.s12),
             SettingTile(
               title: 'Manual Rescan',
-              description: manager.isScanning
-                  ? 'Scanning library tracks...'
-                  : '${manager.tracks.length} tracks cached',
+              description: manager.isScanning ? 'Scanning library tracks...' : '${manager.tracks.length} tracks cached',
               trailing: manager.isScanning
                   ? const SizedBox(
                       width: 20,

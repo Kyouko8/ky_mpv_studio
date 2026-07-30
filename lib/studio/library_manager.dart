@@ -224,7 +224,7 @@ class LibraryManager extends ChangeNotifier {
   }
 
   Future<void> addFolder(String path) async {
-    if (!_folders.contains(path)) {
+    if (!_folders.contains(path) && path.isNotEmpty) {
       _folders.add(path);
       final prefs = await SharedPreferences.getInstance();
       await prefs.setStringList('library_folders', _folders);
@@ -306,11 +306,13 @@ class LibraryManager extends ChangeNotifier {
 
       if (pathsToScan.isNotEmpty) {
         // Run Isolate-based scan using compute
-        final updatedTracks = await compute(_isolateScan, IsolateScanParams(
-          paths: pathsToScan,
-          cachedTracks: _tracks,
-          fallbacks: fallbacks,
-        ));
+        final updatedTracks = await compute(
+            _isolateScan,
+            IsolateScanParams(
+              paths: pathsToScan,
+              cachedTracks: _tracks,
+              fallbacks: fallbacks,
+            ));
 
         _tracks = updatedTracks;
         await saveCache();
