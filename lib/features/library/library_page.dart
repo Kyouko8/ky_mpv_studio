@@ -262,13 +262,18 @@ class _LibraryPageState extends State<LibraryPage> {
             _buildSearchBar(),
             Expanded(
               child: manager.isScanning
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(color: Tokens.accent),
-                          SizedBox(height: Tokens.s16),
-                          Text('Scanning library tracks...', style: Tokens.caption),
+                          const CircularProgressIndicator(color: Tokens.accent),
+                          const SizedBox(height: Tokens.s16),
+                          Text(
+                            manager.totalToScan > 0
+                                ? 'Scanning library tracks... (${manager.scannedCount} / ${manager.totalToScan})'
+                                : 'Scanning library tracks...',
+                            style: Tokens.caption,
+                          ),
                         ],
                       ),
                     )

@@ -725,6 +725,7 @@ class _QueueAdminDialogState extends State<QueueAdminDialog> {
               children: [
                 Expanded(
                   child: ReorderableListView.builder(
+                    buildDefaultDragHandles: false,
                     itemCount: queues.length,
                     onReorder: (oldIdx, newIdx) {
                       qm.reorderQueues(oldIdx, newIdx);

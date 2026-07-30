@@ -83,6 +83,7 @@ class MpvStudio {
     await queueManager.load();
 
     final libraryManager = LibraryManager();
+    queueManager.libraryManager = libraryManager;
 
     return MpvStudio._(
       player: engine.player,
