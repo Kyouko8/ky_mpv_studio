@@ -5,13 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../studio/player_scope.dart';
+import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
 import '../../util/media_import.dart';
 import '../../util/reactive.dart';
 
-/// The live playback queue — a view onto `player.stream.playlist`. Add
-/// tracks via the picker or by dropping files/folders; tap to jump,
-/// drag to reorder, swipe the trailing handle to remove.
 class QueuePage extends StatefulWidget {
   const QueuePage({super.key});
 
@@ -20,15 +18,15 @@ class QueuePage extends StatefulWidget {
 }
 
 class _QueuePageState extends State<QueuePage> {
-  // Not `final`: didChangeDependencies can fire more than once (inherited
-  // deps changing, hot reload), and re-assigning a `late final` throws.
   late Player _player;
+  late QueueManager _queueManager;
   bool _dragging = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _player = PlayerScope.of(context);
+    _queueManager = PlayerScope.queueManagerOf(context);
   }
 
   Future<void> _enqueue(List<String> paths) async {
@@ -36,27 +34,18 @@ class _QueuePageState extends State<QueuePage> {
       for (final p in paths) Media(p, extras: {'title': baseNameNoExt(p)}),
     ];
     if (medias.isEmpty) return;
-    if (_player.state.playlist.items.isEmpty) {
-      await _player.openAll(medias, play: true);
-    } else {
-      for (final m in medias) {
-        await _player.add(m);
-      }
+    for (final m in medias) {
+      await _queueManager.add(m);
     }
   }
 
   Future<void> _addFiles() async => _enqueue(await pickAudioFiles());
   Future<void> _addFolder() async => _enqueue(await pickAudioFolder());
 
-  /// Load a playlist FILE or URL (.m3u / .m3u8 / .pls / .cue): its entries are
-  /// expanded into the queue via the engine's `openPlaylistFile` (loadlist),
-  /// unlike `open`, which would load the playlist as a single entry.
   Future<void> _loadPlaylist() async {
     const group = XTypeGroup(
       label: 'playlist',
       extensions: ['m3u', 'm3u8', 'pls', 'cue'],
-      // iOS filters by UTI, not extension, and rejects an extension-only group
-      // outright. Playlists are plain text; m3u carries its own system type.
       uniformTypeIdentifiers: ['public.m3u-playlist', 'public.text'],
     );
     final file = await openFile(acceptedTypeGroups: const [group]);
@@ -64,120 +53,170 @@ class _QueuePageState extends State<QueuePage> {
     await _player.openPlaylistFile(Media(file.path), play: true);
   }
 
-  /// Swap a queue entry for a freshly picked file. `replace` is gapless
-  /// when it targets the currently playing item.
   Future<void> _replace(int index) async {
     final paths = await pickAudioFiles();
     if (paths.isEmpty) return;
     final p = paths.first;
-    await _player.replace(index, Media(p, extras: {'title': baseNameNoExt(p)}));
+    await _queueManager.replace(index, Media(p, extras: {'title': baseNameNoExt(p)}));
+  }
+
+  void _showAdminDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => QueueAdminDialog(queueManager: _queueManager),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return DropTarget(
-      onDragEntered: (_) => setState(() => _dragging = true),
-      onDragExited: (_) => setState(() => _dragging = false),
-      onDragDone: (detail) {
-        setState(() => _dragging = false);
-        _enqueue(resolveDroppedPaths(detail.files.map((f) => f.path)));
-      },
-      child: Container(
-        // A drag-over wash (no border) signals the drop target.
-        color: _dragging ? Tokens.accentWash : null,
-        child: Column(
-          children: [
-            _Toolbar(
-              onAddFiles: _addFiles,
-              onAddFolder: _addFolder,
-              onLoadPlaylist: _loadPlaylist,
-              onClear: _player.clearPlaylist,
-            ),
-            // Source-playlist banner (.m3u/.pls the current entry was expanded
-            // from) with cross-playlist navigation, shown only when loaded via
-            // a playlist file.
-            Live<String>(
-              stream: _player.stream.playlistPath,
-              initial: _player.state.playlistPath,
-              builder: (context, path) {
-                if (path.isEmpty) return const SizedBox.shrink();
-                return _PlaylistBanner(
-                  path: path,
-                  onPrevPlaylist: _player.previousPlaylist,
-                  onNextPlaylist: _player.nextPlaylist,
-                );
-              },
-            ),
-            Expanded(
-              child: Live<Playlist>(
-                stream: _player.stream.playlist,
-                initial: _player.state.playlist,
-                builder: (context, playlist) {
-                  if (playlist.items.isEmpty) {
-                    return _EmptyQueue(
-                      onAddFiles: _addFiles,
-                      onAddFolder: _addFolder,
-                    );
-                  }
-                  return ReorderableListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      Tokens.s16,
-                      Tokens.s12,
-                      Tokens.s16,
-                      Tokens.s12,
+    return ListenableBuilder(
+      listenable: _queueManager,
+      builder: (context, _) {
+        final queue = _queueManager.viewedQueue;
+        final items = queue.items;
+
+        return DropTarget(
+          onDragEntered: (_) => setState(() => _dragging = true),
+          onDragExited: (_) => setState(() => _dragging = false),
+          onDragDone: (detail) {
+            setState(() => _dragging = false);
+            _enqueue(resolveDroppedPaths(detail.files.map((f) => f.path)));
+          },
+          child: Container(
+            color: _dragging ? Tokens.accentWash : null,
+            child: Column(
+              children: [
+                _Toolbar(
+                  onAddFiles: _addFiles,
+                  onAddFolder: _addFolder,
+                  onLoadPlaylist: _loadPlaylist,
+                  onClear: _queueManager.clearPlaylist,
+                ),
+                // Queue selector / administration banner
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(Tokens.s16, 0, Tokens.s16, Tokens.s8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Tokens.s12,
+                      vertical: Tokens.s6,
                     ),
-                    // We supply our own drag handle, so the default trailing
-                    // one (which crowded the remove button) is turned off.
-                    buildDefaultDragHandles: false,
-                    itemCount: playlist.items.length,
-                    // onReorderItem already adjusts newIndex for the
-                    // item removed at oldIndex.
-                    onReorderItem: (oldIndex, newIndex) {
-                      if (newIndex != oldIndex) {
-                        _player.move(oldIndex, newIndex);
+                    decoration: ShapeDecoration(
+                      color: Tokens.surface,
+                      shape: Tokens.squircle(Tokens.rSm),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.playlist_play_rounded, size: 18, color: Tokens.accent),
+                        const SizedBox(width: Tokens.s8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _showAdminDialog,
+                            behavior: HitTestBehavior.opaque,
+                            child: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Queue: ${queue.name}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Tokens.body.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: Tokens.s4),
+                                const Icon(Icons.arrow_drop_down_rounded, size: 18, color: Tokens.fgDim),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (_queueManager.playingQueueId == queue.id) ...[
+                          const Icon(Icons.volume_up_rounded, size: 14, color: Tokens.accent),
+                          const SizedBox(width: Tokens.s8),
+                        ],
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _showAdminDialog,
+                          icon: const Icon(Icons.settings_rounded, size: 18, color: Tokens.fgDim),
+                          tooltip: 'Manage queues',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Source-playlist banner (from playlist files)
+                Live<String>(
+                  stream: _player.stream.playlistPath,
+                  initial: _player.state.playlistPath,
+                  builder: (context, path) {
+                    if (path.isEmpty) return const SizedBox.shrink();
+                    return _PlaylistBanner(
+                      path: path,
+                      onPrevPlaylist: _player.previousPlaylist,
+                      onNextPlaylist: _player.nextPlaylist,
+                    );
+                  },
+                ),
+                Expanded(
+                  child: Live<Playlist>(
+                    stream: _player.stream.playlist,
+                    initial: _player.state.playlist,
+                    builder: (context, mpvPlaylist) {
+                      if (items.isEmpty) {
+                        return _EmptyQueue(
+                          onAddFiles: _addFiles,
+                          onAddFolder: _addFolder,
+                        );
                       }
-                    },
-                    itemBuilder: (context, i) {
-                      final item = playlist.items[i];
-                      return _QueueTile(
-                        key: ValueKey('${item.uri}#$i'),
-                        index: i,
-                        title: _titleOf(item),
-                        source: _sourceOf(item),
-                        current: i == playlist.index,
-                        onTap: () => _player.jump(i),
-                        onReplace: () => _replace(i),
-                        onRemove: () => _player.remove(i),
+
+                      final playingUri = (mpvPlaylist.index >= 0 && mpvPlaylist.index < mpvPlaylist.items.length)
+                          ? mpvPlaylist.items[mpvPlaylist.index].uri
+                          : null;
+
+                      return ReorderableListView.builder(
+                        padding: const EdgeInsets.fromLTRB(
+                          Tokens.s16,
+                          Tokens.s12,
+                          Tokens.s16,
+                          Tokens.s12,
+                        ),
+                        buildDefaultDragHandles: false,
+                        itemCount: items.length,
+                        onReorder: (oldIndex, newIndex) {
+                          if (newIndex > oldIndex) {
+                            newIndex -= 1;
+                          }
+                          if (newIndex != oldIndex) {
+                            _queueManager.move(oldIndex, newIndex);
+                          }
+                        },
+                        itemBuilder: (context, i) {
+                          final item = items[i];
+                          final isPlaying = _queueManager.playingQueueId == queue.id &&
+                              playingUri != null &&
+                              item.uri == playingUri &&
+                              item.active;
+
+                          return _QueueTile(
+                            key: ValueKey('${item.uri}#$i'),
+                            index: i,
+                            item: item,
+                            current: isPlaying,
+                            onTap: () => _queueManager.playTrack(i),
+                            onActiveChanged: (active) => _queueManager.setTrackActive(i, active),
+                            onReplace: () => _replace(i),
+                            onRemove: () => _queueManager.remove(i),
+                          );
+                        },
                       );
                     },
-                  );
-                },
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
-  }
-
-  static String _titleOf(Media item) {
-    final t = item.extras?['title'];
-    if (t is String && t.isNotEmpty) return t;
-    return baseNameNoExt(item.uri);
-  }
-
-  /// Where the track comes from — the containing folder for local files,
-  /// or the bare host/URL for network sources.
-  static String _sourceOf(Media item) {
-    final uri = item.uri;
-    final isUrl = uri.contains('://') && !uri.startsWith('file://');
-    if (isUrl) return Uri.tryParse(uri)?.host ?? uri;
-    final path = uri.startsWith('file://')
-        ? (Uri.tryParse(uri)?.toFilePath() ?? uri)
-        : uri;
-    final sep = path.contains('\\') ? '\\' : '/';
-    final cut = path.lastIndexOf(sep);
-    return cut <= 0 ? path : path.substring(0, cut);
   }
 }
 
@@ -195,10 +234,7 @@ class _Toolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Folder picking has no file_selector backend on iOS (or web), so the
-    // Add folder button is shown disabled there; it works everywhere else.
-    final folderEnabled =
-        !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
+    final folderEnabled = !kIsWeb && defaultTargetPlatform != TargetPlatform.iOS;
     const folderDisabledTip = 'Folder import isn’t available on iOS';
 
     return Padding(
@@ -210,9 +246,6 @@ class _Toolbar extends StatelessWidget {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          // Four labelled pills don't fit a phone. Below the desktop
-          // breakpoint, keep every action but collapse them to icon-only
-          // buttons (labels move into tooltips) so nothing overflows.
           if (constraints.maxWidth < Tokens.desktopBreakpoint) {
             return Row(
               children: [
@@ -285,8 +318,6 @@ class _Toolbar extends StatelessWidget {
   }
 }
 
-/// Banner shown when the queue was expanded from a playlist file
-/// (`player.stream.playlistPath`), with cross-playlist navigation.
 class _PlaylistBanner extends StatelessWidget {
   final String path;
   final VoidCallback onPrevPlaylist;
@@ -318,8 +349,7 @@ class _PlaylistBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.queue_music_rounded,
-                size: 16, color: Tokens.accent),
+            const Icon(Icons.queue_music_rounded, size: 16, color: Tokens.accent),
             const SizedBox(width: Tokens.s8),
             Expanded(
               child: Text(
@@ -348,28 +378,29 @@ class _PlaylistBanner extends StatelessWidget {
 
 class _QueueTile extends StatelessWidget {
   final int index;
-  final String title;
-  final String source;
+  final PlaylistItem item;
   final bool current;
   final VoidCallback onTap;
+  final ValueChanged<bool> onActiveChanged;
   final VoidCallback onReplace;
   final VoidCallback onRemove;
 
   const _QueueTile({
     super.key,
     required this.index,
-    required this.title,
-    required this.source,
+    required this.item,
     required this.current,
     required this.onTap,
+    required this.onActiveChanged,
     required this.onReplace,
     required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
-    // A squircle card per item — same surface language as the settings and
-    // catalog lists. The current track gets the accent wash and border.
+    final hasMeta = item.artist.isNotEmpty || item.album.isNotEmpty;
+    final sub = [item.artist, item.album].where((e) => e.isNotEmpty).join('  ·  ');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: Tokens.s6),
       child: Material(
@@ -377,10 +408,9 @@ class _QueueTile extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           customBorder: Tokens.squircle(Tokens.rSm),
-          // Ink so the hover highlight shows over the card surface.
           child: Ink(
             padding: const EdgeInsets.fromLTRB(
-              Tokens.s12,
+              Tokens.s6,
               Tokens.s8,
               Tokens.s6,
               Tokens.s8,
@@ -391,51 +421,75 @@ class _QueueTile extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Active checkbox
+                Checkbox(
+                  value: item.active,
+                  onChanged: (val) => onActiveChanged(val ?? true),
+                  activeColor: Tokens.accent,
+                  checkColor: Tokens.onAccent,
+                  visualDensity: VisualDensity.compact,
+                ),
                 SizedBox(
                   width: 24,
                   child: current
-                      ? const Icon(Icons.volume_up_rounded,
-                          size: 16, color: Tokens.accent)
-                      : Text('${index + 1}',
-                          style: Tokens.numeric, textAlign: TextAlign.center),
+                      ? const Icon(Icons.volume_up_rounded, size: 16, color: Tokens.accent)
+                      : Text(
+                          '${index + 1}',
+                          style: Tokens.numeric.copyWith(
+                            color: item.active ? Tokens.fgDim : Tokens.fgFaint,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                 ),
-                const SizedBox(width: Tokens.s12),
+                const SizedBox(width: Tokens.s8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        title,
+                        item.title.isNotEmpty ? item.title : baseNameNoExt(item.uri),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Tokens.body.copyWith(
-                          color: current ? Tokens.accent : Tokens.fg,
-                          fontWeight:
-                              current ? FontWeight.w600 : FontWeight.w400,
+                          color: current
+                              ? Tokens.accent
+                              : (item.active ? Tokens.fg : Tokens.fgFaint),
+                          fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                          decoration: item.active ? null : TextDecoration.lineThrough,
                         ),
                       ),
-                      if (source.isNotEmpty) ...[
+                      if (hasMeta) ...[
                         const SizedBox(height: 2),
                         Text(
-                          source,
+                          sub,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Tokens.caption,
+                          style: Tokens.caption.copyWith(
+                            color: item.active ? Tokens.fgDim : Tokens.fgFaint,
+                          ),
                         ),
                       ],
+                      const SizedBox(height: 2),
+                      Text(
+                        item.uri,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Tokens.caption.copyWith(
+                          fontSize: 11,
+                          color: Tokens.fgFaint,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(width: Tokens.s8),
-                // Drag-to-reorder handle (we disabled the default one).
                 ReorderableDragStartListener(
                   index: index,
                   child: const MouseRegion(
                     cursor: SystemMouseCursors.grab,
                     child: Padding(
                       padding: EdgeInsets.all(Tokens.s6),
-                      child: Icon(Icons.drag_indicator_rounded,
-                          size: 18, color: Tokens.fgFaint),
+                      child: Icon(Icons.drag_indicator_rounded, size: 18, color: Tokens.fgFaint),
                     ),
                   ),
                 ),
@@ -458,7 +512,6 @@ class _QueueTile extends StatelessWidget {
   }
 }
 
-/// A compact, non-cramped icon tap target (avoids [IconButton]'s 48px box).
 class _IconTap extends StatelessWidget {
   final IconData icon;
   final String tooltip;
@@ -499,8 +552,7 @@ class _EmptyQueue extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.queue_music_rounded,
-              size: 40, color: Tokens.fgFaint),
+          const Icon(Icons.queue_music_rounded, size: 40, color: Tokens.fgFaint),
           const SizedBox(height: Tokens.s12),
           const Text('Queue is empty', style: Tokens.label),
           const SizedBox(height: Tokens.s4),
@@ -532,10 +584,6 @@ class _EmptyQueue extends StatelessWidget {
   }
 }
 
-/// Small flat pill button used in section toolbars. Set [iconOnly] to drop
-/// the label (it becomes a tooltip) for tight, phone-width toolbars; set
-/// [enabled] to `false` to show it greyed and inert, with [disabledTooltip]
-/// explaining why.
 class ToolButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -558,10 +606,7 @@ class ToolButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Disabled wins over primary: a greyed pill must read as inert, not active.
-    final fg = !enabled
-        ? Tokens.fgFaint
-        : (primary ? Tokens.onAccent : Tokens.fg);
+    final fg = !enabled ? Tokens.fgFaint : (primary ? Tokens.onAccent : Tokens.fg);
     final bg = !enabled || !primary ? Tokens.surface2 : Tokens.accent;
 
     final content = iconOnly
@@ -601,9 +646,244 @@ class ToolButton extends StatelessWidget {
       ),
     );
 
-    // Icon-only buttons surface their label as a tooltip; a disabled button
-    // explains its inertness instead.
     final tip = !enabled ? (disabledTooltip ?? label) : (iconOnly ? label : null);
     return tip == null ? pill : Tooltip(message: tip, child: pill);
+  }
+}
+
+class QueueAdminDialog extends StatefulWidget {
+  final QueueManager queueManager;
+  const QueueAdminDialog({super.key, required this.queueManager});
+
+  @override
+  State<QueueAdminDialog> createState() => _QueueAdminDialogState();
+}
+
+class _QueueAdminDialogState extends State<QueueAdminDialog> {
+  @override
+  Widget build(BuildContext context) {
+    final qm = widget.queueManager;
+    return ListenableBuilder(
+      listenable: qm,
+      builder: (context, _) {
+        final queues = qm.queues;
+        return AlertDialog(
+          backgroundColor: Tokens.surface,
+          title: Row(
+            children: [
+              const Icon(Icons.queue_music_rounded, color: Tokens.accent),
+              const SizedBox(width: Tokens.s8),
+              const Text('Manage Queues', style: Tokens.heading),
+            ],
+          ),
+          content: SizedBox(
+            width: 400,
+            height: 300,
+            child: Column(
+              children: [
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: queues.length,
+                    onReorder: (oldIdx, newIdx) {
+                      qm.reorderQueues(oldIdx, newIdx);
+                    },
+                    itemBuilder: (context, i) {
+                      final q = queues[i];
+                      final isViewed = q.id == qm.viewedQueueId;
+                      final isPlaying = q.id == qm.playingQueueId;
+                      return _DialogQueueTile(
+                        key: ValueKey(q.id),
+                        index: i,
+                        queue: q,
+                        isViewed: isViewed,
+                        isPlaying: isPlaying,
+                        onTap: () {
+                          qm.selectViewedQueue(q.id);
+                        },
+                        onRename: () => _showRenameDialog(context, qm, q),
+                        onDelete: queues.length > 1
+                            ? () {
+                                try {
+                                  qm.deleteQueue(q.id);
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(e.toString())),
+                                  );
+                                }
+                              }
+                            : null,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Tokens.accent,
+                foregroundColor: Tokens.onAccent,
+                shape: Tokens.squircle(Tokens.rSm) as OutlinedBorder,
+              ),
+              onPressed: () {
+                try {
+                  qm.createQueue();
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(e.toString())),
+                  );
+                }
+              },
+              icon: const Icon(Icons.add_rounded, size: 16),
+              label: const Text('New Queue'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close', style: TextStyle(color: Tokens.accent)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRenameDialog(BuildContext context, QueueManager qm, QueueModel q) {
+    final controller = TextEditingController(text: q.name);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Tokens.surface2,
+          title: const Text('Rename Queue', style: Tokens.label),
+          content: TextField(
+            controller: controller,
+            style: const TextStyle(color: Tokens.fg),
+            cursorColor: Tokens.accent,
+            decoration: const InputDecoration(
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Tokens.accent),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel', style: TextStyle(color: Tokens.fgDim)),
+            ),
+            TextButton(
+              onPressed: () {
+                final text = controller.text.trim();
+                if (text.isNotEmpty) {
+                  qm.renameQueue(q.id, text);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('Save', style: TextStyle(color: Tokens.accent)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DialogQueueTile extends StatelessWidget {
+  final QueueModel queue;
+  final int index;
+  final bool isViewed;
+  final bool isPlaying;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback? onDelete;
+
+  const _DialogQueueTile({
+    super.key,
+    required this.queue,
+    required this.index,
+    required this.isViewed,
+    required this.isPlaying,
+    required this.onTap,
+    required this.onRename,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Tokens.s6),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: Tokens.squircle(Tokens.rSm),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.s12, vertical: Tokens.s8),
+            decoration: ShapeDecoration(
+              color: isViewed ? Tokens.accentWash : Tokens.surface2,
+              shape: Tokens.squircle(Tokens.rSm),
+            ),
+            child: Row(
+              children: [
+                ReorderableDragStartListener(
+                  index: index,
+                  child: const MouseRegion(
+                    cursor: SystemMouseCursors.grab,
+                    child: Icon(Icons.drag_indicator_rounded, size: 18, color: Tokens.fgFaint),
+                  ),
+                ),
+                const SizedBox(width: Tokens.s8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              queue.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Tokens.body.copyWith(
+                                color: isViewed ? Tokens.accent : Tokens.fg,
+                                fontWeight: isViewed ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          if (isPlaying) ...[
+                            const SizedBox(width: Tokens.s4),
+                            const Icon(Icons.volume_up_rounded, size: 14, color: Tokens.accent),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${queue.items.length} tracks',
+                        style: Tokens.caption,
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: onRename,
+                  icon: const Icon(Icons.edit_rounded, size: 16),
+                  color: Tokens.fgDim,
+                  splashRadius: 16,
+                  tooltip: 'Rename',
+                ),
+                if (onDelete != null)
+                  IconButton(
+                    onPressed: onDelete,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    color: Tokens.red,
+                    splashRadius: 16,
+                    tooltip: 'Delete',
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -7,6 +7,7 @@ import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../studio/player_scope.dart';
+import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
 
 /// The Samba (SMB2/3) tab: a connect form until authenticated, then a
@@ -66,6 +67,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
   final _domain = TextEditingController();
 
   Player? _player;
+  QueueManager? _queueManager;
   Smb2Pool? _pool;
 
   StreamSubscription<Playlist>? _plSub;
@@ -103,6 +105,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
     super.didChangeDependencies();
     if (_player != null) return;
     _player = PlayerScope.of(context);
+    _queueManager = PlayerScope.queueManagerOf(context);
     _currentUri = _uriOf(_player!.state.playlist);
     _plSub = _player!.stream.playlist.listen((pl) {
       final u = _uriOf(pl);
@@ -302,7 +305,7 @@ class _SambaBrowserTabState extends State<SambaBrowserTab> {
           },
         ),
     ];
-    _player?.openAll(medias, play: true, index: 0);
+    _queueManager?.openAll(medias, play: true, index: 0);
   }
 
   static String _stripExt(String name) {

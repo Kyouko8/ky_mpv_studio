@@ -7,6 +7,7 @@ import '../features/stream/media_server.dart';
 import 'app_settings.dart';
 import 'loudness_normalizer.dart';
 import 'mpv_studio.dart';
+import 'queue_manager.dart';
 
 /// Exposes the running [MpvStudio] — the single [Player] and the app's
 /// services — to the whole widget tree. MPV Studio is a single-player app, so
@@ -49,6 +50,10 @@ class PlayerScope extends InheritedWidget {
   /// The shared favourites store.
   static FavoritesController favoritesOf(BuildContext context) =>
       _scope(context).favorites;
+
+  /// The active queue manager managing multiple queues/playlists.
+  static QueueManager queueManagerOf(BuildContext context) =>
+      _scope(context).queueManager;
 
   @override
   bool updateShouldNotify(PlayerScope oldWidget) =>

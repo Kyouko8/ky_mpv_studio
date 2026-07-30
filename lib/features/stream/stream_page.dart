@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../studio/player_scope.dart';
+import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/chapter_scrubber.dart';
 import '../../ui/widgets/custom_url_bar.dart';
@@ -335,6 +336,7 @@ class _YouTubeTab extends StatefulWidget {
 class _YouTubeTabState extends State<_YouTubeTab> {
   final _resolver = YoutubeResolver();
   Player? _player;
+  QueueManager? _queueManager;
 
   /// The example URL currently being resolved (its row shows a spinner in
   /// place of the video icon); null when idle.
@@ -345,6 +347,7 @@ class _YouTubeTabState extends State<_YouTubeTab> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _player ??= PlayerScope.of(context);
+    _queueManager ??= PlayerScope.queueManagerOf(context);
   }
 
   @override
@@ -389,9 +392,9 @@ class _YouTubeTabState extends State<_YouTubeTab> {
         },
       );
       if (enqueue && player.state.playlist.items.isNotEmpty) {
-        await player.add(media);
+        await _queueManager?.add(media);
       } else {
-        await player.open(media, play: true);
+        await _queueManager?.open(media, play: true);
       }
       if (!mounted) return;
       setState(() => _resolvingUrl = null);
@@ -719,7 +722,8 @@ class _ReferenceTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final player = PlayerScope.of(context);
-    void play(String url) => player.open(_media(url), play: true);
+    final queueManager = PlayerScope.queueManagerOf(context);
+    void play(String url) => queueManager.open(_media(url), play: true);
 
     return StreamBuilder<Playlist>(
       stream: player.stream.playlist,
@@ -740,6 +744,7 @@ class _ReferenceTab extends StatelessWidget {
               for (final item in cat.items)
                 _StreamTile(
                   player: player,
+                  queueManager: queueManager,
                   item: item,
                   current: item.url == origin,
                 ),
@@ -754,6 +759,7 @@ class _ReferenceTab extends StatelessWidget {
 
 class _StreamTile extends StatelessWidget {
   final Player player;
+  final QueueManager queueManager;
   final StreamItem item;
 
   /// Whether this tile started the currently-playing track — gets the accent
@@ -762,6 +768,7 @@ class _StreamTile extends StatelessWidget {
 
   const _StreamTile({
     required this.player,
+    required this.queueManager,
     required this.item,
     this.current = false,
   });
@@ -769,13 +776,13 @@ class _StreamTile extends StatelessWidget {
   Media get _media =>
       Media(item.url, extras: {'title': item.label, 'artist': 'Stream'});
 
-  void _play() => player.open(_media, play: true);
+  void _play() => queueManager.open(_media, play: true);
 
   void _enqueue() {
     if (player.state.playlist.items.isEmpty) {
-      player.open(_media, play: true);
+      queueManager.open(_media, play: true);
     } else {
-      player.add(_media);
+      queueManager.add(_media);
     }
   }
 

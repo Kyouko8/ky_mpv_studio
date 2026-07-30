@@ -6,6 +6,7 @@ import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 import 'package:mpv_audio_kit/mpv_audio_kit.dart';
 
 import '../../studio/player_scope.dart';
+import '../../studio/queue_manager.dart';
 import '../../ui/tokens.dart';
 import '../../ui/widgets/controls.dart';
 import 'favorites_controller.dart';
@@ -34,6 +35,7 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
   final _search = TextEditingController();
 
   Player? _player;
+  QueueManager? _queueManager;
   StreamSubscription<Playlist>? _plSub;
   // The playing track's server id + server name (from its Media extras). Match
   // on the id, NOT the title — two songs with the same title must not both
@@ -100,6 +102,7 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
     super.didChangeDependencies();
     if (_player != null) return;
     _player = PlayerScope.of(context);
+    _queueManager = PlayerScope.queueManagerOf(context);
     final (id, srv) = _currentOf(_player!.state.playlist);
     _currentId = id;
     _currentServer = srv;
@@ -245,7 +248,7 @@ class _ServerLibraryTabState extends State<ServerLibraryTab> {
           },
         ),
     ];
-    _player?.openAll(medias, play: true, index: 0);
+    _queueManager?.openAll(medias, play: true, index: 0);
   }
 
   // ── Transcode option dropdowns (shown only in transcode mode) ────────

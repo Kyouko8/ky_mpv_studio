@@ -132,6 +132,9 @@ class AppSettings {
   double get loudnessTargetLufs => _double('loudnessTargetLufs', -18);
   String get demuxerCacheDir => _string('demuxerCacheDir', '');
 
+  String get queueBaseName => _string('queueBaseName', 'New Queue');
+  int get queueMaxLists => _int('queueMaxLists', 30).clamp(1, 200);
+
   void recordResumePlayback(bool v) => _snap('resumePlayback', v);
   void recordWatchLaterDir(String v) => _snap('watchLaterDir', v);
   void recordForceSeekable(bool v) => _snap('forceSeekable', v);
@@ -142,6 +145,9 @@ class AppSettings {
 
   void recordLoudnessTargetLufs(double v) => _snap('loudnessTargetLufs', v);
   void recordDemuxerCacheDir(String v) => _snap('demuxerCacheDir', v);
+
+  void recordQueueBaseName(String v) => _snap('queueBaseName', v);
+  void recordQueueMaxLists(int v) => _snap('queueMaxLists', v);
 
   /// The build-time configuration assembled from the persisted knobs, passed
   /// to the [Player] constructor in `startAudioEngine`.

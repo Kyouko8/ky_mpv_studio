@@ -52,11 +52,13 @@ class _SettingsPageState extends State<SettingsPage> {
         _Category('Demuxer', Icons.dns_outlined, _demuxer),
         _Category('Streaming', Icons.podcasts_rounded, _streaming),
         _Category('Session', Icons.lock_outline_rounded, _session),
+        _Category('Queue', Icons.queue_music_rounded, _queue),
         _Category('Visualizer', Icons.graphic_eq_rounded, _visualizer),
         _Category('Cover art', Icons.image_outlined, _coverArt),
         _Category('About', Icons.info_outline_rounded, _about),
       ];
 
+  static Widget _queue(BuildContext c) => _QueueGroup(PlayerScope.settingsOf(c));
   static Widget _playback(BuildContext c) => _PlaybackGroup(PlayerScope.of(c));
   static Widget _resume(BuildContext c) =>
       _ResumeGroup(PlayerScope.of(c), PlayerScope.settingsOf(c));
@@ -1071,5 +1073,82 @@ class _LabelledControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SettingTile(title: label, description: description, below: child);
+  }
+}
+
+// ---- Queue ----------------------------------------------------------
+
+class _QueueGroup extends StatefulWidget {
+  final AppSettings settings;
+  const _QueueGroup(this.settings);
+
+  @override
+  State<_QueueGroup> createState() => _QueueGroupState();
+}
+
+class _QueueGroupState extends State<_QueueGroup> {
+  late final TextEditingController _baseNameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _baseNameController = TextEditingController(text: widget.settings.queueBaseName);
+  }
+
+  @override
+  void dispose() {
+    _baseNameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsGroup(
+      label: 'Queue Settings',
+      children: [
+        SettingTile(
+          title: 'Base name for new queues',
+          description: 'Default name assigned when creating a new queue.',
+          below: Padding(
+            padding: const EdgeInsets.only(top: Tokens.s8),
+            child: Container(
+              height: Tokens.controlH,
+              decoration: ShapeDecoration(
+                color: Tokens.surface2,
+                shape: Tokens.squircle(Tokens.rSm),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: Tokens.s12),
+              child: TextField(
+                controller: _baseNameController,
+                style: const TextStyle(fontSize: 13.5, color: Tokens.fg),
+                cursorColor: Tokens.accent,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (val) {
+                  widget.settings.recordQueueBaseName(val);
+                },
+              ),
+            ),
+          ),
+        ),
+        SliderRow(
+          label: 'Maximum number of queues',
+          description: 'Limit of allowed queues (maximum 200).',
+          value: widget.settings.queueMaxLists.toDouble(),
+          min: 1,
+          max: 200,
+          divisions: 199,
+          format: (x) => '${x.round()}',
+          onChanged: (x) {
+            setState(() {
+              widget.settings.recordQueueMaxLists(x.round());
+            });
+          },
+        ),
+      ],
+    );
   }
 }
